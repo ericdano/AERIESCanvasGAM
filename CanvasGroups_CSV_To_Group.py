@@ -8,6 +8,8 @@ from email.message import EmailMessage
 #
 # This program enrols a CSV list of users into a Canvas Group
 # Usage is >python CSV_To_Group.py groupid csvname.csv
+#More of a TEST PROGRAM than something that is usable
+
 #load configs
 home = Path.home() / ".ASAPCanvas" / "ASAPCanvas.json"
 confighome = Path.home() / ".ASAPCanvas" / "ASAPCanvas.json"

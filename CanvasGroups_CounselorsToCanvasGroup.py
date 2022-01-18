@@ -43,7 +43,8 @@ students = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.
 #-----Canvas Info()
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
-
+# Main part where we create the BIG group of ALL students a counselor has, and then put them into a Group
+#
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 group = canvas.get_group(10835,include=['users'])
