@@ -1,6 +1,8 @@
 import pandas as pd
 import os, sys, pyodbc, shlex, subprocess
 
+#This script finds counselors and their assigned students in AERIES, then updates Google Group Annouce only lists with any student changes
+
 #os.chdir(os.path.dirname(os.path.abspath(__file__)))
 os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts

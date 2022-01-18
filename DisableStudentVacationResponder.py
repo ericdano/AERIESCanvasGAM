@@ -1,3 +1,5 @@
+# This script is run once a day to make sure students don't have a vacation responder on
+
 import os, sys, pyodbc, shlex, subprocess
 
 #os.chdir(os.path.dirname(os.path.abspath(__file__)))
