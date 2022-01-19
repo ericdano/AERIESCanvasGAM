@@ -21,7 +21,6 @@ canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 group = canvas.get_group(10831,include=['users'])
 dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
-print(dataframe2)
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
                       'Database=DST21000AUHSD;'
@@ -31,14 +30,15 @@ print('All Students for Counselor')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
 for EM, SEM in dataframe1.groupby('EM'):
     print(SEM)
+print('Canvas list')
 print(dataframe2)
 
 #dataframe1.to_csv('AllAeries.csv')
 #dataframe2.to_csv('AllCanvas.csv')
 #dataframe3=dataframe1
-#common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
-#print('Difference---------')
-#print(common)
+common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
+print('Difference---------')
+print(common)
 #dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
 #print('New diff')
 #print(dataframe1)
