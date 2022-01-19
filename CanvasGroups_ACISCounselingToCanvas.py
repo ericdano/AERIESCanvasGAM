@@ -33,11 +33,10 @@ dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, ST
 #    print(SEM)
 dataframe1.to_csv('AllAeries.csv')
 dataframe2.to_csv('AllCanvas.csv')
-
-common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
-print('Difference---------')
-print(common)
 dataframe3=dataframe1
+#common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
+#print('Difference---------')
+#print(common)
 dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
 print('New diff')
 print(dataframe1)
