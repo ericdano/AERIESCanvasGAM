@@ -36,12 +36,12 @@ print(dataframe2)
 #dataframe1.to_csv('AllAeries.csv')
 #dataframe2.to_csv('AllCanvas.csv')
 #dataframe3=dataframe1
-common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
-print('Difference---------')
-print(common)
-#dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
-#print('New diff')
-#print(dataframe1)
+#common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
+#print('Difference---------')
+#print(common)
+dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
+print('New diff')
+print(dataframe1)
 #print('New Diff 2')
 #dataframe2[~(dataframe2['login_id'].isin(dataframe3['SEM']))]
 #print(dataframe2)
