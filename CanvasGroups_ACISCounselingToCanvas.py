@@ -37,9 +37,13 @@ dataframe2.to_csv('AllCanvas.csv')
 common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
 print('Difference---------')
 print(common)
+dataframe3=dataframe1
 dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
 print('New diff')
 print(dataframe1)
+print('New Diff 2')
+dataframe2[~(dataframe2['login_id'].isin(dataframe3['SEM']))]
+print(dataframe2)
 #sql_query[(~sql_query.SEM.isin(common.SEM))&(sql_query.login_id.isin(common.login_id))]
 #print(sql_query)
 conn2 = pyodbc.connect('Driver={SQL Server};'
