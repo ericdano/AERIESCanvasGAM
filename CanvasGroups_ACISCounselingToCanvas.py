@@ -29,7 +29,7 @@ conn = pyodbc.connect('Driver={SQL Server};'
 cursor = conn.cursor()
 print('All Students for Counselor')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-for EM, SEM in sql_query.groupby('EM'):
+for EM, SEM in dataframe1.groupby('EM'):
     print(SEM)
 print(dataframe2)
 
