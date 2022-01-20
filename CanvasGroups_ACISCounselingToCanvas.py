@@ -53,18 +53,19 @@ studentstoremove = canvaslist - aerieslist
 studentstoremove.remove('sfeinberg@auhsdschools.org') # Keep teacher in canvas group
 studentstoremove.remove('edannewitz@auhsdschools.org')
 for student in studentstoremove:
+  logging.info('Looking up student->'+str(student)+' in Canvas')
   try:
     user = canvas.get_user(str(student))
   except CanvasException as g:
     if str(g) == "Not Found":
-      print('Error finding user!')
       print('Cannot find user id->'+str(student))
+      logging.info('Cannot find user id->'+str(student))
   try:
     n = group.remove_user(user.sis_user_id)
   except CanvasException as e:
     if str(e) == "Not Found":
         print('User not in group')
-        logging.info('')
+        logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
   print('Removed Student->'+str(student)+' from Canvas group')
   logging.info('Removed Student->'+str(student)+' from Canvas group')
 # Now add students to group
