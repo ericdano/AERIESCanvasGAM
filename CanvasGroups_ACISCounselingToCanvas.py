@@ -20,55 +20,54 @@ counselors = [ ('acis','feinberg',10831)]
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 group = canvas.get_group(10831,include=['users'])
+testuser=canvas.get_user(3772)
+print(testuser.sis_user_id)
+
 dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
                       'Database=DST21000AUHSD;'
                       'Trusted_Connection=yes;')
 cursor = conn.cursor()
-print('All Students for Counselor')
+#print('All Students for Counselor')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-for EM, SEM in dataframe1.groupby('EM'):
-    print(SEM)
-print('Canvas list')
-print(dataframe2)
-
-#dataframe1.to_csv('AllAeries.csv')
-#dataframe2.to_csv('AllCanvas.csv')
-#dataframe3=dataframe1
-#common = dataframe1.merge(dataframe2,left_on='SEM',right_on='login_id', how='inner')
-#print('Difference---------')
-#print(common)
-dataframe1[~(dataframe1['SEM'].isin(dataframe2['login_id']))]
-print('New diff')
-print(dataframe1)
-#print('New Diff 2')
-#dataframe2[~(dataframe2['login_id'].isin(dataframe3['SEM']))]
-#print(dataframe2)
-#sql_query[(~sql_query.SEM.isin(common.SEM))&(sql_query.login_id.isin(common.login_id))]
-#print(sql_query)
-conn2 = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
-                      'Trusted_Connection=yes;')
-#cursor2 = conn.cursor()
-#print('Students by Grade for Counselor')
-#sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-#for EM, SEM in sql_query2.groupby(['EM','GR']):
-    #print(SEM)
-
-
-
-
-
-#df = pd.DataFrame(group.users,columns=['id','name','login_id'])
-#print('Students from Aeries')
-#print(students)
-#print('Students in Canvas Group')
-#print(df)
-#students = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-#students.drop(students.columns.difference(['EM']),axis=1,inplace=True)
-#students = students.rename(columns={'EM':'login_id'})
+aerieslist = set(dataframe1.SEM)
+canvaslist = set(dataframe2.login_id)
+studentstoadd = aerieslist - canvaslist
+studentstoremove = canvaslist - aerieslist
+studentstoremove.remove('sfeinberg@auhsdschools.org') # Keep teacher in canvas group
+studentstoremove.remove('edannewitz@auhsdschools.org')
+for student in studentstoremove:
+  try:
+    user = account.get_users(search_term=str(student))
+  except CanvasException as g:
+    if str(g) == "Not Found":
+      print('Error finding user!')
+#  user = canvas.get_user(str(student),'sis_login_id')
+  try:
+    n = group.remove_user(user[0].id)
+  except CanvasException as e:
+    if str(e) == "Not Found":
+        print('User not in group')
+  print('Removed Student->'+str(student)+' from Canvas group')
+print(studentstoadd)
+# Now add students to group
+for student in studentstoadd:
+  print('going to try to add'+str(student))
+  try:
+#    user = canvas.get_user(str(student),'sis_login_id')
+    user = account.get_users(search_term=str(student))
+  except CanvasException as f:
+    if str(f) == "Not Found":
+      print('Cannot find user->'+str(student))
+  try:
+    n = group.create_membership(user[0].id)
+  except CanvasException as e:
+    if str(e) == "Not Found":
+      print('User not in group')
+  print('Added Student->'+str(student)+' to Canvas group')
+  print(user[0].sis_user_id)
+  print(user[0].id)
 # Add user to Canvas Group
 #for index, student in students.iterrows():
 #    user = canvas.get_user(student["SEM"],'sis_login_id')
