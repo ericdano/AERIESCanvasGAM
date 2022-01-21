@@ -48,7 +48,7 @@ for i in CounselorCanvasGroups.index:
   CounselorSISID = CounselorCanvasGroups['SISID'][i]
   GradeToGet = CounselorCanvasGroups['Grade'][i]
   CanvasGroupID = CounselorCanvasGroups['CanvasGroupID'][i]
-  msgbody += 'Matching for ' + CounselorEmail + ' - ' + str(CounselorSISID) + ' - ' + str(GradeToGet) + ' - ' + str(CanvasGroupID)
+  msgbody += 'Matching for ' + CounselorEmail + ' - ' + str(CounselorSISID) + ' - ' + str(GradeToGet) + ' - ' + str(CanvasGroupID) + '\n'
   if (GradeToGet == str('All')):
     dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',conn)
   else:
@@ -91,7 +91,7 @@ for i in CounselorCanvasGroups.index:
       if str(e) == "Not Found":
           print('User not in group')
           logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
-    msgbody += 'Removed Student->'+str(student)+' from Canvas group'
+    msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
     logging.info('Removed Student->'+str(student)+' from Canvas group')
 # Now add students to group
   for student in studentstoadd:
@@ -111,6 +111,7 @@ for i in CounselorCanvasGroups.index:
     logging.info('Added Student id->'+str(student)+' to Canvas group')
 msgbody+='Done!'
 msg.set_content(msgbody)
+s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
 # Main part where we create the BIG group of ALL students a counselor has, and then put them into a Group
 #
