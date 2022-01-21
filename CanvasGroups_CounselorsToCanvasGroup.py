@@ -9,13 +9,30 @@ with open(confighome) as f:
   configs = json.load(f)
 # Logging
 os.chdir('E:\\PythonTemp')
+counselors = [ ('ahs','todd','ctodd@auhsdschools.org',''),
+                ('ahs','meadows'),
+                ('ahs','schonauer'),
+                ('ahs','martin'),
+                ('chs','turner'),
+                ('chs','dhaliwal'),
+                ('chs','santellan'),
+                ('chs','magno'),
+                ('llhs','wright'),
+                ('llhs','feinberg'),
+                ('llhs','constantin'),
+                ('llhs','bloodgood'),
+                ('llhs','sabeh'),
+                ('mhs','vasquez'),
+                ('mhs','conners'),
+                ('mhs','watson'),
+                ('mhs','vasicek') ]
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
                       'Database=DST21000AUHSD;'
                       'Trusted_Connection=yes;')
 #
 cursor = conn.cursor()
-sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID,STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
 
 for EM, SEM in sql_query.groupby('EM'):
     filename = str(EM).replace("@auhsdschools.org","")+"ALL.csv"
