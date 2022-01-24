@@ -39,7 +39,6 @@ Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
 logging.info('Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
-
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
 msgbody += 'Starting Canvas Counseler Groups Script\n'
@@ -47,6 +46,7 @@ for i in CounselorCanvasGroups.index:
   CounselorEmail = CounselorCanvasGroups['email'][i]
   CounselorSISID = CounselorCanvasGroups['SISID'][i]
   GradeToGet = CounselorCanvasGroups['Grade'][i]
+  print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
   CanvasGroupID = CounselorCanvasGroups['CanvasGroupID'][i]
   msgbody += 'Matching for ' + CounselorEmail + ' - ' + str(CounselorSISID) + ' - ' + str(GradeToGet) + ' - ' + str(CanvasGroupID) + '\n'
   if (GradeToGet == str('All')):
@@ -56,6 +56,7 @@ for i in CounselorCanvasGroups.index:
   #print('Matching for ' + CounselorEmail + ' Grade ' + str(GradeToGet) + ' CanvasGroupID ' + str(CanvasGroupID))
   #print(sql_query)
   logging.info('Making SET of Aeries IDs')
+  print('Making SET of Aeries IDs')
   aerieslist = set(dataframe1.ID)
   # Now go get the group off Canvas
   msgbody += 'Getting exisiting users from group id->' + str(CanvasGroupID) + '\n'
@@ -78,41 +79,48 @@ for i in CounselorCanvasGroups.index:
 #  print(studentstoremove)
   for student in studentstoremove:
     logging.info('Looking up student->'+str(student)+' in Canvas')
-    msgbody += 'Looking up student->'+str(student)+' in Canvas'
+    msgbody += 'Looking up student->'+str(student)+' in Canvas' + '\n'
+    print('Looking up student->'+str(student)+' in Canvas')
     try:
       user = canvas.get_user(str(student),'sis_user_id')
     except CanvasException as g:
       if str(g) == "Not Found":
         print('Cannot find user sis_id->'+str(student))
+        msgbody+='Canvas cannot find user sis_id->'+str(student) + '\n'
         logging.info('Cannot find user sis_id->'+str(student))
     try:
       n = group.remove_user(user.id)
     except CanvasException as e:
       if str(e) == "Not Found":
-          print('User not in group')
+          print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
+          msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
           logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
+    print('Removed Student->'+str(student)+' from Canvas group')
     msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
     logging.info('Removed Student->'+str(student)+' from Canvas group')
 # Now add students to group
   for student in studentstoadd:
-    msgbody += 'going to try to add '+ str(student) + ' to group ' + CanvasGroupID + '\n'
+    msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
     try:
       user = canvas.get_user(str(student),'sis_user_id')
     except CanvasException as f:
       if str(f) == "Not Found":
         print('Cannot find user id->'+str(student))
+        msgbody += 'Cannot find user id->'+str(student) + '\n'
         logging.info('Cannot find user id!')
     try:
       n = group.create_membership(user.id)
     except CanvasException as e:
       if str(e) == "Not Found":
         print('User not in group')
-    msgbody += 'Added Student id->'+str(student)+' to Canvas group' + CanvasGroupID + '\n'
-    logging.info('Added Student id->'+str(student)+' to Canvas group')
+    print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+    msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
+    logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 msgbody+='Done!'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
+print('Done!!!')
 # Main part where we create the BIG group of ALL students a counselor has, and then put them into a Group
 #
 #group = canvas.get_group(10835,include=['users'])
