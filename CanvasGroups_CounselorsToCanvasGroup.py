@@ -17,9 +17,9 @@ logfilename = Path.home() / ".Acalanes" / configs['logfilename']
 logging.basicConfig(filename=str(logfilename), level=logging.INFO)
 logging.info('Loaded config file and logfile started')
 logging.info('Loading Counseling CSV file')
-#prep status (msg) and debug (dmsg) emails
+#prep status (msg) email
 msg = EmailMessage()
-msg['Subject'] = str(configs['SMTPStatusMessage'] + " " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
@@ -41,7 +41,7 @@ logging.info('Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
-msgbody += 'Starting Canvas Counseler Groups Script\n'
+msgbody += 'Starting Canvas Counseler Groups for AUHSD Script\n'
 for i in CounselorCanvasGroups.index:
   CounselorEmail = CounselorCanvasGroups['email'][i]
   CounselorSISID = CounselorCanvasGroups['SISID'][i]
@@ -121,15 +121,3 @@ msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
 print('Done!!!')
-# Main part where we create the BIG group of ALL students a counselor has, and then put them into a Group
-#
-#group = canvas.get_group(10835,include=['users'])
-#print(students)
-#print(counselors[11])
-##print(counselors[11][3])
-#for index, student in students.iterrows():
-#    if student["EM"] == counselors[11][2]:
-#        user = canvas.get_user(student["SEM"],'sis_login_id')
-#        m = group.create_membership(user.id)
-#        print('Created user in group')
-#        print(user)
