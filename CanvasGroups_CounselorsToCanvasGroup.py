@@ -88,17 +88,18 @@ for i in CounselorCanvasGroups.index:
         print('Cannot find user sis_id->'+str(student))
         msgbody+='Canvas cannot find user sis_id->'+str(student) + '\n'
         logging.info('Cannot find user sis_id->'+str(student))
-    try:
-      n = group.remove_user(user.id)
-    except CanvasException as e:
-      if str(e) == "Not Found":
-          print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
-          msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
-          logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
-    print('Removed Student->'+str(student)+' from Canvas group')
-    msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
-    logging.info('Removed Student->'+str(student)+' from Canvas group')
-# Now add students to group
+    else:
+      try:
+        n = group.remove_user(user.id)
+      except CanvasException as e:
+        if str(e) == "Not Found":
+            print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
+            msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
+            logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
+      print('Removed Student->'+str(student)+' from Canvas group')
+      msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
+      logging.info('Removed Student->'+str(student)+' from Canvas group')
+  # Now add students to group
   for student in studentstoadd:
     msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
     try:
@@ -108,14 +109,15 @@ for i in CounselorCanvasGroups.index:
         print('Cannot find user id->'+str(student))
         msgbody += 'Cannot find user id->'+str(student) + '\n'
         logging.info('Cannot find user id!')
-    try:
-      n = group.create_membership(user.id)
-    except CanvasException as e:
-      if str(e) == "Not Found":
-        print('User not in group')
-    print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
-    msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
-    logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+    else:    
+      try:
+        n = group.create_membership(user.id)
+      except CanvasException as e:
+        if str(e) == "Not Found":
+          print('User not in group')
+      print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+      msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
+      logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 msgbody+='Done!'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
