@@ -86,7 +86,7 @@ for i in CounselorCanvasGroups.index:
     except CanvasException as g:
       if str(g) == "Not Found":
         print('Cannot find user sis_id->'+str(student))
-        msgbody+='Canvas cannot find user sis_id->'+str(student) + '\n'
+        msgbody+='Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet\n'
         logging.info('Cannot find user sis_id->'+str(student))
     else:
       try:
@@ -107,7 +107,7 @@ for i in CounselorCanvasGroups.index:
     except CanvasException as f:
       if str(f) == "Not Found":
         print('Cannot find user id->'+str(student))
-        msgbody += 'Cannot find user id->'+str(student) + '\n'
+        msgbody += 'Cannot find user id->'+str(student) + ' might be a new student who is not in Canvas yet\n'
         logging.info('Cannot find user id!')
     else:    
       try:
