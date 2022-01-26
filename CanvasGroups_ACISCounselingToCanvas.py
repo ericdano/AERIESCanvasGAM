@@ -102,6 +102,7 @@ for student in studentstoadd:
     msgbody += 'Added Student id->'+str(student)+' to Canvas group \n'
     logging.info('Added Student id->'+str(student)+' to Canvas group')
 msgbody+='Done!'
+
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
