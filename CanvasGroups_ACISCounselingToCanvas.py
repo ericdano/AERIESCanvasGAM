@@ -15,7 +15,7 @@ with open(confighome) as f:
 # Logging
 logfilename = Path.home() / ".Acalanes" / configs['logfilename']
 logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started')
+logging.info('Loaded config file and logfile started for ACIS Counseling Canvas')
 #prep status (msg) email
 msg = EmailMessage()
 msg['Subject'] = str(configs['SMTPStatusMessage'] + " ACIS Counseling To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -62,6 +62,7 @@ studentstoremove = canvaslist - aerieslist
 #Keep the teacher in the group though, so take them OUT of the set
 studentstoremove.remove(counselors[0][3]) # Keep teacher in canvas group
 print('Processing ACIS Students')
+msgbody += 'Looking for Students to remove from groups\n'
 for student in studentstoremove:
   logging.info('Looking up student->'+str(student)+' in Canvas')
   try:
@@ -69,18 +70,20 @@ for student in studentstoremove:
   except CanvasException as g:
     if str(g) == "Not Found":
       print('Cannot find user sis_id->'+str(student))
-      msgbody += 'Cannot find user sis_id->'+str(student) + '\n'
+      msgbody += '<b>Cannot find user sis_id->'+str(student) + ', might be a new student not in Canvas yet</b>\n'
       logging.info('Cannot find user sis_id->'+str(student))
-  try:
-    n = group.remove_user(user.id)
-  except CanvasException as e:
-    if str(e) == "Not Found":
-        print('User not in group')
-        logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
-  print('Removed Student->'+str(student)+' from Canvas group')
-  msgbody +='Removed Student->'+str(student)+' from Canvas group \n'
-  logging.info('Removed Student->'+str(student)+' from Canvas group')
+  else:
+    try:
+      n = group.remove_user(user.id)
+    except CanvasException as e:
+      if str(e) == "Not Found":
+          print('User not in group')
+          logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
+    print('Removed Student->'+str(student)+' from Canvas group')
+    msgbody +='Removed Student->'+str(student)+' from Canvas group \n'
+    logging.info('Removed Student->'+str(student)+' from Canvas group')
 # Now add students to group
+msgbody += 'Looking for students to add to group\n'
 for student in studentstoadd:
   print('going to try to add'+str(student))
   try:
@@ -88,14 +91,16 @@ for student in studentstoadd:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Cannot find user id->'+str(student))
-  try:
-    n = group.create_membership(user.id)
-  except CanvasException as e:
-    if str(e) == "Not Found":
-      print('User not in group')
-  print('Added Student id->'+str(student)+' to Canvas group')
-  msgbody += 'Added Student id->'+str(student)+' to Canvas group \n'
-  logging.info('Added Student id->'+str(student)+' to Canvas group')
+      logging.info('Cannot find user id->'+str(student)+'to add to group')
+  else:
+    try:
+      n = group.create_membership(user.id)
+    except CanvasException as e:
+      if str(e) == "Not Found":
+        print('User not in group')
+    print('Added Student id->'+str(student)+' to Canvas group')
+    msgbody += 'Added Student id->'+str(student)+' to Canvas group \n'
+    logging.info('Added Student id->'+str(student)+' to Canvas group')
 msgbody+='Done!'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])

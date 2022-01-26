@@ -15,7 +15,7 @@ with open(confighome) as f:
 CounselorCSV = Path.home() / ".Acalanes" / "CanvasCounselingGroups.csv"
 logfilename = Path.home() / ".Acalanes" / configs['logfilename']
 logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started')
+logging.info('Loaded config file and logfile started for AUHSD Counseling Canvas')
 logging.info('Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
