@@ -48,7 +48,7 @@ for i in CounselorCanvasGroups.index:
   GradeToGet = CounselorCanvasGroups['Grade'][i]
   print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
   CanvasGroupID = CounselorCanvasGroups['CanvasGroupID'][i]
-  msgbody += 'Matching for ' + CounselorEmail + ' - ' + str(CounselorSISID) + ' - ' + str(GradeToGet) + ' - ' + str(CanvasGroupID) + '\n'
+  msgbody += 'Matching for ' + CounselorEmail + ' - SIS ID->' + str(CounselorSISID) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
   if (GradeToGet == str('All')):
     dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',conn)
   else:
