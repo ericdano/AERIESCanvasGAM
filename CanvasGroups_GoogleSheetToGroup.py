@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime
+import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime, gam
 from pathlib import Path
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -12,20 +12,22 @@ confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
 # Logging
-SheetsToGroupsCSV = Path.home() / ".Acalanes" / "CanvasCounselingGroups.csv"
+SheetsToGroupsCSV = Path.home() / ".Acalanes" / "SheetsToCanvasGroups.csv"
 logfilename = Path.home() / ".Acalanes" / configs['logfilename']
 logging.basicConfig(filename=str(logfilename), level=logging.INFO)
 logging.info('Loaded config file and logfile started for AUHSD Google Sheets to Canvas')
-logging.info('Loading Counseling CSV file')
+logging.info('Loading CSV file')
 #prep status (msg) email
 msg = EmailMessage()
-msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Groups from Sheets To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
-# The Groups CSV has to have the teacher/staff email address, there sis_id, canvas group and grade
+# The Groups CSV has to have the teacher/staff email address, there login_id, canvas group and grade
 # Grade can have a field All in it that it will then place into a All students
 # at site group for the counselor
+# format of the CSV is 
+# StaffEmail, SheetFileID, CanvasGroupID
 SheetsToGroups = pd.read_csv(SheetsToGroupsCSV)
 
 #-----Canvas Info
@@ -35,60 +37,63 @@ logging.info('Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
-msgbody += 'Starting Canvas Counseler Groups for AUHSD Script\n'
+msgbody += 'Starting Canvas Misc Groups for AUHSD Script\n'
 for i in SheetsToGroups.index:
-  CounselorEmail = SheetsToGroups['email'][i]
-  CounselorSISID = SheetsToGroups['SISID'][i]
-  GradeToGet = SheetsToGroups['Grade'][i]
-  print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
-  CanvasGroupID = SheetsToGroups['CanvasGroupID'][i]
-  msgbody += 'Matching for ' + CounselorEmail + ' - SIS ID->' + str(CounselorSISID) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
-  if (GradeToGet == str('All')):
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',conn)
-  else:
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + GradeToGet + '\'',conn)
-  #print('Matching for ' + CounselorEmail + ' Grade ' + str(GradeToGet) + ' CanvasGroupID ' + str(CanvasGroupID))
-  #print(sql_query)
-  logging.info('Making SET of Aeries IDs')
-  print('Making SET of Aeries IDs')
-  aerieslist = set(dataframe1.ID)
+  StaffEmail = SheetsToGroups['StaffEmail'][i]
+  SheetFileID = SheetsToGroups['SheetFileID'][i]
+  CanvasGroupID =int(SheetsToGroups['CanvasGroupID'][i])
+  # Grab the Google Sheet and save it to CSV
+  rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',SheetFileID,'format','csv','targetfolder','e:\PythonTemp','targetname','SheetforCanvasGroup' + str(CanvasGroupID) +'.csv','overwrite','true'])
+  dataframe1 = pd.read_csv('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
+  os.remove('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
+  print('Processing info for ' + str(StaffEmail) + ' Group->' + str(CanvasGroupID))
+  msgbody += 'Matching for ' + StaffEmail + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
+  logging.info('Making SET of Email Addresses')
+  print('Making SET of Email Addresses')
+  SheetList = set(dataframe1.email)
+  #print(SheetList)
   # Now go get the group off Canvas
   msgbody += 'Getting exisiting users from group id->' + str(CanvasGroupID) + '\n'
+  #print(CanvasGroupID)
   group = canvas.get_group(CanvasGroupID,include=['users'])
-  dataframe2 = pd.DataFrame(group.users,columns=['sis_user_id'])
-  canvaslist = set(pd.to_numeric(dataframe2.sis_user_id))
-#  print('Canvas')
-#  print(canvaslist)
-  #Subtract items from the Aeries set that are in the Canvas set
-  #The resulting set is the SIS_IDs we need to ADD to the Group
-  studentstoadd = aerieslist - canvaslist
+  #print(group)
+  dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
+  #print(dataframe2)
+  canvaslist = set(dataframe2.login_id)
+  #print('Canvas')
+  #print(canvaslist)
+
+  #Subtract items from the GoogleSheet set that are in the Canvas set
+  #The resulting set are the emails we need to ADD to the Group
+  studentstoadd = SheetList - canvaslist
+
   #Subtract items from Canvaslist set that are in Aeries set. 
-  #These are students that need to be removed from the group
-  studentstoremove = canvaslist - aerieslist
+   #These are students that need to be removed from the group
+  studentstoremove = canvaslist - SheetList
   #Keep the teacher in the group though, so take them OUT of the set
-  studentstoremove.remove(CounselorSISID) # Keep teacher in canvas group
+  studentstoremove.remove(StaffEmail) # Keep teacher in canvas group
 #  print('Students to add')
 #  print(studentstoadd)
 #  print('Students to remove')
 #  print(studentstoremove)
   for student in studentstoremove:
-    logging.info('Looking up student->'+str(student)+' in Canvas')
-    msgbody += 'Looking up student->'+str(student)+' in Canvas' + '\n'
-    print('Looking up student->'+str(student)+' in Canvas')
+    logging.info('Looking up student->'+student+' in Canvas')
+    msgbody += 'Looking up student->'+student+' in Canvas' + '\n'
+    print('Looking up student->'+student+' in Canvas')
     try:
-      user = canvas.get_user(str(student),'sis_user_id')
+      user = canvas.get_user(student,'sis_login_id')
     except CanvasException as g:
       if str(g) == "Not Found":
-        print('Cannot find user sis_id->'+str(student))
-        msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
-        logging.info('Cannot find user sis_id->'+str(student))
+        print('Cannot find user login_id->'+ student)
+        msgbody+='<b>Canvas cannot find user login_id->'+ student + ', might be a new student who is not in Canvas yet</b>\n'
+        logging.info('Cannot find user login_id->'+ student)
     else:
       try:
         n = group.remove_user(user.id)
       except CanvasException as e:
         if str(e) == "Not Found":
-            print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
-            msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
+            print('User not in group CanvasID->' + str(user.id) + ' login_id->'+ str(student))
+            msgbody += 'User not in group CanvasID->' + str(user.id) + ' login_id->'+ str(student) + '\n'
             logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
       print('Removed Student->'+str(student)+' from Canvas group')
       msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
@@ -97,7 +102,7 @@ for i in SheetsToGroups.index:
   for student in studentstoadd:
     msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
     try:
-      user = canvas.get_user(str(student),'sis_user_id')
+      user = canvas.get_user(str(student),'sis_login_id')
     except CanvasException as f:
       if str(f) == "Not Found":
         print('Cannot find user id->'+str(student))
