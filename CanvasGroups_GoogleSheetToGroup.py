@@ -54,18 +54,19 @@ for i in SheetsToGroups.index:
   os.remove('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
   print('Processing info for ' + StaffEmail + ' Group->' + str(CanvasGroupID))
   msgbody += 'Matching for ' + StaffEmail + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
-  logging.info('Making SET of Email Addresses')
-  print('Making SET of Email Addresses')
+  logging.info('Making SET of Email Addresses for ' + StaffEmail + '(' + str(CanvasGroupID) + ')')
+  print('Making SET of Email Addresses for ' + StaffEmail + '(' + str(CanvasGroupID) + ')')
   SheetList = set(dataframe1.email)
   #print(SheetList)
   # Now go get the group off Canvas
-  msgbody += 'Getting exisiting users from group id->' + str(CanvasGroupID) + '\n'
+  msgbody += 'Getting exisiting users from ' + StaffEmail + ' group(' + str(CanvasGroupID) + ')\n'
   #print(CanvasGroupID)
   try:
     group = canvas.get_group(CanvasGroupID,include=['users'])
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Error finding Group->' + str(CanvasGroupID))
+      logging.info('Error finding Group->' + str(CanvasGroupID))
   #print(group)
   dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
   #print(dataframe2)
@@ -82,10 +83,10 @@ for i in SheetsToGroups.index:
   studentstoremove = canvaslist - SheetList
   #Keep the teacher in the group though, so take them OUT of the set
   studentstoremove.remove(StaffEmail) # Keep teacher in canvas group
-  print('Students to add')
-  print(studentstoadd)
-  print('Students to remove')
-  print(studentstoremove)
+#  print('Students to add')
+#  print(studentstoadd)
+#  print('Students to remove')
+#  print(studentstoremove)
   for student in studentstoremove:
     logging.info('Looking up student->'+student+' in Canvas')
     msgbody += 'Looking up student->'+student+' in Canvas' + '\n'
