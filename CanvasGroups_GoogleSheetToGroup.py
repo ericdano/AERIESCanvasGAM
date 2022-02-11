@@ -12,7 +12,7 @@ confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
 # Logging
-SheetsToGroupsCSV = Path.home() / ".Acalanes" / "SheetsToCanvasGroups.csv"
+#SheetsToGroupsCSV = Path.home() / ".Acalanes" / "SheetsToCanvasGroups.csv"
 logfilename = Path.home() / ".Acalanes" / configs['logfilename']
 logging.basicConfig(filename=str(logfilename), level=logging.INFO)
 logging.info('Loaded config file and logfile started for AUHSD Google Sheets to Canvas')
@@ -28,8 +28,13 @@ msgbody = ''
 # at site group for the counselor
 # format of the CSV is 
 # StaffEmail, SheetFileID, CanvasGroupID
+# Pull Master List down from Google
+MasterListID = '1CDj-hq5MkKStZObMi9XKGDrSSvDA_SvJbXUhJkn7_ts'
+SheetsToGroupsCSV = 'e:\PythonTemp\MasterListSheetsToGroups.csv'
+rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',MasterListID,'format','csv','targetfolder','e:\PythonTemp','targetname','MasterListSheetsToGroups.csv','overwrite','true'])
 SheetsToGroups = pd.read_csv(SheetsToGroupsCSV)
-
+logging.info('Success loding CSV file')
+print('CSV File loaded ok!')
 #-----Canvas Info
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
