@@ -52,7 +52,7 @@ for i in SheetsToGroups.index:
   rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',SheetFileID,'format','csv','targetfolder','e:\PythonTemp','targetname','SheetforCanvasGroup' + str(CanvasGroupID) +'.csv','overwrite','true'])
   dataframe1 = pd.read_csv('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
   os.remove('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
-  print('Processing info for ' + str(StaffEmail) + ' Group->' + str(CanvasGroupID))
+  print('Processing info for ' + StaffEmail + ' Group->' + str(CanvasGroupID))
   msgbody += 'Matching for ' + StaffEmail + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
   logging.info('Making SET of Email Addresses')
   print('Making SET of Email Addresses')
@@ -61,7 +61,11 @@ for i in SheetsToGroups.index:
   # Now go get the group off Canvas
   msgbody += 'Getting exisiting users from group id->' + str(CanvasGroupID) + '\n'
   #print(CanvasGroupID)
-  group = canvas.get_group(CanvasGroupID,include=['users'])
+  try:
+    group = canvas.get_group(CanvasGroupID,include=['users'])
+  except CanvasException as f:
+    if str(f) == "Not Found":
+      print('Error finding Group->' + str(CanvasGroupID))
   #print(group)
   dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
   #print(dataframe2)
@@ -78,14 +82,14 @@ for i in SheetsToGroups.index:
   studentstoremove = canvaslist - SheetList
   #Keep the teacher in the group though, so take them OUT of the set
   studentstoremove.remove(StaffEmail) # Keep teacher in canvas group
-#  print('Students to add')
-#  print(studentstoadd)
-#  print('Students to remove')
-#  print(studentstoremove)
+  print('Students to add')
+  print(studentstoadd)
+  print('Students to remove')
+  print(studentstoremove)
   for student in studentstoremove:
     logging.info('Looking up student->'+student+' in Canvas')
     msgbody += 'Looking up student->'+student+' in Canvas' + '\n'
-    print('Looking up student->'+student+' in Canvas')
+    print('Looking up student->' + student +' in Canvas')
     try:
       user = canvas.get_user(student,'sis_login_id')
     except CanvasException as g:
@@ -98,31 +102,32 @@ for i in SheetsToGroups.index:
         n = group.remove_user(user.id)
       except CanvasException as e:
         if str(e) == "Not Found":
-            print('User not in group CanvasID->' + str(user.id) + ' login_id->'+ str(student))
-            msgbody += 'User not in group CanvasID->' + str(user.id) + ' login_id->'+ str(student) + '\n'
-            logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
-      print('Removed Student->'+str(student)+' from Canvas group')
-      msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
-      logging.info('Removed Student->'+str(student)+' from Canvas group')
+            print('User not in group CanvasID->' + str(user.id) + ' login_id->'+ student)
+            msgbody += 'User not in group CanvasID->' + str(user.id) + ' login_id->'+ student + '\n'
+            logging.info('Some sort of exception happened when removing student->'+ student +' from Group')
+      print('Removed Student->'+ student +' from Canvas group')
+      msgbody += 'Removed Student->' + student +' from Canvas group' + '\n'
+      logging.info('Removed Student->'+ student + ' from Canvas group')
   # Now add students to group
   for student in studentstoadd:
-    msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
+    msgbody += 'going to try to add '+ student + ' to group ' + str(CanvasGroupID) + '\n'
     try:
-      user = canvas.get_user(str(student),'sis_login_id')
+      user = canvas.get_user(student,'sis_login_id')
     except CanvasException as f:
       if str(f) == "Not Found":
-        print('Cannot find user id->'+str(student))
-        msgbody += '<b>Cannot find user id->'+str(student) + ' might be a new student who is not in Canvas yet</b>\n'
+        print('Cannot find user id->'+ student)
+        msgbody += '<b>Cannot find user id->'+ student + ' might be a new student who is not in Canvas yet</b>\n'
         logging.info('Cannot find user id!')
     else:    
       try:
         n = group.create_membership(user.id)
       except CanvasException as e:
         if str(e) == "Not Found":
-          print('User not in group')
-      print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
-      msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
-      logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+          print('User ID adding to membership error')
+          logging.info('User ID adding to membership error')
+      print('Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID))
+      msgbody += 'Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '\n'
+      logging.info('Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID))
 msgbody+='Done!'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
