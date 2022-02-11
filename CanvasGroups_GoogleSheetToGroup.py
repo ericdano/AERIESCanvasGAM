@@ -33,6 +33,7 @@ MasterListID = '1CDj-hq5MkKStZObMi9XKGDrSSvDA_SvJbXUhJkn7_ts'
 SheetsToGroupsCSV = 'e:\PythonTemp\MasterListSheetsToGroups.csv'
 rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',MasterListID,'format','csv','targetfolder','e:\PythonTemp','targetname','MasterListSheetsToGroups.csv','overwrite','true'])
 SheetsToGroups = pd.read_csv(SheetsToGroupsCSV)
+os.remove(SheetsToGroupsCSV)
 logging.info('Success loding CSV file')
 print('CSV File loaded ok!')
 #-----Canvas Info
