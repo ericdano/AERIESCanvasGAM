@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, gam, datetime, json
+import os, sys, pyodbc, shlex, subprocess, gam, datetime, json, smtplib
 from pathlib import Path
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
