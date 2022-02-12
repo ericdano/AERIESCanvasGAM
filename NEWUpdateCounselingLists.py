@@ -1,8 +1,21 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess
-
+import os, sys, pyodbc, shlex, subprocess, gam, datetime
+from pathlib import Path
+from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 #This script finds counselors and their assigned students in AERIES, then updates Google Group Annouce only lists with any student changes
 
+confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+with open(confighome) as f:
+  configs = json.load(f)
+#prep status (msg) email
+msg = EmailMessage()
+msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+msg['From'] = configs['SMTPAddressFrom']
+msg['To'] = configs['SendInfoEmailAddr']
+msgbody = ''
 #os.chdir(os.path.dirname(os.path.abspath(__file__)))
 os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
@@ -49,37 +62,38 @@ for EM, SEM in sql_query2.groupby(['EM','GR']):
 # Now call gam
 for counselor in counselors:
     # Sync Lists for All Students for counselor
-    gamstring1 = "E:\\GAMADV-XTD3\\gam.exe update group " + counselor[0] + counselor[1] + "counselinglist sync members file " + "E:\\PythonTemp\\" + counselor[1] + "ALL.csv"
-    deletegamstring1 = "erase E:\\PythonTemp\\" + counselor[1] + "ALL.csv"
-    p = subprocess.Popen(["powershell.exe",gamstring1],stdout=sys.stdout)
-    p.communicate()
-    p = subprocess.Popen(["powershell.exe",deletegamstring1],stdout=sys.stdout)
-    p.communicate()
+    tempstr1 = counselor[0] + counselor[1] + "counselinglist"
+    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "ALL.csv"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
+    os.remove(tempstr2)
+    msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 9 for counselor
-    gamstring2 = "E:\\GAMADV-XTD3\\gam.exe update group " + counselor[0] + counselor[1] + "grade9counselinglist sync members file " + "E:\\PythonTemp\\" + counselor[1] + "auhsdschools9.csv"
-    deletegamstring2 = "erase E:\\PythonTemp\\" + counselor[1] + "auhsdschools9.csv"
-    p = subprocess.Popen(["powershell.exe",gamstring2],stdout=sys.stdout)
-    p.communicate()
-    p = subprocess.Popen(["powershell.exe",deletegamstring2],stdout=sys.stdout)
-    p.communicate()
+    tempstr1 = counselor[0] + counselor[1] + "grade9counselinglist"
+    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools9.csv"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
+    os.remove(tempstr2)
+    msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 10 for counselor
-    gamstring3 = "E:\\GAMADV-XTD3\\gam.exe update group " + counselor[0] + counselor[1] + "grade10counselinglist sync members file " + "E:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
-    deletegamstring3 = "erase E:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
-    p = subprocess.Popen(["powershell.exe",gamstring3],stdout=sys.stdout)
-    p.communicate()
-    p = subprocess.Popen(["powershell.exe",deletegamstring3],stdout=sys.stdout)
-    p.communicate()
+    tempstr1 = counselor[0] + counselor[1] + "grade10counselinglist"
+    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
+    os.remove(tempstr2)
+    msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
-    gamstring4 = "E:\\GAMADV-XTD3\\gam.exe update group " + counselor[0] + counselor[1] + "grade11counselinglist sync members file " + "E:\\PythonTemp\\" + counselor[1] + "auhsdschools11.csv" 
-    deletegamstring4 = "erase E:\\PythonTemp\\" + counselor[1] + "auhsdschools11.csv"
-    p = subprocess.Popen(["powershell.exe",gamstring4],stdout=sys.stdout)
-    p.communicate()
-    p = subprocess.Popen(["powershell.exe",deletegamstring4],stdout=sys.stdout)
-    p.communicate()
-    #clear out lists and add student to Grade 12 for counselor
-    gamstring5 = "E:\\GAMADV-XTD3\\gam.exe update group " + counselor[0] + counselor[1] + "grade12counselinglist sync members file " + "E:\\PythonTemp\\" + counselor[1] + "auhsdschools12.csv"
-    deletegamstring5 = "erase E:\\PythonTemp\\" + counselor[1] + "auhsdschools12.csv"
-    p = subprocess.Popen(["powershell.exe",gamstring5],stdout=sys.stdout)
-    p.communicate()
-    p = subprocess.Popen(["powershell.exe",deletegamstring5],stdout=sys.stdout)
-    p.communicate()
+    tempstr1 = counselor[0] + counselor[1] + "grade11counselinglist"
+    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
+    os.remove(tempstr2)
+    msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
+    # Sync Lists for Grade 12 for counselor
+    tempstr1 = counselor[0] + counselor[1] + "grade12counselinglist"
+    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
+    os.remove(tempstr2)
+    msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
+
+msgbody+='Done!'
+msg.set_content(msgbody)
+s = smtplib.SMTP(configs['SMTPServerAddress'])
+s.send_message(msg)
+print('Done!!!')
