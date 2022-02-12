@@ -91,7 +91,6 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
-
 msgbody+='Done!'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
