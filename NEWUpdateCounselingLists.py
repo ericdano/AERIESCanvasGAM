@@ -16,7 +16,7 @@ msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to 
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
-#os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Change directory to a TEMP Directory where GAM and Python can process CSV files 
 os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
 counselors = [ ('ahs','todd'),
@@ -62,32 +62,32 @@ for EM, SEM in sql_query2.groupby(['EM','GR']):
 # Now call gam
 for counselor in counselors:
     # Sync Lists for All Students for counselor
-    tempstr1 = counselor[0] + counselor[1] + "counselinglist"
-    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "ALL.csv"
+    tempstr1 = counselor[0] + counselor[1] + 'counselinglist'
+    tempstr2 = counselor[1] + 'ALL.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 9 for counselor
-    tempstr1 = counselor[0] + counselor[1] + "grade9counselinglist"
-    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools9.csv"
+    tempstr1 = counselor[0] + counselor[1] + 'grade9counselinglist'
+    tempstr2 = counselor[1] + 'auhsdschools9.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 10 for counselor
     tempstr1 = counselor[0] + counselor[1] + "grade10counselinglist"
-    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    tempstr2 = counselor[1] + "auhsdschools10.csv"
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
-    tempstr1 = counselor[0] + counselor[1] + "grade11counselinglist"
-    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    tempstr1 = counselor[0] + counselor[1] + 'grade11counselinglist'
+    tempstr2 = counselor[1] + 'auhsdschools10.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 12 for counselor
-    tempstr1 = counselor[0] + counselor[1] + "grade12counselinglist"
-    tempstr2 = "e:\\PythonTemp\\" + counselor[1] + "auhsdschools10.csv"
+    tempstr1 = counselor[0] + counselor[1] + 'grade12counselinglist'
+    tempstr2 = counselor[1] + 'auhsdschools10.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
