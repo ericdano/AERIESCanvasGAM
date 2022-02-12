@@ -81,13 +81,13 @@ for counselor in counselors:
     msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade11counselinglist'
-    tempstr2 = counselor[1] + 'auhsdschools10.csv'
+    tempstr2 = counselor[1] + 'auhsdschools11.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 12 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade12counselinglist'
-    tempstr2 = counselor[1] + 'auhsdschools10.csv'
+    tempstr2 = counselor[1] + 'auhsdschools12.csv'
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
