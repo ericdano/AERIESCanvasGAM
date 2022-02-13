@@ -1,6 +1,7 @@
 import pandas as pd
 import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime
 from pathlib import Path
+from timeit import default_timer as timer
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
 from email.message import EmailMessage
@@ -8,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
+start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
@@ -119,6 +121,8 @@ for i in CounselorCanvasGroups.index:
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
       logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 msgbody+='Done!'
+end_of_timer = timer()
+msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
