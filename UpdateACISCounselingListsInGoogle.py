@@ -1,11 +1,13 @@
 import pandas as pd
 import os, sys, pyodbc, shlex, subprocess, gam, datetime, json, smtplib
 from pathlib import Path
+from timeit import default_timer as timer
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
+start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
@@ -89,6 +91,8 @@ if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 else:
     msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+end_of_timer = timer()
+msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
