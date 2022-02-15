@@ -120,6 +120,7 @@ for i in CounselorCanvasGroups.index:
       print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
       logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+conn.close()
 msgbody+='Done!'
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'

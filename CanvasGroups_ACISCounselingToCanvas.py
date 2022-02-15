@@ -41,6 +41,7 @@ conn = pyodbc.connect('Driver={SQL Server};'
 cursor = conn.cursor()
 logging.info('Getting data from AERIES')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+conn.close()
 pd.set_option('display.max_rows',dataframe1.shape[0]+1)
 #Now make a set of JUST the SIS_USER_IDs from Aeries
 logging.info('Making SET of Aeries IDs')

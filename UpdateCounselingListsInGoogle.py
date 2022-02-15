@@ -50,17 +50,19 @@ for EM, SEM in sql_query.groupby('EM'):
     filename = filename[1:]
     header = ["SEM"]
     SEM.to_csv(filename, index = False, header = False, columns = header)
+conn.close()
 conn2 = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
                       'Database=DST21000AUHSD;'
                       'Trusted_Connection=yes;')
-cursor2 = conn.cursor()
-sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+cursor2 = conn2.cursor()
+sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn2)
 for EM, SEM in sql_query2.groupby(['EM','GR']):
     filename2 = str(EM).replace("(\'","").replace("@","").replace("\',","").replace(".org ","").replace(")","")+".csv"
     filename2 = filename2[1:]
     header = ["SEM"]
     SEM.to_csv(filename2, index = False, header = False, columns = header)
+conn2.close()
 # Now call gam
 for counselor in counselors:
     # Sync Lists for All Students for counselor
