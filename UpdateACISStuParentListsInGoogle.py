@@ -29,10 +29,9 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Trusted_Connection=yes;')
 cursor = conn.cursor()
 sql_query1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.PEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 AND STU.GR < 12 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-print(sql_query1)
+conn.close()
 sql_query1.drop(sql_query1.columns.difference(['SEM',
                                               'PEM']), axis=1,inplace=True)
-print(sql_query1)
 c_name = ["email"]
 listylist = pd.DataFrame(columns = c_name)
 for index, row in sql_query1.iterrows():
@@ -47,9 +46,9 @@ os.remove('acisstudentparents.csv')
 msgbody += 'Synced ACIS Student Parent list. Gam Status->' + str(stat1) + '\n' 
 msgbody+='Done!'
 if WasThereAnError:
-    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 11 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 else:
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 11 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
