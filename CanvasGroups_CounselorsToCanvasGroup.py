@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
+WasThereAnErr = False
 start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
@@ -21,7 +22,7 @@ logging.info('Loaded config file and logfile started for AUHSD Counseling Canvas
 logging.info('Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
-msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
@@ -89,6 +90,7 @@ for i in CounselorCanvasGroups.index:
       if str(g) == "Not Found":
         print('Cannot find user sis_id->'+str(student))
         msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
+        WasThereAnErr = True
         logging.info('Cannot find user sis_id->'+str(student))
     else:
       try:
@@ -110,6 +112,7 @@ for i in CounselorCanvasGroups.index:
       if str(f) == "Not Found":
         print('Cannot find user id->'+str(student))
         msgbody += '<b>Cannot find user id->'+str(student) + ' might be a new student who is not in Canvas yet</b>\n'
+        WasThereAnErr = True
         logging.info('Cannot find user id!')
     else:    
       try:
@@ -117,12 +120,18 @@ for i in CounselorCanvasGroups.index:
       except CanvasException as e:
         if str(e) == "Not Found":
           print('User not in group')
+          msgbody += 'User not in group ' + str(user.id) + '\n'
+          WasThereAnErr = True
       print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
       logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 conn.close()
 msgbody+='Done!'
 end_of_timer = timer()
+if WasThereAnErr:
+  msg['Subject'] = "Error! - " + MessageSub1
+else:
+  msg['Subject'] = MessageSub1
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
