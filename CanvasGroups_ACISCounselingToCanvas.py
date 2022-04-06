@@ -9,6 +9,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from logging.handlers import SysLogHandler
 
 start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
