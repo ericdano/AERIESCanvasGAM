@@ -15,11 +15,19 @@ confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
 # Logging
+if configs['logserveraddress'] is None:
+    logfilename = Path.home() / ".Acalanes" / configs['logfilename']
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.basicConfig(filename=str(logfilename), level=thelogger.info)
+else:
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+
 CounselorCSV = Path.home() / ".Acalanes" / "CanvasCounselingGroups.csv"
-logfilename = Path.home() / ".Acalanes" / configs['logfilename']
-logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started for AUHSD Counseling Canvas')
-logging.info('Loading Counseling CSV file')
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loaded config file and logfile started for AUHSD Counseling Canvas')
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
 MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -40,7 +48,7 @@ cursor = conn.cursor()
 #-----Canvas Info
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
-logging.info('Connecting to Canvas')
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
@@ -58,7 +66,7 @@ for i in CounselorCanvasGroups.index:
     dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + GradeToGet + '\'',conn)
   #print('Matching for ' + CounselorEmail + ' Grade ' + str(GradeToGet) + ' CanvasGroupID ' + str(CanvasGroupID))
   #print(sql_query)
-  logging.info('Making SET of Aeries IDs')
+  thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Making SET of Aeries IDs')
   print('Making SET of Aeries IDs')
   aerieslist = set(dataframe1.ID)
   # Now go get the group off Canvas
@@ -81,7 +89,7 @@ for i in CounselorCanvasGroups.index:
 #  print('Students to remove')
 #  print(studentstoremove)
   for student in studentstoremove:
-    logging.info('Looking up student->'+str(student)+' in Canvas')
+    thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Looking up student->'+str(student)+' in Canvas')
     msgbody += 'Looking up student->'+str(student)+' in Canvas' + '\n'
     print('Looking up student->'+str(student)+' in Canvas')
     try:
@@ -91,7 +99,7 @@ for i in CounselorCanvasGroups.index:
         print('Cannot find user sis_id->'+str(student))
         msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
         WasThereAnErr = True
-        logging.info('Cannot find user sis_id->'+str(student))
+        thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Cannot find user sis_id->'+str(student))
     else:
       try:
         n = group.remove_user(user.id)
@@ -99,10 +107,10 @@ for i in CounselorCanvasGroups.index:
         if str(e) == "Not Found":
             print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
             msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
-            logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
+            thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Some sort of exception happened when removing student->'+str(student)+' from Group')
       print('Removed Student->'+str(student)+' from Canvas group')
       msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
-      logging.info('Removed Student->'+str(student)+' from Canvas group')
+      thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Removed Student->'+str(student)+' from Canvas group')
   # Now add students to group
   for student in studentstoadd:
     msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
@@ -113,7 +121,7 @@ for i in CounselorCanvasGroups.index:
         print('Cannot find user id->'+str(student))
         msgbody += '<b>Cannot find user id->'+str(student) + ' might be a new student who is not in Canvas yet</b>\n'
         WasThereAnErr = True
-        logging.info('Cannot find user id!')
+        thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Cannot find user id!')
     else:    
       try:
         n = group.create_membership(user.id)
@@ -124,7 +132,7 @@ for i in CounselorCanvasGroups.index:
           WasThereAnErr = True
       print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
-      logging.info('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
+      thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 conn.close()
 msgbody+='Done!'
 end_of_timer = timer()
