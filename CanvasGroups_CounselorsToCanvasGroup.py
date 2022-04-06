@@ -134,6 +134,7 @@ for i in CounselorCanvasGroups.index:
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
       thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
 conn.close()
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
 if WasThereAnErr:
@@ -144,4 +145,6 @@ msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Sent Status Message')
+thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Done!')
 print('Done!!!')

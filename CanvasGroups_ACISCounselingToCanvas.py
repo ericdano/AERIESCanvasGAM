@@ -15,9 +15,17 @@ confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
 # Logging
-logfilename = Path.home() / ".Acalanes" / configs['logfilename']
-logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started for ACIS Counseling Canvas')
+if configs['logserveraddress'] is None:
+    logfilename = Path.home() / ".Acalanes" / configs['logfilename']
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.basicConfig(filename=str(logfilename), level=thelogger.info)
+else:
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Loaded config file and logfile started for ACIS Counseling Canvas')
 #prep status (msg) email
 msg = EmailMessage()
 msg['Subject'] = str(configs['SMTPStatusMessage'] + " ACIS Counseling To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -28,7 +36,7 @@ msgbody = ''
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
-logging.info('Connecting to Canvas')
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Connecting to Canvas')
 account = canvas.get_account(1)
 #Set up Counselors to pull from Aeries along with the Canvas groups they are part of
 # School, Counselor lastname, the Canvas Group ID, counselors ID in Aeries/Canvas
@@ -39,16 +47,16 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Database=DST21000AUHSD;'
                       'Trusted_Connection=yes;')
 cursor = conn.cursor()
-logging.info('Getting data from AERIES')
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting data from AERIES')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
 conn.close()
 pd.set_option('display.max_rows',dataframe1.shape[0]+1)
 #Now make a set of JUST the SIS_USER_IDs from Aeries
-logging.info('Making SET of Aeries IDs')
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Making SET of Aeries IDs')
 aerieslist = set(dataframe1.ID)
 print('Making Sets for comparison')
 #Get Exisiting users SIS_USER_ID from Counseling Group
-logging.info('Getting users in ACIS Canvas group')
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting users in ACIS Canvas group')
 group = canvas.get_group(10831,include=['users'])
 dataframe2 = pd.DataFrame(group.users,columns=['sis_user_id'])
 #pd.set_option('display.max_rows',dataframe2.shape[0]+1)
@@ -67,24 +75,24 @@ studentstoremove.remove(counselors[0][3]) # Keep teacher in canvas group
 print('Processing ACIS Students')
 msgbody += 'Looking for Students to remove from groups\n'
 for student in studentstoremove:
-  logging.info('Looking up student->'+str(student)+' in Canvas')
+  thelogger.info('CanvasGroups_ACISCounselingToCanvas->Looking up student->'+str(student)+' in Canvas')
   try:
     user = canvas.get_user(str(student),'sis_user_id')
   except CanvasException as g:
     if str(g) == "Not Found":
       print('Cannot find user sis_id->'+str(student))
       msgbody += '<b>Cannot find user sis_id->'+str(student) + ', might be a new student not in Canvas yet</b>\n'
-      logging.info('Cannot find user sis_id->'+str(student))
+      thelogger.info('CanvasGroups_ACISCounselingToCanvas->Cannot find user sis_id->'+str(student))
   else:
     try:
       n = group.remove_user(user.id)
     except CanvasException as e:
       if str(e) == "Not Found":
           print('User not in group')
-          logging.info('Some sort of exception happened when removing student->'+str(student)+' from Group')
+          thelogger.info('CanvasGroups_ACISCounselingToCanvas->Some sort of exception happened when removing student->'+str(student)+' from Group')
     print('Removed Student->'+str(student)+' from Canvas group')
     msgbody +='Removed Student->'+str(student)+' from Canvas group \n'
-    logging.info('Removed Student->'+str(student)+' from Canvas group')
+    thelogger.info('CanvasGroups_ACISCounselingToCanvas->Removed Student->'+str(student)+' from Canvas group')
 # Now add students to group
 msgbody += 'Looking for students to add to group\n'
 for student in studentstoadd:
@@ -94,7 +102,7 @@ for student in studentstoadd:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Cannot find user id->'+str(student))
-      logging.info('Cannot find user id->'+str(student)+'to add to group')
+      thelogger.info('CanvasGroups_ACISCounselingToCanvas->Cannot find user id->'+str(student)+'to add to group')
   else:
     try:
       n = group.create_membership(user.id)
@@ -103,11 +111,13 @@ for student in studentstoadd:
         print('User not in group')
     print('Added Student id->'+str(student)+' to Canvas group')
     msgbody += 'Added Student id->'+str(student)+' to Canvas group \n'
-    logging.info('Added Student id->'+str(student)+' to Canvas group')
+    thelogger.info('CanvasGroups_ACISCounselingToCanvas->Added Student id->'+str(student)+' to Canvas group')
 msgbody+='Done!'
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Sent Status Message')
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Done!')
 print('Done!!!')
