@@ -83,14 +83,14 @@ for student in studentstoremove:
     if str(g) == "Not Found":
       print('Cannot find user sis_id->'+str(student))
       msgbody += '<b>Cannot find user sis_id->'+str(student) + ', might be a new student not in Canvas yet</b>\n'
-      thelogger.info('CanvasGroups_ACISCounselingToCanvas->Cannot find user sis_id->'+str(student))
+      thelogger.critical('CanvasGroups_ACISCounselingToCanvas->Cannot find user sis_id->'+str(student))
   else:
     try:
       n = group.remove_user(user.id)
     except CanvasException as e:
       if str(e) == "Not Found":
           print('User not in group')
-          thelogger.info('CanvasGroups_ACISCounselingToCanvas->Some sort of exception happened when removing student->'+str(student)+' from Group')
+          thelogger.critical('CanvasGroups_ACISCounselingToCanvas->Some sort of exception happened when removing student->'+str(student)+' from Group')
     print('Removed Student->'+str(student)+' from Canvas group')
     msgbody +='Removed Student->'+str(student)+' from Canvas group \n'
     thelogger.info('CanvasGroups_ACISCounselingToCanvas->Removed Student->'+str(student)+' from Canvas group')
@@ -103,13 +103,14 @@ for student in studentstoadd:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Cannot find user id->'+str(student))
-      thelogger.info('CanvasGroups_ACISCounselingToCanvas->Cannot find user id->'+str(student)+'to add to group')
+      thelogger.critical('CanvasGroups_ACISCounselingToCanvas->Cannot find user id->'+str(student)+'to add to group')
   else:
     try:
       n = group.create_membership(user.id)
     except CanvasException as e:
       if str(e) == "Not Found":
         print('User not in group')
+        thelogger.critical('CanvasGroups_ACISCounselingToCanvas->Student id->'+str(student)+' not found in Canvas')
     print('Added Student id->'+str(student)+' to Canvas group')
     msgbody += 'Added Student id->'+str(student)+' to Canvas group \n'
     thelogger.info('CanvasGroups_ACISCounselingToCanvas->Added Student id->'+str(student)+' to Canvas group')

@@ -68,7 +68,7 @@ for i in SheetsToGroups.index:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Error finding Group->' + str(CanvasGroupID))
-      logging.info('Error finding Group->' + str(CanvasGroupID))
+      logging.critical('Error finding Group->' + str(CanvasGroupID))
   #print(group)
   dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
   #print(dataframe2)
@@ -99,7 +99,7 @@ for i in SheetsToGroups.index:
       if str(g) == "Not Found":
         print('Cannot find user login_id->'+ student)
         msgbody+='<b>Canvas cannot find user login_id->'+ student + ', might be a new student who is not in Canvas yet</b>\n'
-        logging.info('Cannot find user login_id->'+ student)
+        logging.error('Cannot find user login_id->'+ student + + ' might be a new student who is not in Canvas yet')
     else:
       try:
         n = group.remove_user(user.id)
@@ -107,7 +107,7 @@ for i in SheetsToGroups.index:
         if str(e) == "Not Found":
             print('User not in group CanvasID->' + str(user.id) + ' login_id->'+ student)
             msgbody += 'User not in group CanvasID->' + str(user.id) + ' login_id->'+ student + '\n'
-            logging.info('Some sort of exception happened when removing student->'+ student +' from Group')
+            logging.critical('Some sort of exception happened when removing student->'+ student +' from Group')
       print('Removed Student->'+ student +' from Canvas group')
       msgbody += 'Removed Student->' + student +' from Canvas group' + '\n'
       logging.info('Removed Student->'+ student + ' from Canvas group')
@@ -120,14 +120,14 @@ for i in SheetsToGroups.index:
       if str(f) == "Not Found":
         print('Cannot find user id->'+ student)
         msgbody += '<b>Cannot find user id->'+ student + ' might be a new student who is not in Canvas yet</b>\n'
-        logging.info('Cannot find user id!')
+        logging.critical('Cannot find user id!')
     else:    
       try:
         n = group.create_membership(user.id)
       except CanvasException as e:
         if str(e) == "Not Found":
           print('User ID adding to membership error')
-          logging.info('User ID adding to membership error')
+          logging.critical('User ID adding to membership error')
       print('Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '\n'
       logging.info('Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID))
