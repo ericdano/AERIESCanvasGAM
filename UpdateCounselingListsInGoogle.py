@@ -73,9 +73,7 @@ for EM, SEM in sql_query2.groupby(['EM','GR']):
     SEM.to_csv(filename2, index = False, header = False, columns = header)
 conn2.close()
 thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-statgam = gam.initializeLogging()
-if statgam != 0:
-    thelogger.critical('UpdateCounselingListsInGoogle->Error Initalzing GAM Logging')
+gam.initializeLogging()
 # Now call gam
 for counselor in counselors:
     # Sync Lists for All Students for counselor
