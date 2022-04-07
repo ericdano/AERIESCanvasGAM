@@ -73,6 +73,9 @@ for EM, SEM in sql_query2.groupby(['EM','GR']):
     SEM.to_csv(filename2, index = False, header = False, columns = header)
 conn2.close()
 thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
+statgam = gam.initializeLogging()
+if statgam != 0:
+    thelogger.critical('UpdateCounselingListsInGoogle->Error Initalzing GAM Logging')
 # Now call gam
 for counselor in counselors:
     # Sync Lists for All Students for counselor
@@ -82,7 +85,7 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+        thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 9 for counselor
@@ -92,7 +95,7 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+        thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 10 for counselor
@@ -102,7 +105,7 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+        thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
@@ -112,7 +115,7 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+        thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 12 for counselor
@@ -122,7 +125,7 @@ for counselor in counselors:
     stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+        thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
     os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
 if WasThereAnError:
