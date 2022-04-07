@@ -51,7 +51,7 @@ thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get A
 sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn2)
 conn2.close()
 thelogger.info('UpdateACISCounselingListsInGoogle->AERIES connection closed')
-statgam = gam.initalizeLogging()
+statgam = gam.initializeLogging()
 if statgam != 0:
     thelogger.critical('UpdateACISCounselingListsInGoogle->Error Initalzing GAM Logging')
 for EM, SEM in sql_query2.groupby(['EM','GR']):
