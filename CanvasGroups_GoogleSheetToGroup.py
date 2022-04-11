@@ -8,6 +8,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from logging.handlers import SysLogHandler
 
 start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
@@ -15,10 +16,17 @@ with open(confighome) as f:
   configs = json.load(f)
 # Logging
 #SheetsToGroupsCSV = Path.home() / ".Acalanes" / "SheetsToCanvasGroups.csv"
-logfilename = Path.home() / ".Acalanes" / configs['logfilename']
-logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started for AUHSD Google Sheets to Canvas')
-logging.info('Loading CSV file')
+if configs['logserveraddress'] == "":
+    logfilename = Path.home() / ".Acalanes" / configs['logfilename']
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.basicConfig(filename=str(logfilename), level=thelogger.info)
+else:
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+logging.info('CanvasGroups_GoogleSheetToGroup->Loaded config file and logfile started for AUHSD Google Sheets to Canvas')
+logging.info('CanvasGroups_GoogleSheetToGroup->Loading CSV file')
 #prep status (msg) email
 msg = EmailMessage()
 msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Groups from Sheets To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -34,14 +42,16 @@ msgbody = ''
 MasterListID = '1CDj-hq5MkKStZObMi9XKGDrSSvDA_SvJbXUhJkn7_ts'
 SheetsToGroupsCSV = 'e:\PythonTemp\MasterListSheetsToGroups.csv'
 rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',MasterListID,'format','csv','targetfolder','e:\PythonTemp','targetname','MasterListSheetsToGroups.csv','overwrite','true'])
+if rc2 != 0:
+  logging.critical('CanvasGroups_GoogleSheetToGroup->GAM Error getting Google sheet')
 SheetsToGroups = pd.read_csv(SheetsToGroupsCSV)
 os.remove(SheetsToGroupsCSV)
-logging.info('Success loding CSV file')
+logging.info('CanvasGroups_GoogleSheetToGroup->Success loding CSV file')
 print('CSV File loaded ok!')
 #-----Canvas Info
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
-logging.info('Connecting to Canvas')
+logging.info('CanvasGroups_GoogleSheetToGroup->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
@@ -52,11 +62,13 @@ for i in SheetsToGroups.index:
   CanvasGroupID =int(SheetsToGroups['CanvasGroupID'][i])
   # Grab the Google Sheet and save it to CSV
   rc2 = gam.CallGAMCommand(['gam','user', 'edannewitz@auhsdschools.org','get','drivefile','id',SheetFileID,'format','csv','targetfolder','e:\PythonTemp','targetname','SheetforCanvasGroup' + str(CanvasGroupID) +'.csv','overwrite','true'])
+  if rc2 != 0:
+    logging.critical('CanvasGroups_GoogleSheetToGroup->GAM Error getting Google sheet')
   dataframe1 = pd.read_csv('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
   os.remove('e:\PythonTemp\SheetforCanvasGroup' + str(CanvasGroupID) + '.csv')
   print('Processing info for ' + StaffEmail + ' Group->' + str(CanvasGroupID))
   msgbody += 'Matching for ' + StaffEmail + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
-  logging.info('Making SET of Email Addresses for ' + StaffEmail + '(' + str(CanvasGroupID) + ')')
+  logging.info('CanvasGroups_GoogleSheetToGroup->Making SET of Email Addresses for ' + StaffEmail + '(' + str(CanvasGroupID) + ')')
   print('Making SET of Email Addresses for ' + StaffEmail + '(' + str(CanvasGroupID) + ')')
   SheetList = set(dataframe1.email)
   #print(SheetList)
@@ -68,7 +80,7 @@ for i in SheetsToGroups.index:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Error finding Group->' + str(CanvasGroupID))
-      logging.critical('Error finding Group->' + str(CanvasGroupID))
+      logging.critical('CanvasGroups_GoogleSheetToGroup->Error finding Group->' + str(CanvasGroupID))
   #print(group)
   dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
   #print(dataframe2)
@@ -90,7 +102,7 @@ for i in SheetsToGroups.index:
 #  print('Students to remove')
 #  print(studentstoremove)
   for student in studentstoremove:
-    logging.info('Looking up student->'+student+' in Canvas')
+    logging.info('CanvasGroups_GoogleSheetToGroup->Looking up student->'+student+' in Canvas')
     msgbody += 'Looking up student->'+student+' in Canvas' + '\n'
     print('Looking up student->' + student +' in Canvas')
     try:
@@ -99,7 +111,7 @@ for i in SheetsToGroups.index:
       if str(g) == "Not Found":
         print('Cannot find user login_id->'+ student)
         msgbody+='<b>Canvas cannot find user login_id->'+ student + ', might be a new student who is not in Canvas yet</b>\n'
-        logging.error('Cannot find user login_id->'+ student + + ' might be a new student who is not in Canvas yet')
+        logging.error('CanvasGroups_GoogleSheetToGroup->Cannot find user login_id->'+ student + + ' might be a new student who is not in Canvas yet')
     else:
       try:
         n = group.remove_user(user.id)
@@ -110,7 +122,7 @@ for i in SheetsToGroups.index:
             logging.critical('Some sort of exception happened when removing student->'+ student +' from Group')
       print('Removed Student->'+ student +' from Canvas group')
       msgbody += 'Removed Student->' + student +' from Canvas group' + '\n'
-      logging.info('Removed Student->'+ student + ' from Canvas group')
+      logging.info('CanvasGroups_GoogleSheetToGroup->Removed Student->'+ student + ' from Canvas group')
   # Now add students to group
   for student in studentstoadd:
     msgbody += 'going to try to add '+ student + ' to group ' + str(CanvasGroupID) + '\n'
@@ -120,7 +132,7 @@ for i in SheetsToGroups.index:
       if str(f) == "Not Found":
         print('Cannot find user id->'+ student)
         msgbody += '<b>Cannot find user id->'+ student + ' might be a new student who is not in Canvas yet</b>\n'
-        logging.critical('Cannot find user id!')
+        logging.critical('CanvasGroups_GoogleSheetToGroup->Cannot find user id!')
     else:    
       try:
         n = group.create_membership(user.id)
@@ -130,7 +142,7 @@ for i in SheetsToGroups.index:
           logging.critical('User ID adding to membership error')
       print('Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '\n'
-      logging.info('Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID))
+      logging.info('CanvasGroups_GoogleSheetToGroup->Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID))
 msgbody+='Done!'
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
@@ -138,3 +150,5 @@ msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
 print('Done!!!')
+logging.info('CanvasGroups_GoogleSheetToGroup->Done! - Took '+ str(end_of_timer - start_of_timer))
+
