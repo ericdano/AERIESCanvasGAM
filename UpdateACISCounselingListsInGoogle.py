@@ -23,6 +23,7 @@ msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
 WasThereAnError = False
+DontDeleteFiles = False
 # Change directory to a TEMP Directory where GAM and Python can process CSV files 
 os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
@@ -67,7 +68,8 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    if not DontDeleteFiles:
+        os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 9 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade9counselinglist'
@@ -77,7 +79,8 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    if not DontDeleteFiles:
+        os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 10 for counselor
     tempstr1 = counselor[0] + counselor[1] + "grade10counselinglist"
@@ -87,7 +90,8 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    if not DontDeleteFiles:
+        os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade11counselinglist'
@@ -97,7 +101,8 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    if not DontDeleteFiles:
+        os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 12 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade12counselinglist'
@@ -107,7 +112,8 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    if not DontDeleteFiles:
+        os.remove(tempstr2)
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
 msgbody+='Done!'
 if WasThereAnError:
