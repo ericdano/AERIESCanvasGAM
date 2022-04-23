@@ -80,7 +80,7 @@ for i in SheetsToGroups.index:
   except CanvasException as f:
     if str(f) == "Not Found":
       print('Error finding Group->' + str(CanvasGroupID))
-      logging.critical('CanvasGroups_GoogleSheetToGroup->Error finding Group->' + str(CanvasGroupID))
+      logging.critical('CanvasGroups_GoogleSheetToGroup->Error finding Group->' + str(CanvasGroupID) + '(' + StaffEmail + ')')
   #print(group)
   dataframe2 = pd.DataFrame(group.users,columns=['login_id'])
   #print(dataframe2)
@@ -125,7 +125,7 @@ for i in SheetsToGroups.index:
       logging.info('CanvasGroups_GoogleSheetToGroup->Removed Student->'+ student + ' from Canvas group')
   # Now add students to group
   for student in studentstoadd:
-    msgbody += 'going to try to add '+ student + ' to group ' + str(CanvasGroupID) + '\n'
+    msgbody += 'going to try to add '+ student + ' to group ' + str(CanvasGroupID) + '(' + StaffEmail + ')\n'
     try:
       user = canvas.get_user(student,'sis_login_id')
     except CanvasException as f:
@@ -140,9 +140,9 @@ for i in SheetsToGroups.index:
         if str(e) == "Not Found":
           print('User ID adding to membership error')
           logging.critical('User ID adding to membership error')
-      print('Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID))
-      msgbody += 'Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '\n'
-      logging.info('CanvasGroups_GoogleSheetToGroup->Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID))
+      print('Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '(' + StaffEmail + ')')
+      msgbody += 'Added Student id->' + student +' to Canvas group->' + str(CanvasGroupID) + '(' + StaffEmail + ')\n'
+      logging.info('CanvasGroups_GoogleSheetToGroup->Added Student id->'+ student +' to Canvas group->' + str(CanvasGroupID) + '(' + StaffEmail + ')')
 msgbody+='Done!'
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
