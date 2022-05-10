@@ -34,7 +34,7 @@ if __name__ == '__main__':
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
-    configs = json.load(f)
+        configs = json.load(f)
     thelogger = logging.getLogger('MyLogger')
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
