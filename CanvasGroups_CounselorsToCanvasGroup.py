@@ -31,7 +31,7 @@ thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loaded config file and log
 thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
-MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD Counseling To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
 msgbody = ''
@@ -53,7 +53,7 @@ thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
-msgbody += 'Starting Canvas Counseler Groups for AUHSD Script\n'
+msgbody += 'Starting Canvas Counselor Groups for AUHSD Script\n'
 for i in CounselorCanvasGroups.index:
   CounselorEmail = CounselorCanvasGroups['email'][i]
   CounselorSISID = CounselorCanvasGroups['SISID'][i]
