@@ -31,7 +31,7 @@ counselors = [ ('acis','feinberg')]
 
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get ACIS ALL student emails')
 cursor = conn.cursor()
@@ -45,7 +45,7 @@ conn.close()
 thelogger.info('UpdateACISCounselingListsInGoogle->AERIES connection closed')
 conn2 = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 cursor2 = conn2.cursor()
 thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get ACIS Student emails by grade level')

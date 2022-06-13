@@ -49,6 +49,7 @@ if __name__ == '__main__':
     server = 'ftp.csmcentral.com'
     user = configs['ASBWorksUser']
     passwd = configs['ASBWorksPassword']
+    AERIESDB = configs['AERIESDB']
     dest_filename = "asbworks_acalanes.csv"
     thelogger.info('Update ASB Works->Starting ASB Works Script')
 
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
     conn = pyodbc.connect('Driver={SQL Server};'
                         'Server=SATURN;'
-                        'Database=DST21000AUHSD;'
+                        'Database=DST22000AUHSD;'
                         'Trusted_Connection=yes;')
     cursor = conn.cursor()
     sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""",conn)

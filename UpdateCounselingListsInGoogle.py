@@ -47,7 +47,7 @@ counselors = [ ('ahs','todd'),
 
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
 cursor = conn.cursor()
@@ -61,7 +61,7 @@ conn.close()
 thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
 conn2 = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
 cursor2 = conn2.cursor()
@@ -84,7 +84,11 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    try:
+        os.remove(tempstr2)
+    except:
+        msgbody += 'Error removing ' + counselor[1] + ' ALL grades list.\n' 
+        thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' ALL Grades list csv')
     msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 9 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade9counselinglist'
@@ -94,7 +98,11 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    try:
+        os.remove(tempstr2)
+    except:
+        msgbody += 'Error removing ' + counselor[1] + ' 9th grade list.\n' 
+        thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 9th grade list csv')
     msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 10 for counselor
     tempstr1 = counselor[0] + counselor[1] + "grade10counselinglist"
@@ -104,7 +112,11 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    try:
+        os.remove(tempstr2)
+    except:
+        msgbody += 'Error removing ' + counselor[1] + ' 10th grade list.\n' 
+        thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 10th grade list csv')
     msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 11 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade11counselinglist'
@@ -114,7 +126,11 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    try:
+        os.remove(tempstr2)
+    except:
+        msgbody += 'Error removing ' + counselor[1] + ' 11th grade list.\n' 
+        thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 11th grade list csv')
     msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
     # Sync Lists for Grade 12 for counselor
     tempstr1 = counselor[0] + counselor[1] + 'grade12counselinglist'
@@ -124,7 +140,11 @@ for counselor in counselors:
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-    os.remove(tempstr2)
+    try:
+        os.remove(tempstr2)
+    except:
+        msgbody += 'Error removing ' + counselor[1] + ' 12th grade list.\n' 
+        thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 12th grade list csv')
     msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
 if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
