@@ -60,7 +60,7 @@ def modifyADUsers(dataframe,configs):
     domainName = 'AUHSD'
     userName = 'tech'
     password = configs['ADPassword']
-    base = 'DC=acalanes,DC=k12,DC=ca,DC=us'
+    #base = 'DC=acalanes,DC=k12,DC=ca,DC=us'
     server = Server(serverName)
     conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
     print(dataframe['DN'][d])
@@ -84,6 +84,7 @@ def main():
   configs = getConfigs()
   configsAE = getConfigsAE()
   users = getADSearch('zeus.acalanes.k12.ca.us','AUHSD Staff',configs)
+  print(users)
   df = pd.DataFrame(columns = ['DN','email','domain'])
   # we love Pandas.....Express and the Dataframe. 
   # create a dataframe to put all the LDAP search results in so we can process them
@@ -112,8 +113,8 @@ def main():
                           'domain': 'paris.acalanes.k12.ca.us'},ignore_index=True)
   users.unbind()
   print(df)
-  modifyADUsers(df,configs)
-  DisableCanvasLogins(df,configs,configsAE)
+#  modifyADUsers(df,configs)
+#  DisableCanvasLogins(df,configs,configsAE)
 
 if __name__ == '__main__':
     main()

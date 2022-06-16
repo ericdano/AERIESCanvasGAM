@@ -63,7 +63,6 @@ def modifyADUsers(dataframe,configs):
     base = 'DC=acalanes,DC=k12,DC=ca,DC=us'
     server = Server(serverName)
     conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-    print(dataframe['DN'][d])
     conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
     # This is how you disable an account, you modify it to be 2 rather than 512
 
@@ -91,7 +90,7 @@ def DisableGoogle(dataframe):
 def main():
   configs = getConfigs()
   configsAE = getConfigsAE()
-  users = getADSearch('zeus.acalanes.k12.ca.us','AUHSD Staff',configs)
+  users = getADSearch('zeus','AUHSD Staff',configs)
   df = pd.DataFrame(columns = ['DN','email','domain'])
   # we love Pandas.....Express and the Dataframe. 
   # create a dataframe to put all the LDAP search results in so we can process them
@@ -104,9 +103,9 @@ def main():
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
-                          'domain': 'zeus.acalanes.k12.ca.us'},ignore_index=True)
+                          'domain': 'zeus'},ignore_index=True)
   users.unbind()
-  users = getADSearch('paris.acalanes.k12.ca.us','Acad Staff,DC=staff',configs)
+  users = getADSearch('paris','Acad Staff,DC=staff',configs)
   for user in users.entries:
     if (user.userAccountControl == 512):
       # Expired accounts show as normal accounts, but you have to find the date
@@ -114,12 +113,10 @@ def main():
       # so anything bigger than that is an account that should be properly disabled
       accountExpiresDate = arrow.get(str(user.accountExpires))
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
-        print(user.entry_dn)
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
-                          'domain': 'paris.acalanes.k12.ca.us'},ignore_index=True)
+                          'domain': 'paris'},ignore_index=True)
   users.unbind()
-  print(df)
   modifyADUsers(df,configs)
   DisableGoogle(df)
   DisableCanvasLogins(df,configs,configsAE)
