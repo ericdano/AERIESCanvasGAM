@@ -91,5 +91,3 @@ for i in conn.entries:
 #print(user[0].sortable_name)
 #myuser = aduser.ADUser.from_cn("edannewitz")
 #print(myuser)
-if __name__ == '__main__':
-    main()

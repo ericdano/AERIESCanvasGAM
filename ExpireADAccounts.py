@@ -1,6 +1,6 @@
 from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, gam
+import os, sys, pyodbc, shlex, subprocess, json, logging, gam, smtplib, datetime
 from pathlib import Path
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -10,7 +10,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
-from datetime import datetime
 import arrow
 
 def getConfigs():
@@ -36,7 +35,6 @@ def connectCanvas(configs):
 
 def DisableCanvasLogins(dataframe,configs,configsae):
   # disable Canvas Logins
-  #thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Connecting to Canvas')
   for d in dataframe.index:
     if str(dataframe['email'][d]) != '':
       if ('OU=AE' in str(dataframe['DN'][d])):
@@ -75,7 +73,6 @@ def getADSearch(domainserver,baseou,configs):
   server = Server(serverName)
   #conn = Connection(server, read_only=True, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
   conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-  print(conn.result)
   conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
   return conn
 
@@ -84,13 +81,14 @@ def DisableGoogle(dataframe):
     if 'auhsdschools.org' in str(dataframe['email'][d]):
       gam.initializeLogging()
       stat1 = gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
-  #return stat1
-#    thelogger.critical('UpdateACISCounselingListsInGoogle->GAM returned an error for the last command')
+  return stat1
 
 def main():
+  msgbody = ''
   configs = getConfigs()
   configsAE = getConfigsAE()
   users = getADSearch('zeus','AUHSD Staff',configs)
+ # print(users.entries)
   df = pd.DataFrame(columns = ['DN','email','domain'])
   # we love Pandas.....Express and the Dataframe. 
   # create a dataframe to put all the LDAP search results in so we can process them
@@ -104,9 +102,12 @@ def main():
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
                           'domain': 'zeus'},ignore_index=True)
+        msgbody += f'Found user->{user.entry_dn} {user.mail} on Zeus whos account is to expire\n'
+
   users.unbind()
-  users = getADSearch('paris','Acad Staff,DC=staff',configs)
-  for user in users.entries:
+  users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
+#  print(users2.entries)
+  for user in users2.entries:
     if (user.userAccountControl == 512):
       # Expired accounts show as normal accounts, but you have to find the date
       # and a normal account has the accountExpires date set to 1601-01-01
@@ -116,11 +117,18 @@ def main():
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
                           'domain': 'paris'},ignore_index=True)
-  users.unbind()
+        msgbody += f'Found user->{user.entry_dn} {user.mail} on Paris whos account is to expire\n'
+  users2.unbind()
   modifyADUsers(df,configs)
   DisableGoogle(df)
   DisableCanvasLogins(df,configs,configsAE)
-
+  msg = EmailMessage()
+  msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look for expired accounts script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  msg['From'] = configs['SMTPAddressFrom']
+  msg['To'] = configs['SendInfoEmailAddr']
+  msg.set_content(msgbody)
+  s = smtplib.SMTP(configs['SMTPServerAddress'])
+  s.send_message(msg)
 if __name__ == '__main__':
     main()
 
