@@ -102,11 +102,11 @@ def main():
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
                           'domain': 'zeus'},ignore_index=True)
-        msgbody += f'Found user->{user.entry_dn} {user.mail} on Zeus whos account is to expire\n'
+        msgbody += f'Found user->{user.entry_dn} {user.mail} on Zeus whos account is expired but not disabled\n'
 
   users.unbind()
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
-#  print(users2.entries)
+# Now check the staff domain
   for user in users2.entries:
     if (user.userAccountControl == 512):
       # Expired accounts show as normal accounts, but you have to find the date
@@ -117,7 +117,7 @@ def main():
         df = df.append({'DN': user.entry_dn,
                           'email': user.mail,
                           'domain': 'paris'},ignore_index=True)
-        msgbody += f'Found user->{user.entry_dn} {user.mail} on Paris whos account is to expire\n'
+        msgbody += f'Found user->{user.entry_dn} {user.mail} on Paris whos account is expired but not disabled\n'
   users2.unbind()
   modifyADUsers(df,configs)
   DisableGoogle(df)
@@ -129,6 +129,7 @@ def main():
   msg.set_content(msgbody)
   s = smtplib.SMTP(configs['SMTPServerAddress'])
   s.send_message(msg)
+  
 if __name__ == '__main__':
     main()
 
