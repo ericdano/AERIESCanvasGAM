@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 from datetime import datetime
 import arrow
 
@@ -27,17 +27,34 @@ def getADSearch(domainserver,baseou,configs):
   userName = 'tech'
   password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  server = Server(serverName)
-  #conn = Connection(server, read_only=True, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-  conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-  conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
-  return conn
+  with Connection(Server(serverName),
+                  user='{0}\\{1}'.format(domainName, userName), 
+                  password=password, 
+                  auto_bind=True) as conn:
+
+    results = conn.extend.standard.paged_search(search_base= base, 
+                                             search_filter = '(objectclass=user)', 
+                                             search_scope=SUBTREE,
+                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'],
+                                             get_operational_attributes=False, paged_size=15)
+  return results
 
 def main():
   configs = getConfigs()
   users = getADSearch('zeus','AUHSD Staff',configs)
-  df = pd.DataFrame(columns = ['DN','email','domain','userAccountControl','sAMAccountName','accountExpires'])
-  for user in users.entries:
+  print(users)
+  i = 0
+  for user in users:
+    print('------')
+    print(user)
+    print(user['attributes'])
+#    print(user['attributes']['displayName'])
+    i += 1
+##  df = pd.json_normalize(users, record_path=['attributes'])
+#  print(df)
+  print(i)
+  exit()
+  for user in users:
     df = df.append({'DN': user.entry_dn,
                         'email': user.mail,
                         'domain': 'paris',

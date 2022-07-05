@@ -9,7 +9,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 import arrow
 
 def getConfigs():
@@ -64,7 +64,7 @@ def modifyADUsers(dataframe,configs):
     conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
     # This is how you disable an account, you modify it to be 2 rather than 512
 
-def getADSearch(domainserver,baseou,configs):
+def OLDgetADSearch(domainserver,baseou,configs):
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
   userName = 'tech'
@@ -75,6 +75,24 @@ def getADSearch(domainserver,baseou,configs):
   conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
   conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
   return conn
+
+def getADSearch(domainserver,baseou,configs):
+  serverName = 'LDAP://' + domainserver
+  domainName = 'AUHSD'
+  userName = 'tech'
+  password = configs['ADPassword']
+  base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
+  with Connection(Server(serverName),
+                  user='{0}\\{1}'.format(domainName, userName), 
+                  password=password, 
+                  auto_bind=True) as conn:
+
+    results = conn.extend.standard.paged_search(search_base= base, 
+                                             search_filter = '(objectclass=user)', 
+                                             search_scope=SUBTREE,
+                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'],
+                                             get_operational_attributes=False, paged_size=15)
+  return results
 
 def DisableGoogle(dataframe):
   for d in dataframe.index:
@@ -91,33 +109,31 @@ def main():
   df = pd.DataFrame(columns = ['DN','email','domain'])
   # we love Pandas.....Express and the Dataframe. 
   # create a dataframe to put all the LDAP search results in so we can process them
-  for user in users.entries:
-    if (user.userAccountControl == 512):
+  for user in users:  
+    if (user['attributes']['userAccountControl'] == 512):
       # Expired accounts show as normal accounts, but you have to find the date
       # and a normal account has the accountExpires date set to 1601-01-01
       # so anything bigger than that is an account that should be properly disabled
-      accountExpiresDate = arrow.get(str(user.accountExpires))
+      accountExpiresDate = arrow.get(str(user['attributes']['accountExpires']))
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
-        df = df.append({'DN': user.entry_dn,
-                          'email': user.mail,
+        df = df.append({'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
                           'domain': 'zeus'},ignore_index=True)
-        msgbody += f'Found user->{user.entry_dn} {user.mail} on Zeus whos account is expired but not disabled\n'
+        msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
 
-  users.unbind()
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
 # Now check the staff domain
-  for user in users2.entries:
-    if (user.userAccountControl == 512):
+  for user in users2:
+    if (user['attributes']['userAccountControl'] == 512):
       # Expired accounts show as normal accounts, but you have to find the date
       # and a normal account has the accountExpires date set to 1601-01-01
       # so anything bigger than that is an account that should be properly disabled
-      accountExpiresDate = arrow.get(str(user.accountExpires))
+      accountExpiresDate = arrow.get(str(user['attributes']['accountExpires']))
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
-        df = df.append({'DN': user.entry_dn,
-                          'email': user.mail,
+        df = df.append({'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
                           'domain': 'paris'},ignore_index=True)
-        msgbody += f'Found user->{user.entry_dn} {user.mail} on Paris whos account is expired but not disabled\n'
-  users2.unbind()
+        msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})\n"
   modifyADUsers(df,configs)
   DisableGoogle(df)
   DisableCanvasLogins(df,configs,configsAE)
