@@ -80,9 +80,8 @@ def DisableGoogle(dataframe):
   for d in dataframe.index:
     if 'auhsdschools.org' in str(dataframe['email'][d]):
       gam.initializeLogging()
-      stat1 = gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
-  return stat1
-
+      gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
+  
 def main():
   msgbody = ''
   configs = getConfigs()

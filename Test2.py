@@ -24,31 +24,33 @@ def getConfigs():
 def getADSearch(domainserver,baseou,configs):
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
-  userName = 'edannewitz'
-  password = ''
+  userName = 'tech'
+  password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  print('Base OU')
-  print(domainserver)
-  print(baseou)
-  print(base)
   server = Server(serverName)
   #conn = Connection(server, read_only=True, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
   conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-  print('Connection Results')
-  print(conn.result)
   conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
-  print(conn)
   return conn
 
 def main():
-#  configs = getConfigs()
-#  users = getADSearch('zeus','AUHSD Staff',configs)
-#  df = pd.DataFrame(columns = ['DN','email','domain'])
-#  print(df)
-    server = Server('paris')
-    conn = Connection(server,user='AUHSD\\tech',password='B@Tmobile',auto_bind=True)
-    print(conn)
-    conn.search('dc=staff,dc=acalanes,dc=k12,dc=ca,dc=us', '(objectclass=person)')
-    print(conn.entries)
+  configs = getConfigs()
+  users = getADSearch('zeus','AUHSD Staff',configs)
+  df = pd.DataFrame(columns = ['DN','email','domain','userAccountControl','sAMAccountName','accountExpires'])
+  for user in users.entries:
+    df = df.append({'DN': user.entry_dn,
+                        'email': user.mail,
+                        'domain': 'paris',
+                        'userAccountControl' : user.userAccountControl,
+                        'sAMAccountName': user.sAMAccountName,
+                        'accountExpires' : user.accountExpires},ignore_index=True)
+    if str(user.mail) == 'sgoswami@auhsdschools.org':
+      print('Found!')
+      print(user)
+    if str(user.displayName) == 'Sukanya Goswami':
+      print('Found!')
+      print(user)
+  print(df)
+  df.to_csv('DumpofAUHSD.csv')
 if __name__ == '__main__':
     main()
