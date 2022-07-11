@@ -34,6 +34,7 @@ def connectCanvas(configs):
   return canvas
 
 def DisableCanvasLogins(dataframe,configs,configsae):
+  global msgbody
   # disable Canvas Logins
   for d in dataframe.index:
     if str(dataframe['email'][d]) != '':
@@ -47,10 +48,13 @@ def DisableCanvasLogins(dataframe,configs,configsae):
         user = canvas.get_user(str(dataframe['email'][d]),'sis_login_id')
         try:  
           user.edit(user={'event': 'suspend'})
+          msgbody += 'Disabled Canvas for ->' + str(dataframe['email'][d]) + '\n'  
         except CanvasException as g:
-          print(g)  
+          print(g)
+          msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(g) + '\n'  
       except CanvasException as e:
         print(e)
+        msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e) + '\n'  
 
 def modifyADUsers(dataframe,configs):
   for d in dataframe.index:
@@ -95,13 +99,18 @@ def getADSearch(domainserver,baseou,configs):
   return results
 
 def DisableGoogle(dataframe):
+  global msgbody
   for d in dataframe.index:
     if 'auhsdschools.org' in str(dataframe['email'][d]):
       gam.initializeLogging()
-      gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
-  
+      stat = gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
+      if stat != 0:
+        msgbody += 'Error with Google suspending ' + str(dataframe['email'][d]) + '\n'
+      else:
+        msgbody += 'Suspended Google Account->' + str(dataframe['email'][d]) + '\n'
+
 def main():
-  msgbody = ''
+  global msgbody
   configs = getConfigs()
   configsAE = getConfigsAE()
   users = getADSearch('zeus','AUHSD Staff',configs)
@@ -146,5 +155,6 @@ def main():
   s.send_message(msg)
   
 if __name__ == '__main__':
-    main()
+  msgbody = ''
+  main()
 
