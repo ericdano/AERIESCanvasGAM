@@ -130,8 +130,6 @@ def main():
                           'email': str(user['attributes']['mail']),
                           'domain': 'zeus'},ignore_index=True)
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
-      else:
-        msgbody += f"Didn't find any users set to expire on domain server Zeus.\n"
   msgbody += 'Checking domain server Paris....\n'
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
 # Now check the staff domain
@@ -146,8 +144,6 @@ def main():
                           'email': str(user['attributes']['mail']),
                           'domain': 'paris'},ignore_index=True)
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})\n"
-      else:
-        msgbody += f"Didn't find any users set to expire on domain server Paris.\n"
   if df.empty:
     msgbody += 'No Accounts are expired. Nothing to do. We will try again later....\n'
   else:
