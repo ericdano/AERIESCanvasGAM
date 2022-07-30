@@ -67,14 +67,14 @@ def main():
                     ('chs','dhaliwal'),
                     ('chs','santellan'),
                     ('chs','magno'),
-                    ('llhs','wright'),
+                    ('llhs','medrano'),
                     ('llhs','feinberg'),
                     ('llhs','constantin'),
                     ('llhs','bloodgood'),
                     ('llhs','sabeh'),
                     ('mhs','vasquez'),
                     ('mhs','conners'),
-                    ('mhs','watson'),
+                    ('mhs','zielinkski'),
                     ('mhs','vasicek') ]
     GetAERIESData(thelogger)
     print('Done!!!')
