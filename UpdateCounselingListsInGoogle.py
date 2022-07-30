@@ -67,7 +67,7 @@ def main():
                     ('chs','dhaliwal'),
                     ('chs','santellan'),
                     ('chs','magno'),
-                    ('llhs','wright'),
+                    ('llhs','medrano'),
                     ('llhs','feinberg'),
                     ('llhs','constantin'),
                     ('llhs','bloodgood'),
