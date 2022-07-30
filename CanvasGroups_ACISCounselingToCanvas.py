@@ -45,7 +45,7 @@ counselors = [ ('acis','feinberg',10831,103276)]
 msgbody += 'Starting Canvas Counseler Groups for ACIS Script\n'
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 cursor = conn.cursor()
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting data from AERIES')

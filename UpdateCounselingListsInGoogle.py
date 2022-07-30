@@ -63,7 +63,7 @@ def main():
                     ('ahs','meadows'),
                     ('ahs','schonauer'),
                     ('ahs','martin'),
-                    ('chs','turner'),
+                    ('chs','thayer'),
                     ('chs','dhaliwal'),
                     ('chs','santellan'),
                     ('chs','magno'),

@@ -42,7 +42,7 @@ CounselorCanvasGroups = pd.read_csv(CounselorCSV)
 
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
+                      'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 #
 cursor = conn.cursor()
