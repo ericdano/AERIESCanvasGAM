@@ -74,7 +74,7 @@ def main():
                     ('llhs','sabeh'),
                     ('mhs','vasquez'),
                     ('mhs','conners'),
-                    ('mhs','watson'),
+                    ('mhs','zielinski'),
                     ('mhs','vasicek') ]
     GetAERIESData(thelogger)
     gam.initializeLogging()
