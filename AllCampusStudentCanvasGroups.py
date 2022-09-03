@@ -8,40 +8,34 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
-#This script finds counselors and their assigned students in AERIES, then updates Google Group Annouce only lists with any student changes
+# This scrip pull ALL students from AERIES from a site, and puts them into a Canvas Group
+#
 
 def GetAERIESData(thelogger):
-    os.chdir('E:\\PythonTemp')
     conn = pyodbc.connect('Driver={SQL Server};'
                         'Server=SATURN;'
                         'Database=DST22000AUHSD;'
                         'Trusted_Connection=yes;')
-    thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
+    thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
     cursor = conn.cursor()
-    sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-    for EM, SEM in sql_query.groupby('EM'):
-        filename = str(EM).replace("@auhsdschools.org","")+"ALL.csv"
-        filename = filename[1:]
-        header = ["SEM"]
-        SEM.to_csv(filename, index = False, header = False, columns = header)
+    sql_query = pd.read_sql_query('SELECT ID, SEM, SC FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
     conn.close()
-    thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-    conn2 = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
-    cursor2 = conn2.cursor()
-    sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn2)
-    for EM, SEM in sql_query2.groupby(['EM','GR']):
-        filename2 = str(EM).replace("(\'","").replace("@","").replace("\',","").replace(".org ","").replace(")","")+".csv"
-        filename2 = filename2[1:]
-        header = ["SEM"]
-        SEM.to_csv(filename2, index = False, header = False, columns = header)
-    conn2.close()
-    thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
+    thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
+    sql_query.sort_values(by=['SC'])
+    print(sql_query)
 
 def main():
+    start_of_timer = timer()
+    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+    with open(confighome) as f:
+        configs = json.load(f)
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+    GetAERIESData(thelogger)
+
+def main2():
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
@@ -58,7 +52,7 @@ def main():
     WasThereAnError = False
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
     os.chdir('E:\\PythonTemp')
-    #populate a table with counselor parts
+    #populate a table
     counselors = [ ('ahs','todd'),
                     ('ahs','meadows'),
                     ('ahs','schonauer'),
