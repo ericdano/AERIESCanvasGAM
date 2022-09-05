@@ -22,20 +22,10 @@ def GetAERIESData(thelogger):
     conn.close()
     thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
     sql_query.sort_values(by=['SC'])
-    print(sql_query)
+    return sql_query
+
 
 def main():
-    start_of_timer = timer()
-    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-    with open(confighome) as f:
-        configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
-    GetAERIESData(thelogger)
-
-def main2():
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
@@ -50,30 +40,18 @@ def main2():
     msg['To'] = configs['SendInfoEmailAddr']
     msgbody = ''
     WasThereAnError = False
-    # Change directory to a TEMP Directory where GAM and Python can process CSV files 
-    os.chdir('E:\\PythonTemp')
     #populate a table
-    counselors = [ ('ahs','todd'),
-                    ('ahs','meadows'),
-                    ('ahs','schonauer'),
-                    ('ahs','martin'),
-                    ('chs','thayer'),
-                    ('chs','dhaliwal'),
-                    ('chs','santellan'),
-                    ('chs','magno'),
-                    ('llhs','medrano'),
-                    ('llhs','feinberg'),
-                    ('llhs','constantin'),
-                    ('llhs','bloodgood'),
-                    ('llhs','sabeh'),
-                    ('mhs','vasquez'),
-                    ('mhs','conners'),
-                    ('mhs','zielinski'),
-                    ('mhs','vasicek') ]
-    GetAERIESData(thelogger)
-    gam.initializeLogging()
-    # Now call gam
-    for counselor in counselors:
+    sites = [ ('LLHS','1',''),
+                ('AHS','2',''),
+                ('MHS','3',''),
+                ('CHS','4',''),
+                ('ACIS','6',''),
+                ('CENR','7',''),
+                ('TRANS','30'.'') ]
+
+    AERIESData = GetAERIESData(thelogger)
+
+    for site in sites:
         # Sync Lists for All Students for counselor
         tempstr1 = counselor[0] + counselor[1] + 'counselinglist'
         tempstr2 = counselor[1] + 'ALL.csv'
