@@ -7,6 +7,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+from canvasapi import Canvas
+from canvasapi.exceptions import CanvasException
 
 # This scrip pull ALL students from AERIES from a site, and puts them into a Canvas Group
 #
@@ -52,80 +54,9 @@ def main():
     AERIESData = GetAERIESData(thelogger)
 
     for site in sites:
-        # Sync Lists for All Students for counselor
-        tempstr1 = counselor[0] + counselor[1] + 'counselinglist'
-        tempstr2 = counselor[1] + 'ALL.csv'
-        thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
-        if stat1 != 0:
-            WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-        try:
-            os.remove(tempstr2)
-        except:
-            msgbody += 'Error removing ' + counselor[1] + ' ALL grades list.\n' 
-            thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' ALL Grades list csv')
-        msgbody += 'Synced ' + counselor[1] + ' All list. Gam Status->' + str(stat1) + '\n' 
-        # Sync Lists for Grade 9 for counselor
-        tempstr1 = counselor[0] + counselor[1] + 'grade9counselinglist'
-        tempstr2 = counselor[1] + 'auhsdschools9.csv'
-        thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
-        if stat1 != 0:
-            WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-        try:
-            os.remove(tempstr2)
-        except:
-            msgbody += 'Error removing ' + counselor[1] + ' 9th grade list.\n' 
-            thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 9th grade list csv')
-        msgbody += 'Synced ' + counselor[1] + ' 9th grade list. Gam Status->' + str(stat1) + '\n' 
-        # Sync Lists for Grade 10 for counselor
-        tempstr1 = counselor[0] + counselor[1] + "grade10counselinglist"
-        tempstr2 = counselor[1] + "auhsdschools10.csv"
-        thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
-        if stat1 != 0:
-            WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-        try:
-            os.remove(tempstr2)
-        except:
-            msgbody += 'Error removing ' + counselor[1] + ' 10th grade list.\n' 
-            thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 10th grade list csv')
-        msgbody += 'Synced ' + counselor[1] + ' 10th grade list. Gam Status->' + str(stat1) + '\n' 
-        # Sync Lists for Grade 11 for counselor
-        tempstr1 = counselor[0] + counselor[1] + 'grade11counselinglist'
-        tempstr2 = counselor[1] + 'auhsdschools11.csv'
-        thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
-        if stat1 != 0:
-            WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-        try:
-            os.remove(tempstr2)
-        except:
-            msgbody += 'Error removing ' + counselor[1] + ' 11th grade list.\n' 
-            thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 11th grade list csv')
-        msgbody += 'Synced ' + counselor[1] + ' 11th grade list. Gam Status->' + str(stat1) + '\n' 
-        # Sync Lists for Grade 12 for counselor
-        tempstr1 = counselor[0] + counselor[1] + 'grade12counselinglist'
-        tempstr2 = counselor[1] + 'auhsdschools12.csv'
-        thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', tempstr1, 'sync', 'members', 'file', tempstr2])
-        if stat1 != 0:
-            WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
-        try:
-            os.remove(tempstr2)
-        except:
-            msgbody += 'Error removing ' + counselor[1] + ' 12th grade list.\n' 
-            thelogger.critical('UpdateCounselingListsInGoogle->Error trying to remove file ' + counselor[1] + ' 12th grade list csv')
-        msgbody += 'Synced ' + counselor[1] + ' 12th grade list. Gam Status->' + str(stat1) + '\n' 
-    if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-    else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        print(AERIESData.loc[AERIESData['SC']==site[0][1]])
+        #thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
+ 
     end_of_timer = timer()
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)
