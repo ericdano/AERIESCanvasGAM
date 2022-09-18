@@ -75,7 +75,7 @@ def main():
                     ('mhs','vasquez'),
                     ('mhs','conners'),
                     ('mhs','zielinski'),
-                    ('mhs','vasicek') ]
+                    ('mhs','shawn') ]
     GetAERIESData(thelogger)
     gam.initializeLogging()
     # Now call gam
