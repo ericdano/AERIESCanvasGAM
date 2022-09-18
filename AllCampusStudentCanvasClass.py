@@ -20,7 +20,7 @@ def GetAERIESData(thelogger):
                         'Trusted_Connection=yes;')
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
     cursor = conn.cursor()
-    sql_query = pd.read_sql_query('SELECT ID, SEM, SC FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
+    sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
     conn.close()
     thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
     sql_query.sort_values(by=['SC'])
@@ -32,29 +32,40 @@ def main():
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
+    if configs['logserveraddress'] is None:
+        logfilename = Path.home() / ".Acalanes" / configs['logfilename']
+        thelogger = logging.getLogger('MyLogger')
+        thelogger.basicConfig(filename=str(logfilename), level=thelogger.info)
+    else:
+        thelogger = logging.getLogger('MyLogger')
+        thelogger.setLevel(logging.DEBUG)
+        handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+        thelogger.addHandler(handler)
+
+    SiteClassesCSV = Path.home() / ".Acalanes" / "CanvasSiteClasses.csv"
+    thelogger.info('AllCampusStudentCanvasClass->Loaded config file and logfile started')
+    thelogger.info('AllCampusStudentCanvasClass->Loading Class Course List CSV file')
     #prep status (msg) email
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
     msgbody = ''
+    # The counseling CSV has counselors email address, there sis_id, canvas group and grade
+    # Grade can have a field All in it that it will then place into a All students
+    # at site group for the counselor
+    SiteClassesList = pd.read_csv(SiteClassesCSV)
     WasThereAnError = False
     #populate a table
-    sites = [ ('LLHS','1',''),
-                ('AHS','2',''),
-                ('MHS','3',''),
-                ('CHS','4',''),
-                ('ACIS','6',''),
-                ('CENR','7',''),
-                ('TRANS','30'.'') ]
-
     AERIESData = GetAERIESData(thelogger)
-
-    for site in sites:
-        print(AERIESData.loc[AERIESData['SC']==site[0][1]])
+    #print(AERIESData)
+    df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
+    print(df)
+    Newdf = df.loc[(df['SC'] == 1) & (df['GR'] == 9)]
+    print(Newdf)
+    #for site in sites:
+    #    for sec in 
+    ##    print(site)
+     #   print(AERIESData.loc[AERIESData['SC']==site[0][1]])
         #thelogger.info('UpdateCounselingListsInGoogle->Running GAM for ' + tempstr1 + 'using ' + tempstr2)
  
     end_of_timer = timer()
