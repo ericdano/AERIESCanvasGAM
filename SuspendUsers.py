@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime
+import os, sys, pyodbc, shlex, gam, subprocess, json, logging, smtplib, datetime
 from pathlib import Path
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -8,35 +8,34 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
-confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-with open(confighome) as f:
-  configs = json.load(f)
-# Logging
-ImportCSV = Path.home() / ".Acalanes" / "CanvasCounselingGroups.csv"
-logfilename = Path.home() / ".Acalanes" / configs['logfilename']
-logging.basicConfig(filename=str(logfilename), level=logging.INFO)
-logging.info('Loaded config file and logfile started for AUHSD Suspend Users')
-logging.info('Loading To Suspend CSV file')
-#prep status (msg) email
-msg = EmailMessage()
-msg['Subject'] = str(configs['SMTPStatusMessage'] + " Suspend Users " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-msg['From'] = configs['SMTPAddressFrom']
-msg['To'] = configs['SendInfoEmailAddr']
-msgbody = ''
-#ToSuspend = pd.read_csv(ImportCSV)
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST21000AUHSD;'
-                      'Trusted_Connection=yes;')
-#
-cursor = conn.cursor()
-#-----Canvas Info
-Canvas_API_URL = configs['CanvasAPIURL']
-Canvas_API_KEY = configs['CanvasAPIKey']
-logging.info('Connecting to Canvas')
-canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
-account = canvas.get_account(1)
-# Go through the counseling list, then add or remove students from groups
-msgbody += 'Starting Suspend for AUHSD Script\n'
-try:
-    user = canvas.get_user()
+def main()
+  start_of_timer = timer()
+  confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+  with open(confighome) as f:
+      configs = json.load(f)
+  thelogger = logging.getLogger('MyLogger')
+  thelogger.setLevel(logging.DEBUG)
+  handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+  thelogger.addHandler(handler)
+  #prep status (msg) email
+  msg = EmailMessage()
+  msg['From'] = configs['SMTPAddressFrom']
+  msg['To'] = configs['SendInfoEmailAddr']
+  msgbody = ''
+  thelogger.info('WeeklyStudentSuspend_>Starting GAM Suspension')
+  stat = gam.CallGAMCommand(['gam','ou_and_children','"/Z-Former Students"','update','user','suspended','true'])
+  if stat != 0:
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Weekly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  else:
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Weekly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  end_of_timer = timer()
+  msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+  msg.set_content(msgbody)
+  s = smtplib.SMTP(configs['SMTPServerAddress'])
+  s.send_message(msg)
+  thelogger.info('UpdateCounselingListsInGoogle->Sent status message')
+  thelogger.info('UpdateCounselingListsInGoogle->DONE! - took ' + str(end_of_timer - start_of_timer))
+  print('Done!!!')
+  
+if __name__ == '__main__':
+  main()
