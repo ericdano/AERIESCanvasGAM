@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
-def main()
+def main():
   start_of_timer = timer()
   confighome = Path.home() / ".Acalanes" / "Acalanes.json"
   with open(confighome) as f:
