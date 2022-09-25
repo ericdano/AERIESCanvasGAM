@@ -50,7 +50,6 @@ connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_st
 engine = create_engine(connection_url)
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting data from AERIES')
 dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
-conn.close()
 pd.set_option('display.max_rows',dataframe1.shape[0]+1)
 #Now make a set of JUST the SIS_USER_IDs from Aeries
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Making SET of Aeries IDs')
