@@ -1,5 +1,7 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, gam, datetime, json, smtplib, logging
+import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from pathlib import Path
 from timeit import default_timer as timer
 from email.message import EmailMessage
@@ -12,33 +14,23 @@ from logging.handlers import SysLogHandler
 
 def GetAERIESData(thelogger):
     os.chdir('E:\\PythonTemp')
-    conn = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
+    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    engine = create_engine(connection_url)
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
-    cursor = conn.cursor()
-    sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+    sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
     for EM, SEM in sql_query.groupby('EM'):
         filename = str(EM).replace("@auhsdschools.org","")+"ALL.csv"
         filename = filename[1:]
         header = ["SEM"]
         SEM.to_csv(filename, index = False, header = False, columns = header)
-    conn.close()
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-    conn2 = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
-    cursor2 = conn2.cursor()
-    sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn2)
+    sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
     for EM, SEM in sql_query2.groupby(['EM','GR']):
         filename2 = str(EM).replace("(\'","").replace("@","").replace("\',","").replace(".org ","").replace(")","")+".csv"
         filename2 = filename2[1:]
         header = ["SEM"]
         SEM.to_csv(filename2, index = False, header = False, columns = header)
-    conn2.close()
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
 
 def main():
