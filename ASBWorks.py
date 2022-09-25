@@ -2,7 +2,9 @@
 # Built in support for this is busted in AERIES as of 5/2022
 # Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
 
-import pyodbc, io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from io import StringIO
 from pathlib import Path
 from ssl import SSLSocket
@@ -57,12 +59,10 @@ if __name__ == '__main__':
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
-    conn = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    cursor = conn.cursor()
-    sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""",conn)
+    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    engine = create_engine(connection_url)
+    sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""",engine)
     #print(sql_query)
     sql_query['School'].mask(sql_query['School'] == 1,'LLHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 2,'AHS1', inplace=True)
