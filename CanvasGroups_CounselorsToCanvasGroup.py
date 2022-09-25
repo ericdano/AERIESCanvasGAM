@@ -1,5 +1,7 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime
+import os, sys, shlex, subprocess, json, logging, smtplib, datetime
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from pathlib import Path
 from timeit import default_timer as timer
 from canvasapi import Canvas
@@ -40,12 +42,9 @@ msgbody = ''
 # at site group for the counselor
 CounselorCanvasGroups = pd.read_csv(CounselorCSV)
 
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
-#
-cursor = conn.cursor()
+connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
 #-----Canvas Info
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
@@ -62,9 +61,9 @@ for i in CounselorCanvasGroups.index:
   CanvasGroupID = CounselorCanvasGroups['CanvasGroupID'][i]
   msgbody += 'Matching for ' + CounselorEmail + ' - SIS ID->' + str(CounselorSISID) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
   if (GradeToGet == str('All')):
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',conn)
+    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',engine)
   else:
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + GradeToGet + '\'',conn)
+    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + GradeToGet + '\'',engine)
   #print('Matching for ' + CounselorEmail + ' Grade ' + str(GradeToGet) + ' CanvasGroupID ' + str(CanvasGroupID))
   #print(sql_query)
   thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Making SET of Aeries IDs')

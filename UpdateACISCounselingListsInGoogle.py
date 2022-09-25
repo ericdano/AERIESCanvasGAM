@@ -1,5 +1,7 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, gam, datetime, json, smtplib, logging
+import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from pathlib import Path
 from timeit import default_timer as timer
 from email.message import EmailMessage
@@ -29,28 +31,17 @@ os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
 counselors = [ ('acis','feinberg')]
 
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
+connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
 thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get ACIS ALL student emails')
-cursor = conn.cursor()
-sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
 for EM, SEM in sql_query.groupby('EM'):
     filename = str(EM).replace("@auhsdschools.org","")+"ALL.csv"
     filename = filename[1:]
     header = ["SEM"]
     SEM.to_csv(filename, index = False, header = False, columns = header)
-conn.close()
-thelogger.info('UpdateACISCounselingListsInGoogle->AERIES connection closed')
-conn2 = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
-cursor2 = conn2.cursor()
-thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get ACIS Student emails by grade level')
-sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn2)
-conn2.close()
+sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
 thelogger.info('UpdateACISCounselingListsInGoogle->AERIES connection closed')
 gam.initializeLogging()
 for EM, SEM in sql_query2.groupby(['EM','GR']):

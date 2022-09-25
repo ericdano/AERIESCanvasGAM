@@ -1,5 +1,7 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, smtplib, datetime
+import os, sys, shlex, subprocess, json, logging, smtplib, datetime
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from pathlib import Path
 from timeit import default_timer as timer
 from canvasapi import Canvas
@@ -43,13 +45,11 @@ account = canvas.get_account(1)
 # School, Counselor lastname, the Canvas Group ID, counselors ID in Aeries/Canvas
 counselors = [ ('acis','feinberg',10831,103276)]
 msgbody += 'Starting Canvas Counseler Groups for ACIS Script\n'
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
-cursor = conn.cursor()
+connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting data from AERIES')
-dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
+dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
 conn.close()
 pd.set_option('display.max_rows',dataframe1.shape[0]+1)
 #Now make a set of JUST the SIS_USER_IDs from Aeries
