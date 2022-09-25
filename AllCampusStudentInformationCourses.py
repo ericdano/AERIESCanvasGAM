@@ -76,7 +76,7 @@ def main():
         Newdf = df.loc[(df['SC'] == SiteClassesList['SiteID'][i]) & (df['GR'] == SiteClassesList['GradeLevel'][i])]
         section = canvas.get_section(SiteClassesList['SectionID'][i],include=["students"])
         #print(section.students)
-        #df1 = pd.DataFrame()
+        canvasdf = pd.DataFrame(columns=['ID'])
         for s in section.students:
             #print(s)
             #sprint(s['name'])
