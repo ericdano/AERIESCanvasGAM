@@ -22,7 +22,7 @@ def main():
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
   thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension')
-  stat = gam.CallGAMCommand(['gam','ou_and_children','"/Z-Former Students"','update','user','suspended','true'])
+  stat = gam.CallGAMCommand(['gam','ou_and_children','\"/Z-Former Students\"','update','user','suspended','true'])
   if stat != 0:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Weekly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   else:
