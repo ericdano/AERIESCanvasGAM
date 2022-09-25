@@ -78,11 +78,7 @@ def main():
         #print(section.students)
         canvasdf = pd.DataFrame(columns=['ID'])
         for s in section.students:
-            #print(s)
-            #sprint(s['name'])
-            #canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
-            #temprow = {'ID': s['sis_user_id']}
-            #tempDF = pd.DataFrame([temprow])
+            # Old call, Pandas 1.5 it is depreciated -> canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
