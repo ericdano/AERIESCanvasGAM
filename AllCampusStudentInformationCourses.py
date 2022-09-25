@@ -62,6 +62,7 @@ def main():
     AERIESData = GetAERIESData(thelogger)
     #print(AERIESData)
     df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
+    StudentsDF = pd.DataFrame(columns=['ID'])
 
     Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
@@ -74,16 +75,14 @@ def main():
         thelogger.info('AUHSD Catchall Course Update->' + 'Finding for ' + str(SiteClassesList['Site'][i]) + ' ' + str(SiteClassesList['CourseID'][i]) + ' ' + str(SiteClassesList['SectionID'][i]))
         Newdf = df.loc[(df['SC'] == SiteClassesList['SiteID'][i]) & (df['GR'] == SiteClassesList['GradeLevel'][i])]
         section = canvas.get_section(SiteClassesList['SectionID'][i],include=["students"])
-        #json_object = json.loads(section.students)
-        #print(type(json_object))
-        canvasdf = pd.DataFrame(columns=['ID'])
         #print(section.students)
         df1 = pd.DataFrame()
         for s in section.students:
             #print(s)
             #sprint(s['name'])
-            canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
-    
+            #canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
+            tempDF = pd.DataFrame({'ID':s['sis_user_id']})
+            canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
         aerieslist = set(pd.to_numeric(Newdf.ID))
         canvaslist = set(pd.to_numeric(canvasdf.ID))
