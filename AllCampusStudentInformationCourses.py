@@ -76,12 +76,13 @@ def main():
         Newdf = df.loc[(df['SC'] == SiteClassesList['SiteID'][i]) & (df['GR'] == SiteClassesList['GradeLevel'][i])]
         section = canvas.get_section(SiteClassesList['SectionID'][i],include=["students"])
         #print(section.students)
-        df1 = pd.DataFrame()
+        #df1 = pd.DataFrame()
         for s in section.students:
             #print(s)
             #sprint(s['name'])
             #canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
-            tempDF = pd.DataFrame({'ID':s['sis_user_id']})
+            temprow = {'ID': s['sis_user_id']}
+            tempDF = pd.DataFrame([temprow])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
         aerieslist = set(pd.to_numeric(Newdf.ID))
