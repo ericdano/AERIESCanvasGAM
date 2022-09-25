@@ -85,6 +85,7 @@ def main():
             tempDF = pd.DataFrame([temprow])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
+        print(canvasdf)
         aerieslist = set(pd.to_numeric(Newdf.ID))
         canvaslist = set(pd.to_numeric(canvasdf.ID))
         #diff sets
