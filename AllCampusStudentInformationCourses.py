@@ -1,6 +1,5 @@
 import pandas as pd
 import os, sys, shlex, subprocess, datetime, json, smtplib, logging
-import pyodbc
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from pathlib import Path
@@ -17,25 +16,23 @@ from canvasapi.exceptions import CanvasException
 #
 
 def GetAERIESData(thelogger):
+    #import pyodbc is depreciated in Pandas 1.5 moved to sqlalchemy
     #conn = pyodbc.connect('Driver={SQL Server};'
     #                    'Server=SATURN;'
     #                    'Database=DST22000AUHSD;'
     #                    'Trusted_Connection=yes;')
-    thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
     #cursor = conn.cursor()
     #sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',conn)
     # OLD QUERY sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
-
     #conn.close()
+    thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
     connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',engine)
-
     thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
     sql_query.sort_values(by=['SC'])
     return sql_query
-
 
 def main():
     start_of_timer = timer()
