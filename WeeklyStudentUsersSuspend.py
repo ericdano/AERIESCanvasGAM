@@ -1,6 +1,7 @@
 import pandas as pd
 import os, sys, shlex, gam, subprocess, json, logging, smtplib, datetime
 from pathlib import Path
+from timeit import default_timer as timer
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
