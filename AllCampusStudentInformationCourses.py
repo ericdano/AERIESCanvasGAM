@@ -81,8 +81,9 @@ def main():
             #print(s)
             #sprint(s['name'])
             #canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
-            temprow = {'ID': s['sis_user_id']}
-            tempDF = pd.DataFrame([temprow])
+            #temprow = {'ID': s['sis_user_id']}
+            #tempDF = pd.DataFrame([temprow])
+            tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
         print(canvasdf)
