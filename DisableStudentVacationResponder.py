@@ -16,7 +16,7 @@ def main():
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
-    configs = json.load(f)
+        configs = json.load(f)
     #Logging
     thelogger = logging.getLogger('MyLogger')
     thelogger.setLevel(logging.DEBUG)
