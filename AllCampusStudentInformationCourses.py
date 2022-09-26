@@ -12,19 +12,25 @@ from logging.handlers import SysLogHandler
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
 
-# This scrip pull ALL students from AERIES from a site, and puts them into a Canvas Group
-#
+"""
+This script pulls ALL students from AERIES. Sorts them by site and grade, and puts them into a Canvas Course for the site,
+and section in that course by Grade
 
+"""
 def GetAERIESData(thelogger):
-    #import pyodbc is depreciated in Pandas 1.5 moved to sqlalchemy
-    #conn = pyodbc.connect('Driver={SQL Server};'
-    #                    'Server=SATURN;'
-    #                    'Database=DST22000AUHSD;'
-    #                    'Trusted_Connection=yes;')
-    #cursor = conn.cursor()
-    #sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',conn)
-    # OLD QUERY sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
-    #conn.close()
+    """
+    pyodbc is depreciated in Pandas 1.5 moved to sqlalchemy
+
+    conn = pyodbc.connect('Driver={SQL Server};'
+                        'Server=SATURN;'
+                        'Database=DST22000AUHSD;'
+                        'Trusted_Connection=yes;')
+    cursor = conn.cursor()
+    sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',conn)
+     OLD QUERY sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
+    conn.close()
+    """
+
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
     connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
@@ -58,9 +64,11 @@ def main():
     msg['To'] = configs['SendInfoEmailAddr']
     msg['Subject'] = "Canvas Catch-all Informational Course Update"
     msgbody = ''
-    # The counseling CSV has counselors email address, there sis_id, canvas group and grade
-    # Grade can have a field All in it that it will then place into a All students
-    # at site group for the counselor
+    """
+    The counseling CSV has counselors email address, there sis_id, canvas group and grade
+    Grade can have a field All in it that it will then place into a All students
+    at site group for the counselor
+    """
     SiteClassesList = pd.read_csv(SiteClassesCSV)
     WasThereAnError = False
     #populate a table
@@ -96,9 +104,11 @@ def main():
         #
         print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
         msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
-        # First go through and REMOVE them from the course and section
-        # If they are misaligned because they are in the wrong grade, it will add them back to the top course again regardless
-#        for currentuserid in studentsincanvasnotinaeries:
+        """
+         First go through and REMOVE them from the course and section
+         If they are misaligned because they are in the wrong grade, it will add them back to the top course again regardless
+        for currentuserid in studentsincanvasnotinaeries:
+        """
         course = canvas.get_course(SiteClassesList['CourseID'][i])
         enrollments = course.get_enrollments(type='StudentEnrollment')
         print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
