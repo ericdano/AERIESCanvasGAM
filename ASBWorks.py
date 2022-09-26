@@ -1,7 +1,3 @@
-# Python 3.9+ script to pull data from AERIES and to send it to ASB Works.
-# Built in support for this is busted in AERIES as of 5/2022
-# Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
-
 import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
@@ -16,10 +12,16 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
+"""
+ Python 3.9+ script to pull data from AERIES and to send it to ASB Works.
+ Built in support for this is busted in AERIES as of 5/2022
+ Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
+"""
+
+
 class ReusedSslSocket(SSLSocket):
     def unwrap(self):
         pass
-
 
 class MyFTP_TLS(ftplib.FTP_TLS):
     #Explicit FTPS, with shared TLS session
