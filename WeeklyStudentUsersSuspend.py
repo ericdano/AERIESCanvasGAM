@@ -7,6 +7,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
+"""
+Python Script to suspend all users in a certain OU
+In this case, it suspends all the users in OU Z-Former Students
+and any users in any sub OUs
+"""
+
 def main():
   start_of_timer = timer()
   confighome = Path.home() / ".Acalanes" / "Acalanes.json"
