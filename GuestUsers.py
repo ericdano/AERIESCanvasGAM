@@ -3,10 +3,10 @@ from xkcdpass import xkcd_password as xp
 import smtplib, datetime, shlex, subprocess, sys, os
 import pandas as pd
 import pendulum, random
-
-#This was a script used during COVID lockdown that would rotate the passwords on guest Zoom Accounts every week, and mail the passwords to the admins and techs at each site
-#Not used after the start of the 2021-2022 school year
-
+"""
+ This was a script used during COVID lockdown that would rotate the passwords on guest Zoom Accounts every week, and mail the passwords to the admins and techs at each site
+ Not used after the start of the 2021-2022 school year and going forward
+"""
 campuses = [('ahs','tbell@auhsdschools.org,apowers@auhsdschools.org,mplant@auhsdschools.org,jlarsen@auhsdschools.org,potoole@auhsdschools.org,tcatanesi@auhsdschools.org',''),
              ('chs','jwalker@auhsdschools.org,llee@auhsdschools.org,vknight@auhsdschools.org,mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org',''),
              ('llhs','tbenson@auhsdschools.org,ageotina@auhsdschools.org,jhernandez@auhsdschools.org,dgranzotto@auhsdschools.org,bchastain@auhsdschools.org,tvu@auhsdschools.org,mmcewen@auhsdschools.org',''),
