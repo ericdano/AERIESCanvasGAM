@@ -12,6 +12,12 @@ from email.mime.image import MIMEImage
 from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 import arrow
 
+"""
+
+Look for Account Expiration date, and if found, disable AD account, Canvas Account, and Google Account
+
+"""
+
 def getConfigs():
   # Function to get passwords and API keys for Acalanes Canvas and stuff
   confighome = Path.home() / ".Acalanes" / "Acalanes.json"

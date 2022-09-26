@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, gam, datetime, json, smtplib, logging
+import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
 from pathlib import Path
 import glob
 from timeit import default_timer as timer
