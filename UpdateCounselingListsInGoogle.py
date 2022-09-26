@@ -10,17 +10,21 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
-#This script finds counselors and their assigned students in AERIES, then updates Google Group Annouce only lists with any student changes
-
+"""
+This script finds counselors and their assigned students in AERIES, then updates Google Groups lists with any student changes
+Counselors are the Owners of the list. The GAM commands updates the groups with whatever is in the CSV file
+"""
 def GetAERIESData(thelogger):
     os.chdir('E:\\PythonTemp')
-    # pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
-    #conn = pyodbc.connect('Driver={SQL Server};'
-    #                    'Server=SATURN;'
-    #                    'Database=DST22000AUHSD;'
-    #                    'Trusted_Connection=yes;')
+    """
+     pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
+    conn = pyodbc.connect('Driver={SQL Server};'
+                        'Server=SATURN;'
+                        'Database=DST22000AUHSD;'
+                        'Trusted_Connection=yes;')
+    cursor = conn.cursor()
+    """
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
-    #cursor = conn.cursor()
     connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -31,12 +35,15 @@ def GetAERIESData(thelogger):
         header = ["SEM"]
         SEM.to_csv(filename, index = False, header = False, columns = header)
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-    #conn2 = pyodbc.connect('Driver={SQL Server};'
-    #                    'Server=SATURN;'
-    #                    'Database=DST22000AUHSD;'
-    #                    'Trusted_Connection=yes;')
+    """
+     pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
+    conn = pyodbc.connect('Driver={SQL Server};'
+                        'Server=SATURN;'
+                        'Database=DST22000AUHSD;'
+                        'Trusted_Connection=yes;')
+    cursor = conn.cursor()
+    """
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
-    #cursor2 = conn2.cursor()
     sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
     for EM, SEM in sql_query2.groupby(['EM','GR']):
         filename2 = str(EM).replace("(\'","").replace("@","").replace("\',","").replace(".org ","").replace(")","")+".csv"
