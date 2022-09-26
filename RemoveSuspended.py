@@ -7,12 +7,15 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+"""
+Basically, a Windows version of this crontab job
+except it is Python, does some logging, and emails what happens (crontab was doing that though.....)
 
 # /bin/sh
 # Shell script remove suspended users from groups
 # alias gam="/usr/local/gamadv-xtd3/gam"
 # /usr/local/gamadv-xtd3/gam print users query isSuspended=true | /usr/local/gamadv-xtd3/gam csv - gam user ~primaryEmail delete groups
-
+"""
 if __name__ == '__main__':
 # One time initialization
   start_of_timer = timer()
