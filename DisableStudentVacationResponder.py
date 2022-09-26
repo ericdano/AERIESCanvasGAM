@@ -27,7 +27,7 @@ def main():
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
     thelogger.info('DisableStudentVacationResponder->Running GAM')
-    stat1 = gam.CallGamCommand(['gam','ou_and_children','/Students','vacation','off'])
+    stat1 = gam.CallGAMCommand(['gam','ou_and_children','/Students','vacation','off'])
 #    gamstring2 = "E:\\GAMADV-XTD3\\gam.exe ou_and_children '/Students' vacation off"
     msgbody = 'Turned off vacation responders on STUDENT OU. Gam Status->' + str(stat1) + '\n' 
     msgbody+='Done!'
