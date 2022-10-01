@@ -1,6 +1,8 @@
 import pandas as pd
 import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
 from pathlib import Path
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 import glob
 from timeit import default_timer as timer
 from email.message import EmailMessage
@@ -29,22 +31,26 @@ os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
 counselors = [ ('acis','feinberg')]
 
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
-cursor = conn.cursor()
+thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
+connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
 thelogger.info('UpdateACISStuParentListsInGoogle->Connecting to AERIES to get Parental emails')
-sql_query1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.PEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 AND STU.GR < 12 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',conn)
-conn.close()
+sql_query1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.PEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 AND STU.GR < 12 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
 thelogger.info('UpdateACISStuParentListsInGoogle->Closed AERIES connection')
 sql_query1.drop(sql_query1.columns.difference(['SEM',
                                               'PEM']), axis=1,inplace=True)
 c_name = ["email"]
 listylist = pd.DataFrame(columns = c_name)
 for index, row in sql_query1.iterrows():
+    """
+    Pandas 1.5 depreciates df.append.....switched to pd.concat
     listylist = listylist.append({'email':row['SEM']},ignore_index=True)
     listylist = listylist.append({'email':row['PEM']},ignore_index=True)
+    """
+    tempdf1 = pd.DataFrame([{'email':row['SEM']},ignore_index=True])
+    tempdf2 = pd.DataFrame([{'email':row['PEM']},ignore_index=True])
+    listlylist = pd.concat([listylist,tempdf1,tempdf2], axis=0, ignore_index=True)
 header = ["email"]
 listylist.to_csv('acisstudentparents.csv',index = False, header = False, columns = header)
 thelogger.info('UpdateACISStuParentListsInGoogle->Running GAM')
