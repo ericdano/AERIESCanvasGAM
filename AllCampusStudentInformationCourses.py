@@ -115,9 +115,8 @@ def main():
         thelogger.info('AUHSD Catchall Course Update->Deleting Users in Canvas but not in AERIES')
         if len(studentsincanvasnotinaeries):
             for e in enrollments:
-                #print(str(e.sis_user_id) + ',' + str(e.id))
                 if e.sis_user_id is None:
-                    print('Null in user id->' + str(e.id))
+                    print('Null in user id->' + str(e.id)) + ' ' + str(e.sis_user_id)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Deleting student->' + str(e.sis_user_id))
@@ -126,7 +125,7 @@ def main():
                         e.deactivate(task="delete") 
                     except CanvasException as exc1:
                         print('Error->' + str(exc1))
-                        msgbody += "Error->" + str(exc1) 
+                        msgbody += "Error->" + str(exc1) + str(e.sis_user_id)
                         thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas eeor->') + str(exc1)
                 else:
                     pass
