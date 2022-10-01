@@ -42,15 +42,7 @@ sql_query1.drop(sql_query1.columns.difference(['SEM',
                                               'PEM']), axis=1,inplace=True)
 c_name = ["email"]
 listylist = pd.DataFrame(columns = c_name)
-for index, row in sql_query1.iterrows():
-    """
-    Pandas 1.5 depreciates df.append.....switched to pd.concat
-    listylist = listylist.append({'email':row['SEM']},ignore_index=True)
-    listylist = listylist.append({'email':row['PEM']},ignore_index=True)
-    """
-    tempdf1 = pd.DataFrame([{'email':row['SEM']}])
-    tempdf2 = pd.DataFrame([{'email':row['PEM']}])
-    listlylist = pd.concat([listylist,tempdf1,tempdf2], axis=0, ignore_index=True)
+listylist["email"] = pd.concat([sql_query1['SEM'],sql_query1['PEM']],axis=0, ignore_index=True)
 header = ["email"]
 listylist.to_csv('acisstudentparents.csv',index = False, header = False, columns = header)
 thelogger.info('UpdateACISStuParentListsInGoogle->Running GAM')
