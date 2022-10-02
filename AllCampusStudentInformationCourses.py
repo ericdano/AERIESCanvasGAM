@@ -92,8 +92,9 @@ def main():
         canvasdf = pd.DataFrame(columns=['ID'])
         for s in section.students:
             # Old call, Pandas 1.5 it is depreciated -> canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
-            tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
-            canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+            #tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
+            #canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+            canvasdf = pd.concat([canvasdf,{'ID': s['sis_user_id']}], axis=0, ignore_index=True)
         #create sets
         print(canvasdf)
         aerieslist = set(pd.to_numeric(Newdf.ID))
