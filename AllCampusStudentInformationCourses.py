@@ -95,7 +95,7 @@ def main():
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
-        print(canvasdf)
+        #print(canvasdf)
         aerieslist = set(pd.to_numeric(Newdf.ID))
         canvaslist = set(pd.to_numeric(canvasdf.ID))
         #diff sets
@@ -117,7 +117,7 @@ def main():
             for e in enrollments:
                 if e.sis_user_id is None:
                     print('Null in user id->' + str(e.id))
-                    print(e)
+                    #print(e)
                     msgbody += "Error->Null in user id->" + str(e.id)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
