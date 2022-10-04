@@ -112,15 +112,15 @@ def main():
         course = canvas.get_course(SiteClassesList['CourseID'][i])
         enrollments = course.get_enrollments(type='StudentEnrollment')
         print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
-        thelogger.info('AUHSD Catchall Course Update->Deleting Users in Canvas but not in AERIES')
+        thelogger.info('AUHSD Catchall Course Update->Removing Users in Canvas but not in AERIES')
         if len(studentsincanvasnotinaeries):
             for e in enrollments:
                 if e.sis_user_id is None:
-                    print('Null in user id->' + str(e.id)) + ' sis_user_id->' + str(e.sis_user_id)
+                    print('Null in user id->' + str(e.id))
                     print(e)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
-                    print('Deleting student->' + str(e.sis_user_id))
+                    print('Removing student->' + str(e.sis_user_id))
                     thelogger.info('AUHSD Catchall Course Update-> Deleting student->' + str(e.sis_user_id))
                     try:
                         e.deactivate(task="delete") 
@@ -129,6 +129,7 @@ def main():
                         msgbody += "Error->" + str(exc1) + str(e.sis_user_id)
                         thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas eeor->') + str(exc1)
                 else:
+                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type' + str(e.id))
                     pass
         else:
             print('No students in section that are in Canvas but not in Aeries')
