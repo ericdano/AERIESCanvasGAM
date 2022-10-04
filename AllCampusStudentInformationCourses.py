@@ -116,7 +116,8 @@ def main():
         if len(studentsincanvasnotinaeries):
             for e in enrollments:
                 if e.sis_user_id is None:
-                    print('Null in user id->' + str(e.id)) + ' ' + str(e.sis_user_id)
+                    print('Null in user id->' + str(e.id)) + ' sis_user_id->' + str(e.sis_user_id)
+                    print(e)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Deleting student->' + str(e.sis_user_id))
