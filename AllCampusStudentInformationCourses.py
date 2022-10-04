@@ -118,6 +118,7 @@ def main():
                 if e.sis_user_id is None:
                     print('Null in user id->' + str(e.id))
                     print(e)
+                    msgbody += "Error->Null in user id->" + str(e.id)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Removing student->' + str(e.sis_user_id))
