@@ -132,9 +132,15 @@ def main():
       # so anything bigger than that is an account that should be properly disabled
       accountExpiresDate = arrow.get(str(user['attributes']['accountExpires']))
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
+        """
         df = df.append({'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
                           'domain': 'zeus'},ignore_index=True)
+        """
+        tempDF = pd.DataFrame([{'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
+                          'domain': 'zeus'}])
+        df = pd.concat([df,tempDF], axis=0, ignore_index=True)
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
   msgbody += 'Checking domain server Paris....\n'
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
