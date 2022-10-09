@@ -42,6 +42,7 @@ def GetAERIESData(thelogger):
 
 def main():
     start_of_timer = timer()
+    WasThereAnError = False  
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
@@ -62,30 +63,28 @@ def main():
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
-    msg['Subject'] = "Canvas Catch-all Informational Course Update"
     msgbody = ''
     """
-    The counseling CSV has counselors email address, there sis_id, canvas group and grade
+    The Site CSV has the Site Abbreviation, SiteID, Canvas CourseID, Grade Level, and Canvas Section ID
+    Site,SiteID,CourseID,GradeLevel,SectionID
     Grade can have a field All in it that it will then place into a All students
     at site group for the counselor
     """
     SiteClassesList = pd.read_csv(SiteClassesCSV)
-    WasThereAnError = False
     #populate a table
     AERIESData = GetAERIESData(thelogger)
     #print(AERIESData)
     df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
     StudentsDF = pd.DataFrame(columns=['ID'])
-
     Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     thelogger.info('AUHSD Catchall Course Update->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
     for i in SiteClassesList.index:
-        print('Finding for ' + str(SiteClassesList['Site'][i]) + ' ' + str(SiteClassesList['CourseID'][i]) + ' ' + str(SiteClassesList['SectionID'][i]))
-        msgbody += 'Finding for ' + str(SiteClassesList['Site'][i]) + ' ' + str(SiteClassesList['CourseID'][i]) + ' ' + str(SiteClassesList['SectionID'][i]) + '\n'
-        thelogger.info('AUHSD Catchall Course Update->' + 'Finding for ' + str(SiteClassesList['Site'][i]) + ' ' + str(SiteClassesList['CourseID'][i]) + ' ' + str(SiteClassesList['SectionID'][i]))
+        print('Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' +  str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]))
+        msgbody += 'Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' +  str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]) + '\n'
+        thelogger.info('AUHSD Catchall Course Update->' + 'Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' + str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]))
         Newdf = df.loc[(df['SC'] == SiteClassesList['SiteID'][i]) & (df['GR'] == SiteClassesList['GradeLevel'][i])]
         section = canvas.get_section(SiteClassesList['SectionID'][i],include=["students"])
         #print(section.students)
@@ -102,13 +101,13 @@ def main():
         studentsinaeriesnotincanvas = aerieslist - canvaslist
         studentsincanvasnotinaeries = canvaslist - aerieslist
         #
-        print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
-        msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
         """
          First go through and REMOVE them from the course and section
          If they are misaligned because they are in the wrong grade, it will add them back to the top course again regardless
         for currentuserid in studentsincanvasnotinaeries:
         """
+        print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
+        msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
         course = canvas.get_course(SiteClassesList['CourseID'][i])
         enrollments = course.get_enrollments(type='StudentEnrollment')
         print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
@@ -120,6 +119,7 @@ def main():
                     #print(e)
                     msgbody += "Error->Null in user id->" + str(e.id)
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
+                    WasThereAnError = True
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Removing student->' + str(e.sis_user_id))
                     thelogger.info('AUHSD Catchall Course Update-> Deleting student->' + str(e.sis_user_id))
@@ -129,8 +129,10 @@ def main():
                         print('Error->' + str(exc1))
                         msgbody += "Error->" + str(exc1) + str(e.sis_user_id)
                         thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas eeor->') + str(exc1)
+                        WasThereAnError = True
                 else:
                     thelogger.error('AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type' + str(e.id))
+                    WasThereAnError = True
                     pass
         else:
             print('No students in section that are in Canvas but not in Aeries')
@@ -161,11 +163,16 @@ def main():
                     print('Error->' + str(exc2))
                     msgbody += "Error->" + str(exc2)
                     thelogger.error('AUHSD Catchall Course Update-> Error looking up user sis_user_id->' + str(currentuserid) + ' Canvas error ' + str(exc2))
+                    WasThereAnError = True
         else:
             print('No students in section that are in Aeries but not in Canvas')
             msgbody += 'No students in section that are in Aeries but not in Canvas\n'
             thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Aeries but not in Canvas')            
     end_of_timer = timer()
+    if WasThereAnError == True:
+        msg['Subject'] = "ERROR!! -> Canvas Catch-all Informational Course Update"
+    else:
+        msg['Subject'] = "Canvas Catch-all Informational Course Update"
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
