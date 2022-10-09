@@ -117,29 +117,30 @@ def main():
                 if e.sis_user_id is None:
                     print('Null in user id->' + str(e.id))
                     #print(e)
-                    msgbody += "Error->Null in user id->" + str(e.id)
+                    msgbody += "Error->Null in user id->" + str(e.id) + '\n'
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                     WasThereAnError = True
                 elif int(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Removing student->' + str(e.sis_user_id))
+                    msgbody += 'Removing student->' + str(e.sis_user_id) + '\n'
                     thelogger.info('AUHSD Catchall Course Update-> Deleting student->' + str(e.sis_user_id))
                     try:
                         e.deactivate(task="delete") 
                     except CanvasException as exc1:
                         print('Error->' + str(exc1))
-                        msgbody += "Error->" + str(exc1) + str(e.sis_user_id)
-                        thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas eeor->') + str(exc1)
+                        msgbody += "Error->" + str(exc1) + str(e.sis_user_id) +  + '\n'
+                        thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas error->') + str(exc1)
                         WasThereAnError = True
                 else:
-                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type' + str(e.id))
+                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type ->' + str(e.id))
+                    msgbody += 'AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type ->' + str(e.id) + '\n'
                     WasThereAnError = True
                     pass
         else:
             print('No students in section that are in Canvas but not in Aeries')
             msgbody += 'No students in section that are in Canvas but not in Aeries\n'
             thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Canvas but not in Aeries')
-
-        print('\n\n')        
+        print('\n')        
         #Enroll Student into Canvas Section
         print('Students in Aeries not in Canvas' + str(studentsinaeriesnotincanvas))
         msgbody += 'Students in Aeries not in Canvas' + str(studentsinaeriesnotincanvas) + '\n'
@@ -161,7 +162,7 @@ def main():
                     )
                 except CanvasException as exc2:
                     print('Error->' + str(exc2))
-                    msgbody += "Error->" + str(exc2)
+                    msgbody += 'Error->' + str(exc2) + '\n'
                     thelogger.error('AUHSD Catchall Course Update-> Error looking up user sis_user_id->' + str(currentuserid) + ' Canvas error ' + str(exc2))
                     WasThereAnError = True
         else:
