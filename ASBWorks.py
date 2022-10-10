@@ -100,6 +100,7 @@ if __name__ == '__main__':
             thelogger.error('Update ASB Works->Error Uploading to FTPS')
     ftp.quit()
     os.remove(dest_filename)
+    msgbody += str(len(sql_query.index)) + ' of students in file uploaded.\n'
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
         msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
