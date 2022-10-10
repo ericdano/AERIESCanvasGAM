@@ -1,6 +1,6 @@
 from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging, gam, smtplib, datetime
+import os, sys, shlex, subprocess, json, logging, gam, smtplib, datetime
 from pathlib import Path
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -75,6 +75,9 @@ def modifyADUsers(dataframe,configs):
     # This is how you disable an account, you modify it to be 2 rather than 512
 
 def OLDgetADSearch(domainserver,baseou,configs):
+  '''
+  Not working. Keep for historic reference
+  '''
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
   userName = 'tech'
@@ -123,8 +126,10 @@ def main():
   users = getADSearch('zeus','AUHSD Staff',configs)
  # print(users.entries)
   df = pd.DataFrame(columns = ['DN','email','domain'])
-  # we love Pandas.....Express and the Dataframe. 
-  # create a dataframe to put all the LDAP search results in so we can process them
+  """
+  I love Pandas.....Express and the Dataframe. 
+  create a dataframe to put all the LDAP search results in so we can process them
+  """
   for user in users:  
     if (user['attributes']['userAccountControl'] == 512):
       # Expired accounts show as normal accounts, but you have to find the date
@@ -152,9 +157,15 @@ def main():
       # so anything bigger than that is an account that should be properly disabled
       accountExpiresDate = arrow.get(str(user['attributes']['accountExpires']))
       if (accountExpiresDate < arrow.utcnow()) and (accountExpiresDate > arrow.get('1601-01-01T00:00:00+00:00')):
+        tempDF2 = pd.DataFrame([{'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
+                          'domain': 'paris'}])
+        df = pd.concat([df,tempDF2], axis=0, ignore_index=True)
+        """
         df = df.append({'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
                           'domain': 'paris'},ignore_index=True)
+        """
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})\n"
   if df.empty:
     msgbody += 'No Accounts are expired. Nothing to do. We will try again later....\n'
