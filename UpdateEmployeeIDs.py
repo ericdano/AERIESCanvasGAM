@@ -21,9 +21,9 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
 cursor = conn.cursor()                 
-dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'kdenton@auhsdschools.org\' ORDER BY LN',conn)
-#print(dataframe1)
-
+dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'zlozano@auhsdschools.org\' ORDER BY LN',conn)
+print(dataframe1)
+"""
 serverName = 'LDAP://zeus'
 domainName = 'AUHSD'
 userName = 'tech'
@@ -91,3 +91,4 @@ for i in conn.entries:
 #print(user[0].sortable_name)
 #myuser = aduser.ADUser.from_cn("edannewitz")
 #print(myuser)
+"""
