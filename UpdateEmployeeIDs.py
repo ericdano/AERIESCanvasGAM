@@ -1,6 +1,8 @@
 from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
-import os, sys, pyodbc, shlex, subprocess, json, logging
+import os, sys, shlex, subprocess, json, logging
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 from pathlib import Path
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -16,13 +18,20 @@ import arrow
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
+connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
+"""
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=SATURN;'
                       'Database=DST22000AUHSD;'
                       'Trusted_Connection=yes;')
-cursor = conn.cursor()                 
-dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'zlozano@auhsdschools.org\' ORDER BY LN',conn)
+cursor = conn.cursor()     
+"""            
+dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'sshawn@auhsdschools.org\' ORDER BY LN',engine)
+
 print(dataframe1)
+
 """
 serverName = 'LDAP://zeus'
 domainName = 'AUHSD'
