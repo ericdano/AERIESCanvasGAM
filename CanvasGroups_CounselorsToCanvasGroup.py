@@ -133,7 +133,6 @@ for i in CounselorCanvasGroups.index:
       print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
       msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
       thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
-conn.close()
 thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
