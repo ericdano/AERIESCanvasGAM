@@ -122,6 +122,11 @@ def main():
   global msgbody
   configs = getConfigs()
   configsAE = getConfigsAE()
+  thelogger = logging.getLogger('MyLogger')
+  thelogger.setLevel(logging.DEBUG)
+  handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+  thelogger.addHandler(handler)
+  thelogger.info('ExpireADAccounts->Connecting to Zeus...')
   msgbody += 'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs)
  # print(users.entries)
@@ -147,6 +152,7 @@ def main():
                           'domain': 'zeus'}])
         df = pd.concat([df,tempDF], axis=0, ignore_index=True)
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
+        thelogger.info('ExpireADAccounts->' + f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})")
   msgbody += 'Checking domain server Paris....\n'
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
 # Now check the staff domain
