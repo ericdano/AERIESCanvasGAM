@@ -55,13 +55,13 @@ def DisableCanvasLogins(dataframe,configs,configsae):
         try:  
           user.edit(user={'event': 'suspend'})
           msgbody += 'Disabled Canvas for ->' + str(dataframe['email'][d]) + '\n'  
+          thelogger.info('ExpireADAccounts->Disabled Canvas for ->' + str(dataframe['email'][d]))
         except CanvasException as g:
-          print(g)
           msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(g) + '\n'  
+          thelogger.info('ExpireADAccounts->Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(g))
       except CanvasException as e:
-        print(e)
         msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e) + '\n'  
-
+        thelogger.info('ExpireADAccounts->Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e))
 def modifyADUsers(dataframe,configs):
   for d in dataframe.index:
     serverName = 'LDAP://' + dataframe['domain'][d]
@@ -73,7 +73,7 @@ def modifyADUsers(dataframe,configs):
     conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
     conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
     # This is how you disable an account, you modify it to be 2 rather than 512
-
+    thelogger.info('ExpireADAccounts->Disabled AD for user')
 def OLDgetADSearch(domainserver,baseou,configs):
   '''
   Not working. Keep for historic reference
@@ -115,11 +115,12 @@ def DisableGoogle(dataframe):
       stat = gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
       if stat != 0:
         msgbody += 'Error with Google suspending ' + str(dataframe['email'][d]) + '\n'
+        thelogger.info('ExpireADAccounts->Error with Google suspending ' + str(dataframe['email'][d]))
       else:
         msgbody += 'Suspended Google Account->' + str(dataframe['email'][d]) + '\n'
-
+        thelogger.info('ExpireADAccounts->Suspended Google Account->' + str(dataframe['email'][d]))
 def main():
-  global msgbody
+  global msgbody,thelogger
   configs = getConfigs()
   configsAE = getConfigsAE()
   thelogger = logging.getLogger('MyLogger')
@@ -154,6 +155,7 @@ def main():
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
         thelogger.info('ExpireADAccounts->' + f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})")
   msgbody += 'Checking domain server Paris....\n'
+  thelogger.info('ExpireADAccounts->Connecting to Paris...')
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
 # Now check the staff domain
   for user in users2:
@@ -167,14 +169,11 @@ def main():
                           'email': str(user['attributes']['mail']),
                           'domain': 'paris'}])
         df = pd.concat([df,tempDF2], axis=0, ignore_index=True)
-        """
-        df = df.append({'DN': str(user['dn']),
-                          'email': str(user['attributes']['mail']),
-                          'domain': 'paris'},ignore_index=True)
-        """
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})\n"
+        thelogger.info('ExpireADAccounts->' + f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})")
   if df.empty:
     msgbody += 'No Accounts are expired. Nothing to do. We will try again later....\n'
+    thelogger.info('ExpireADAccounts->No Accounts found that are expiring')
   else:
     modifyADUsers(df,configs)
     DisableGoogle(df)
