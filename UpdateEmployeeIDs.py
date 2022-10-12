@@ -29,13 +29,14 @@ def getADSearch(domainserver,baseou,configs):
   with Connection(Server(serverName),
                   user='{0}\\{1}'.format(domainName, userName), 
                   password=password, 
-                  auto_bind=True) as conn:
+                  auto_bind=True,
+                  return_empty_attributes=False) as conn:
 
     results = conn.extend.standard.paged_search(search_base= base, 
                                              search_filter = '(objectclass=user)', 
                                              search_scope=SUBTREE,
                                              attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','employeeID'],
-                                             get_operational_attributes=False, paged_size=15)
+                                             get_operational_attributes=False,paged_size=15)
   return results
 
 def main():
@@ -56,16 +57,18 @@ def main():
   msgbody += 'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs)
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
-  print(users)
-  print(users2)
   for user in users:
-    print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['employeeID']))
-    if user['attributes']['employeeID'] == '':
-      print('Found one') 
+    if "auhsdschools.org" in str(user['attributes']['mail']):
+      print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['mail']) + ' ' + str(user['attributes']['employeeID']))
+      if user['attributes']['employeeID'] is None:
+        print('Found one') 
+      print(type(user['attributes']['employeeID']))
   for user in users2:
-    print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['employeeID']))
-    if user['attributes']['employeeID'] == '':
-      print('Found another')
+    if "auhsdschools.org" in str(user['attributes']['mail']):
+      print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['mail']) + ' ' + str(user['attributes']['employeeID']))
+      if len(str(user['attributes']['employeeID'])) == 0:
+        print('Found another')
+      print(type(user['attributes']['employeeID']))
 
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
