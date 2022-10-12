@@ -1,100 +1,76 @@
 from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
-import os, sys, shlex, subprocess, json, logging
+import os, sys, shlex, subprocess, json, logging, smtplib, datetime
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
-from pathlib import Path
-from canvasapi import Canvas
-from canvasapi.exceptions import CanvasException
 from pathlib import Path
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection
-from datetime import datetime
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
+from logging.handlers import SysLogHandler
 import arrow
 
-confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-with open(confighome) as f:
-  configs = json.load(f)
-connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
-connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-engine = create_engine(connection_url)
-        
-#dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'sshawn@auhsdschools.org\' ORDER BY LN',engine)
-dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
 
-print(dataframe1)
-#dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
-print(dataframe1[dataframe1['HRID'] == ''].index)
+def getConfigs():
+  # Function to get passwords and API keys for Acalanes Canvas and stuff
+  confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+  with open(confighome) as f:
+    configs = json.load(f)
+  return configs
 
-"""
-serverName = 'LDAP://zeus'
-domainName = 'AUHSD'
-userName = 'tech'
-password = configs['ADPassword']
-base = 'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us'
+def getADSearch(domainserver,baseou,configs):
+  serverName = 'LDAP://' + domainserver
+  domainName = 'AUHSD'
+  userName = 'tech'
+  password = configs['ADPassword']
+  base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
+  with Connection(Server(serverName),
+                  user='{0}\\{1}'.format(domainName, userName), 
+                  password=password, 
+                  auto_bind=True) as conn:
 
-server = Server(serverName)
-conn = Connection(server, read_only=True, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
+    results = conn.extend.standard.paged_search(search_base= base, 
+                                             search_filter = '(objectclass=user)', 
+                                             search_scope=SUBTREE,
+                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','EmployeeID'],
+                                             get_operational_attributes=False, paged_size=15)
+  return results
 
-conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
-smaller = 0
-bigger = 0
-for i in conn.entries:
-  if (i.userAccountControl == 512):
-    # Expired accounts show as normal accounts, but you have to find the date
-    # and a normal account has the accountExpires date set to 1601-01-01
-    # so anything bigger than that is an account that should be properly disabled
-    d = arrow.get(str(i.accountExpires))
-    if (d<arrow.utcnow()) and (d>arrow.get('1601-01-01T00:00:00+00:00')):
-      print(i.sAMAccountName)
-      print(i.displayName)
-      print(i.mail)
-      #print(i.userAccountControl)
-      print(d)
-      print('-----')
+def main():
+  global msgbody,thelogger
+  configs = getConfigs()
+  thelogger = logging.getLogger('MyLogger')
+  thelogger.setLevel(logging.DEBUG)
+  handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+  thelogger.addHandler(handler)
+  connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+  connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+  engine = create_engine(connection_url)      
+  #dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'sshawn@auhsdschools.org\' ORDER BY LN',engine)
+  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
 
-  #if (i.userAccountControl == 512) and (d < arrow.utcnow()):
-  #  print(str(i.sAMAccountName) + ' ' + str(i.displayName) + ' ' + str(i.mail) + ' ' + str(i.userAccountControl) + ' ' + str(i.accountExpires))
-  #  print('------') 
-    #print('USER = {0} : {1} : {2}'.format(i.sAMAccountName.values[0], i.displayName.values[0], i.userAccountControl.values[0]))
-  #if i.userAccountControl == 514:
-  #  print(i.sAMAccountName)
-  #  print(i.displayName)
-  #  print(i.mail)
-  #  print(i.userAccountControl)
-  #  print('------')
-  #if i.displayName == 'Karen Findlay':
-  #  print(i.sAMAccountName)
-  #  print(i.displayName)
-  #  print(i.mail)
-  #  print(i.userAccountControl)
-   # print(i.accountExpires)
-  #  print('------') 
-    #print(i['mail'])
-  #print(i['enabled'])
-#q = adquery.ADQuery()
-
-#q.execute_query(
-#    attributes = ["distinguishedName", "description"],
-#    where_clause = "objectClass = '*'",
-#    base_dn = "OU=AUHSD Staff, DC=acalanes, DC=k12, DC=ca, DC=us"
-#)
-#for row in q.get_results():
-#    print(row)
-
-#Canvas_API_URL = configs['CanvasAPIURL']
-#Canvas_API_KEY = configs['CanvasAPIKey']
-#canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
-#account = canvas.get_account(1)
-#user = account.get_users(search_term=str('kdenton@auhsdschools.org'))
-#print(user[0].sis_user_id)
-#print(user[0].sortable_name)
-#user = account.get_users(search_term='Greg costa')
-#print(user[0].sis_user_id)
-#print(user[0].sortable_name)
-#myuser = aduser.ADUser.from_cn("edannewitz")
-#print(myuser)
-"""
+  #print(dataframe1)
+  #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
+  msgbody += 'Checking domain server Zeus....\n'
+  users = getADSearch('zeus','AUHSD Staff',configs)
+  for user in users:
+    if user['EmployeeID'] == '':
+      print('Found one') 
+  users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
+  for user in users2:
+    if users2['EmployeeID'] == '':
+      print('Found another')
+  """
+  msg = EmailMessage()
+  msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  msg['From'] = configs['SMTPAddressFrom']
+  msg['To'] = configs['SendInfoEmailAddr']
+  msg.set_content(msgbody)
+  s = smtplib.SMTP(configs['SMTPServerAddress'])
+  s.send_message(msg)
+  """
+if __name__ == '__main__':
+  msgbody = ''
+  main()
