@@ -34,7 +34,7 @@ def getADSearch(domainserver,baseou,configs):
     results = conn.extend.standard.paged_search(search_base= base, 
                                              search_filter = '(objectclass=user)', 
                                              search_scope=SUBTREE,
-                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','EmployeeID'],
+                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','employeeID'],
                                              get_operational_attributes=False, paged_size=15)
   return results
 
@@ -55,14 +55,18 @@ def main():
   #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
   msgbody += 'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs)
-  for user in users:
-    if user['EmployeeID'] == '':
-      print('Found one') 
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
+  print(users)
+  print(users2)
+  for user in users:
+    print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['employeeID']))
+    if user['attributes']['employeeID'] == '':
+      print('Found one') 
   for user in users2:
-    if users2['EmployeeID'] == '':
+    print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['employeeID']))
+    if user['attributes']['employeeID'] == '':
       print('Found another')
-  """
+
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   msg['From'] = configs['SMTPAddressFrom']
@@ -70,7 +74,6 @@ def main():
   msg.set_content(msgbody)
   s = smtplib.SMTP(configs['SMTPServerAddress'])
   s.send_message(msg)
-  """
 if __name__ == '__main__':
   msgbody = ''
   main()
