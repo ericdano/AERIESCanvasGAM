@@ -21,16 +21,13 @@ with open(confighome) as f:
 connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
-"""
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=SATURN;'
-                      'Database=DST22000AUHSD;'
-                      'Trusted_Connection=yes;')
-cursor = conn.cursor()     
-"""            
-dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'sshawn@auhsdschools.org\' ORDER BY LN',engine)
+        
+#dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'sshawn@auhsdschools.org\' ORDER BY LN',engine)
+dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
 
 print(dataframe1)
+#dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
+print(dataframe1[dataframe1['HRID'] == ''].index)
 
 """
 serverName = 'LDAP://zeus'
