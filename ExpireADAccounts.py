@@ -186,7 +186,7 @@ def main():
   msg.set_content(msgbody)
   s = smtplib.SMTP(configs['SMTPServerAddress'])
   s.send_message(msg)
-  
+  print('Done')
 if __name__ == '__main__':
   msgbody = ''
   main()
