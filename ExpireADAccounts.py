@@ -2,6 +2,7 @@ from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
 import os, sys, shlex, subprocess, json, logging, gam, smtplib, datetime
 from pathlib import Path
+from logging.handlers import SysLogHandler
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
 from pathlib import Path
