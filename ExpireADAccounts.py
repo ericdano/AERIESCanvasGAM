@@ -63,6 +63,7 @@ def DisableCanvasLogins(dataframe,configs,configsae):
       except CanvasException as e:
         msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e) + '\n'  
         thelogger.info('ExpireADAccounts->Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e))
+
 def modifyADUsers(dataframe,configs):
   for d in dataframe.index:
     serverName = 'LDAP://' + dataframe['domain'][d]
@@ -75,6 +76,7 @@ def modifyADUsers(dataframe,configs):
     conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
     # This is how you disable an account, you modify it to be 2 rather than 512
     thelogger.info('ExpireADAccounts->Disabled AD for user')
+
 def OLDgetADSearch(domainserver,baseou,configs):
   '''
   Not working. Keep for historic reference
@@ -120,6 +122,7 @@ def DisableGoogle(dataframe):
       else:
         msgbody += 'Suspended Google Account->' + str(dataframe['email'][d]) + '\n'
         thelogger.info('ExpireADAccounts->Suspended Google Account->' + str(dataframe['email'][d]))
+        
 def main():
   global msgbody,thelogger
   configs = getConfigs()
