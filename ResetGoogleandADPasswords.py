@@ -24,7 +24,7 @@ def getConfigs():
     configs = json.load(f)
   return configs
 
-def modifyADUsers(dataframe,configs):
+def changeADUserPassword(dataframe,configs):
   for d in dataframe.index:
     serverName = 'LDAP://' + dataframe['domain'][d]
     domainName = 'AUHSD'
