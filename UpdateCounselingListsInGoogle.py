@@ -71,7 +71,7 @@ def main():
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
     os.chdir('E:\\PythonTemp')
     #populate a table with counselor parts
-    counselors = [ ('ahs','todd'),
+    counselors = [ ('ahs','castillo-gallardo'),
                     ('ahs','meadows'),
                     ('ahs','schonauer'),
                     ('ahs','martin'),
