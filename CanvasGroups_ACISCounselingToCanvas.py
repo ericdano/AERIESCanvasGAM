@@ -45,7 +45,9 @@ account = canvas.get_account(1)
 # School, Counselor lastname, the Canvas Group ID, counselors ID in Aeries/Canvas
 counselors = [ ('acis','feinberg',10831,103276)]
 msgbody += 'Starting Canvas Counseler Groups for ACIS Script\n'
-connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+#connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting data from AERIES')

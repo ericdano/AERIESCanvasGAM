@@ -12,9 +12,9 @@ from logging.handlers import SysLogHandler
 
 #This script finds counselors and their assigned students in AERIES, then updates Google Group Annouce only lists with any student changes
 
-def GetAERIESData(thelogger):
+def GetAERIESData(thelogger,configs):
     os.chdir('E:\\PythonTemp')
-    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
@@ -47,6 +47,7 @@ def main():
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
     msgbody = ''
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     WasThereAnError = False
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
     os.chdir('E:\\PythonTemp')
@@ -68,7 +69,7 @@ def main():
                     ('mhs','conners'),
                     ('mhs','zielinkski'),
                     ('mhs','vasicek') ]
-    GetAERIESData(thelogger)
+    GetAERIESData(thelogger,configs)
     print('Done!!!')
 
 if __name__ == '__main__':

@@ -30,9 +30,10 @@ WasThereAnError = False
 os.chdir('E:\\PythonTemp')
 #populate a table with counselor parts
 counselors = [ ('acis','feinberg')]
-
+msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
-connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+#connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 thelogger.info('UpdateACISStuParentListsInGoogle->Connecting to AERIES to get Parental emails')

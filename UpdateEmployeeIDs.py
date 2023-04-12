@@ -46,10 +46,12 @@ def main():
   thelogger.setLevel(logging.DEBUG)
   handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
   thelogger.addHandler(handler)
-  connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+  #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+  msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+  connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
   connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
   engine = create_engine(connection_url)      
-  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'ccastillo-gallardo@auhsdschools.org\' ORDER BY LN',engine)
+  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'nsoja@auhsdschools.org\' ORDER BY LN',engine)
 #  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
 
   print(dataframe1)

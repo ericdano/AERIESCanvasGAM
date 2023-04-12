@@ -53,15 +53,15 @@ if __name__ == '__main__':
     server = 'ftp.csmcentral.com'
     user = configs['ASBWorksUser']
     passwd = configs['ASBWorksPassword']
-    AERIESDB = configs['AERIESDB']
     dest_filename = "asbworks_acalanes.csv"
     thelogger.info('Update ASB Works->Starting ASB Works Script')
-
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
-    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+#    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""",engine)

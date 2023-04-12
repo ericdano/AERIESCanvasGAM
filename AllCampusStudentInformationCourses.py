@@ -17,7 +17,7 @@ This script pulls ALL students from AERIES. Sorts them by site and grade, and pu
 and section in that course by Grade
 
 """
-def GetAERIESData(thelogger):
+def GetAERIESData(thelogger,configs):
     """
     pyodbc is depreciated in Pandas 1.5 moved to sqlalchemy
 
@@ -32,7 +32,8 @@ def GetAERIESData(thelogger):
     """
 
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
-    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',engine)
@@ -72,7 +73,8 @@ def main():
     """
     SiteClassesList = pd.read_csv(SiteClassesCSV)
     #populate a table
-    AERIESData = GetAERIESData(thelogger)
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+    AERIESData = GetAERIESData(thelogger,configs)
     #print(AERIESData)
     df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
     StudentsDF = pd.DataFrame(columns=['ID'])

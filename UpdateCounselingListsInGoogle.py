@@ -14,7 +14,7 @@ from logging.handlers import SysLogHandler
 This script finds counselors and their assigned students in AERIES, then updates Google Groups lists with any student changes
 Counselors are the Owners of the list. The GAM commands updates the groups with whatever is in the CSV file
 """
-def GetAERIESData(thelogger):
+def GetAERIESData(thelogger,configs):
     os.chdir('E:\\PythonTemp')
     """
      pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
@@ -25,7 +25,8 @@ def GetAERIESData(thelogger):
     cursor = conn.cursor()
     """
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
-    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
@@ -88,7 +89,8 @@ def main():
                     ('mhs','conners'),
                     ('mhs','zielinski'),
                     ('mhs','shawn') ]
-    GetAERIESData(thelogger)
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+    GetAERIESData(thelogger,configs)
     gam.initializeLogging()
     # Now call gam
     for counselor in counselors:
