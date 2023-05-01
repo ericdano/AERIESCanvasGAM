@@ -37,7 +37,7 @@ connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] +
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 thelogger.info('UpdateACISStuParentListsInGoogle->Connecting to AERIES to get Parental emails')
-sql_query1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.PEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 AND STU.GR < 12 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
+sql_query1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.PEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 AND STU.GR <= 12 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
 thelogger.info('UpdateACISStuParentListsInGoogle->Closed AERIES connection')
 sql_query1.drop(sql_query1.columns.difference(['SEM',
                                               'PEM']), axis=1,inplace=True)
@@ -47,7 +47,7 @@ listylist["email"] = pd.concat([sql_query1['SEM'],sql_query1['PEM']],axis=0, ign
 header = ["email"]
 listylist.to_csv('acisstudentparents.csv',index = False, header = False, columns = header)
 thelogger.info('UpdateACISStuParentListsInGoogle->Running GAM')
-stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to11studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
+stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to12studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
 if stat1 != 0:
     WasThereAnError = True
     thelogger.info('UpdateACISStuParentListsInGoogle->GAM returned an error from last command')
@@ -56,9 +56,9 @@ msgbody += 'Synced ACIS Student Parent list. Gam Status->' + str(stat1) + '\n'
 msgbody+='Done!'
 thelogger.info('UpdateACISStuParentListsInGoogle->Done Syncing to Google Groups')
 if WasThereAnError:
-    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 11 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 12 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 else:
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 11 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 12 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 end_of_timer = timer()
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
