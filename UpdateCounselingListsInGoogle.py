@@ -16,14 +16,6 @@ Counselors are the Owners of the list. The GAM commands updates the groups with 
 """
 def GetAERIESData(thelogger,configs):
     os.chdir('E:\\PythonTemp')
-    """
-     pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
-    conn = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    cursor = conn.cursor()
-    """
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
     #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
@@ -36,14 +28,6 @@ def GetAERIESData(thelogger,configs):
         header = ["SEM"]
         SEM.to_csv(filename, index = False, header = False, columns = header)
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-    """
-     pyodbc is depriciated in Pandas 1.5 moved to Sqlalchemy
-    conn = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    cursor = conn.cursor()
-    """
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
     sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
     for EM, SEM in sql_query2.groupby(['EM','GR']):
@@ -72,7 +56,7 @@ def main():
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
     os.chdir('E:\\PythonTemp')
     #populate a table with counselor parts
-    counselors = [ ('ahs','castillo-gallardo'),
+    counselors = [ ('ahs','vasquez'),
                     ('ahs','meadows'),
                     ('ahs','schonauer'),
                     ('ahs','martin'),
@@ -85,9 +69,9 @@ def main():
                     ('llhs','constantin'),
                     ('llhs','bloodgood'),
                     ('llhs','sabeh'),
-                    ('mhs','vasquez'),
+                    ('mhs','castillo-gallardo'),
                     ('mhs','conners'),
-                    ('mhs','zielinski'),
+                    ('mhs''zielinski'),
                     ('mhs','shawn') ]
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     GetAERIESData(thelogger,configs)
