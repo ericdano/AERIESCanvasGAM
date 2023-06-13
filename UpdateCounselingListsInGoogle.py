@@ -71,7 +71,7 @@ def main():
                     ('llhs','sabeh'),
                     ('mhs','castillo-gallardo'),
                     ('mhs','conners'),
-                    ('mhs''zielinski'),
+                    ('mhs','zielinski'),
                     ('mhs','shawn') ]
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     GetAERIESData(thelogger,configs)
