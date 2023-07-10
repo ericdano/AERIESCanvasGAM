@@ -27,6 +27,7 @@ def GetAERIESData(thelogger,configs):
         filename = filename[1:]
         header = ["SEM"]
         SEM.to_csv(filename, index = False, header = False, columns = header)
+    print(sql_query)
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get students for Counselors by grade level')
     sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
