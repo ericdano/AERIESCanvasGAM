@@ -76,11 +76,11 @@ def modifyADUsers(dataframe,configs):
     conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
     # This is how you disable an account, you modify it to be 2 rather than 512
     thelogger.info('ExpireADAccounts->Disabled AD for user')
-
+'''
 def OLDgetADSearch(domainserver,baseou,configs):
-  '''
+
   Not working. Keep for historic reference
-  '''
+ 
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
   userName = 'tech'
@@ -91,7 +91,7 @@ def OLDgetADSearch(domainserver,baseou,configs):
   conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
   conn.search(base, '(objectclass=person)', attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','accountExpires'])
   return conn
-
+'''
 def getADSearch(domainserver,baseou,configs):
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
