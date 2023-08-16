@@ -18,18 +18,6 @@ and section in that course by Grade
 
 """
 def GetAERIESData(thelogger,configs):
-    """
-    pyodbc is depreciated in Pandas 1.5 moved to sqlalchemy
-
-    conn = pyodbc.connect('Driver={SQL Server};'
-                        'Server=SATURN;'
-                        'Database=DST22000AUHSD;'
-                        'Trusted_Connection=yes;')
-    cursor = conn.cursor()
-    sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',conn)
-     OLD QUERY sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30) AND SP <> \'2\'',conn)
-    conn.close()
-    """
 
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
 
@@ -57,7 +45,7 @@ def main():
         handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
         thelogger.addHandler(handler)
 
-    SiteClassesCSV = Path.home() / ".Acalanes" / "CanvasSiteClasses.csv"
+    SiteClassesCSV = Path.home() / ".Acalanes" / "PassportToCanvas.csv"
     thelogger.info('AllCampusStudentCanvasClass->Loaded config file and logfile started')
     thelogger.info('AllCampusStudentCanvasClass->Loading Class Course List CSV file')
     #prep status (msg) email
@@ -92,7 +80,6 @@ def main():
         #print(section.students)
         canvasdf = pd.DataFrame(columns=['ID'])
         for s in section.students:
-            # Old call, Pandas 1.5 it is depreciated -> canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
         #create sets
