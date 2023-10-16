@@ -14,9 +14,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.9+ script to pull data from AERIES and to send it to ASB Works.
- Built in support for this is busted in AERIES as of 5/2022
- Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
+ Python 3.9+ script to RESET 2FA in AERIES
 """
 
 
@@ -32,7 +30,7 @@ if __name__ == '__main__':
     #prep status (msg) email
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = configs['ASBInfoEmailAddr']
+    msg['To'] = "serveradmins@auhsdschools.org"
     msgbody = ''
     WasThereAnError = False
 
@@ -40,15 +38,18 @@ if __name__ == '__main__':
 
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
+    mfa2reset = 'auhsd\edannewitz'
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    result = engine.execute("""UPDATE UGN SET MFA =0 WHERE UN ='AUHSD\edannewitz'""")
+    result = engine.execute("""UPDATE UGN SET MFA =0 WHERE UN ='staff\jstegner'""")
     if WasThereAnError:
         msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msgbody += "Errors resetting 2FA on " + mfa2reset + "\n"
     else:
         msg['Subject'] = str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msgbody += "No errors resetting 2FA on account " + mfa2reset + "\n"
     end_of_timer = timer()
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)
