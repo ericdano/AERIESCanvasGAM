@@ -82,8 +82,21 @@ def main():
         for s in section.students:
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-        #create sets
-        #print(canvasdf)
+        #Add STU_ to Aeries IDs cause.....headaches
+        Newdf['ID'] = 'STU_' + Newdf['ID'].astype(str)
+        Newdf = Newdf.drop(columns=['SEM','SC','GR'])
+        print(Newdf)
+        print('----')
+        print(canvasdf)
+        print('----')
+        
+        studentsinaeriesnotincanvas = pd.concat([Newdf,canvasdf]).drop_duplicates(keep=False)
+        studentsincanvasnotinaeries = pd.concat([canvasdf,Newdf]).drop_duplicates(keep=False)
+        print('In Aeries not Canvas')
+        print(studentsinaeriesnotincanvas)
+        print('In Canvas not Aeries')
+        print(studentsincanvasnotinaeries)
+        '''
         print(Newdf)
         print(canvasdf)
         aerieslist = set(pd.to_numeric(Newdf.ID))
@@ -91,12 +104,12 @@ def main():
         #diff sets
         studentsinaeriesnotincanvas = aerieslist - canvaslist
         studentsincanvasnotinaeries = canvaslist - aerieslist
-        #
+        '''
         """
          First go through and REMOVE them from the course and section
          If they are misaligned because they are in the wrong grade, it will add them back to the top course again regardless
         for currentuserid in studentsincanvasnotinaeries:
-        """
+        
         print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
         msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
         course = canvas.get_course(SiteClassesList['CourseID'][i])
@@ -160,6 +173,8 @@ def main():
             print('No students in section that are in Aeries but not in Canvas')
             msgbody += 'No students in section that are in Aeries but not in Canvas\n'
             thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Aeries but not in Canvas')            
+
+    """
     end_of_timer = timer()
     if WasThereAnError == True:
         msg['Subject'] = "ERROR!! -> Canvas Catch-all Informational Course Update"

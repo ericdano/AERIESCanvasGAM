@@ -51,7 +51,7 @@ def main():
   connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
   connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
   engine = create_engine(connection_url)      
-  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'mnelum@auhsdschools.org\' ORDER BY LN',engine)
+  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'bzaragoza@auhsdschools.org\' ORDER BY LN',engine)
   print(dataframe1)
   
   """

@@ -6,7 +6,7 @@ from pathlib import Path
 from ssl import SSLSocket
 from timeit import default_timer as timer
 import pandas as pd
-
+import ldap3
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -17,7 +17,12 @@ from logging.handlers import SysLogHandler
  Python 3.9+ script to RESET 2FA in AERIES
 """
 
-
+def authenticate():
+    conn = ldap3.initialize('ldap://acalanes.k12.ca.us')
+    conn.protocol_version = 3
+    conn.set_option(ldap3.OPT_REFERRALS,0)
+    try:
+        username = ''
 if __name__ == '__main__':
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
@@ -36,7 +41,11 @@ if __name__ == '__main__':
 
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
+
+
+
     # Get AERIES Data
+    '''
     os.chdir('E:\\PythonTemp')
     mfa2reset = 'auhsd\edannewitz'
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
@@ -55,3 +64,4 @@ if __name__ == '__main__':
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
+    '''
