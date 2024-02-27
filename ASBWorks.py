@@ -64,7 +64,7 @@ if __name__ == '__main__':
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""",engine)
+    sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""", engine)
     #print(sql_query)
     sql_query['School'].mask(sql_query['School'] == 1,'LLHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 2,'AHS1', inplace=True)
@@ -83,10 +83,10 @@ if __name__ == '__main__':
     ftp.prot_p()
     ftp.login(user, passwd)
     thelogger.info('Update ASB Works->Connected to FTPS')
-    #print("Success connection")
+    print("Success connection")
     ftp.set_debuglevel(2)
     ftp.encoding = "utf-8"
-    #ftp.getwelcome()
+    ftp.getwelcome()
     with open(dest_filename,"rb") as file:
         try:
             ftp.storbinary(f"STOR {dest_filename}", file)
