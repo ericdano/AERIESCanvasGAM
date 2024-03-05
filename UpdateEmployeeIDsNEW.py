@@ -45,10 +45,10 @@ def main():
   msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
   connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
   connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-  engine = create_engine(connection_url)      
-  #dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'nsoja@auhsdschools.org\' ORDER BY LN',engine)
-  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
-  dataframe1["EM"] = dataframe1["EM"].str.replace("@auhsdschools.org","")
+  engine = create_engine(connection_url)    
+  with engine.begin() as connection:
+    dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',connection)
+    dataframe1["EM"] = dataframe1["EM"].str.replace("@auhsdschools.org","")
   print(dataframe1)
   #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
   msgbody += 'Checking domain server Zeus....\n'

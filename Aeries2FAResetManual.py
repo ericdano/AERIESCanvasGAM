@@ -1,6 +1,7 @@
 import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
-from sqlalchemy.engine import URL
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import result, URL
+import sqlalchemy
 from io import StringIO
 from pathlib import Path
 from ssl import SSLSocket
@@ -42,15 +43,19 @@ with open(confighome) as f:
     configs = json.load(f)
 msg = EmailMessage()
 msg['From'] = configs['SMTPAddressFrom']
-msg['To'] = "serveradmins@auhsdschools.org"
+msg['To'] = "edannewitz@auhsdschools.org"
 msgbody = ''
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 os.chdir('E:\\PythonTemp')
-mfa2reset = 'auhsd\edannewitz'
-connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
+#mfa2reset = 'auhsd\edannewitz'
+connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+mfa2reset = 'auhsd\edannewitz'
+
 engine = create_engine(connection_url)
-result = engine.execute("""UPDATE UGN SET MFA =0 WHERE UN ='auhsd\nsingleterry'""")
+with engine.begin() as connection:
+    result = connection.execute(text("""UPDATE UGN SET MFA =0 WHERE UN ='auhsd\edannewitz'"""))
+print(result)
 if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     msgbody += "Errors resetting 2FA on " + mfa2reset + "\n"
