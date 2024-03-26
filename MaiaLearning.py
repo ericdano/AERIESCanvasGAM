@@ -15,9 +15,9 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.9+ script to pull data from AERIES and to send it to ASB Works.
- Built in support for this is busted in AERIES as of 5/2022
- Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
+ Python 3.11+ script to pull data from AERIES and to send it to Maia Learning.
+
+ Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for Maia Learning.
 """
 def change_school_id(school_id):
     if school_id == '1' or school_id == 1:
@@ -32,7 +32,6 @@ def change_school_id(school_id):
         return '060165010751'
     else:
         return 'error'
-
 
     
 if __name__ == '__main__':
@@ -53,6 +52,7 @@ if __name__ == '__main__':
     passwd = configs['MaialearningPassword']
     dest_filename = "maialearning_acalanes_students.csv"
     dest_filename_staff = "maialearning_acalanes_staff.csv"
+    dest_filename_parents = "maialearning_acalanes_parents.csv"
     thelogger.info('Update Maia Learning->Starting Maia Learning Script')
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     #prep status (msg) email
@@ -77,6 +77,7 @@ if __name__ == '__main__':
     sql_query.insert(0,'SchoolID',first_column)
     sql_query.to_csv(dest_filename,index=False)
     thelogger.info('Update Maia Learning->Wrote student temp CSV to disk')
+    msgbody += "Got AERIES data for Students\n"
     # Now do the staff
     sql_query_staff = pd.read_sql_query("""SELECT PSC AS School_ID, FN AS FirstName, LN AS LastName, EM AS Email, 'Teacher' AS Role, '' AS RoleUpdate FROM STF WHERE DEL = 0 AND TG = '' AND EM > '' AND PSC < 7 AND (TI = 'CERTIFICATED AEA' OR TI = 'Teacher')""", engine)
     sql_query_staff['SchoolID'] = sql_query_staff['School_ID'].apply(change_school_id)
@@ -85,8 +86,19 @@ if __name__ == '__main__':
     sql_query_staff.insert(0,'SchoolID',first_column_staff)
     sql_query_staff.to_csv(dest_filename_staff,index=False)
     thelogger.info('Update Maia Learning->Wrote staff temp CSV to disk')
-    
-    msgbody += "Got AERIES data for staff, connecting to FTPS\n"
+    msgbody += "Got AERIES data for Staff\n"
+    # Now do the Parents
+    sql_query_parents = pd.read_sql_query("""SELECT STU.SC AS School_ID, STU.ID AS Studentid, CON.FN AS FirstName, CON.LN AS LastName, CON.EM AS Email, '' AS PhoneNumber FROM STU INNER JOIN CON ON STU.ID = CON.PID WHERE STU.TG = '' AND STU.DEL = 0 AND STU.SC < 7 AND STU.SP <> '2' AND (CON.CD = 'P1' OR CON.CD = 'P2') AND CON.EM > ''""", engine)
+    sql_query_parents['SchoolID'] = sql_query_parents['School_ID'].apply(change_school_id)
+    sql_query_parents.drop(['School_ID'], axis=1, inplace=True)
+    first_column_parents = sql_query_parents.pop('SchoolID')
+    sql_query_parents.insert(0,'SchoolID',first_column_parents)
+    sql_query_parents.to_csv(dest_filename_parents,index=False)
+    thelogger.info('Update Maia Learning->Wrote Parents temp CSV to disk')
+    msgbody += "Got AERIES data for Parents\n"
+
+    #-----------------
+
     thelogger.info('Update Maia Learning->Connecting to Maia Learning via FTPS')
     hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     hostFingerprint = hostkeys.lookup(server)['ssh-rsa']
@@ -97,6 +109,7 @@ if __name__ == '__main__':
         thelogger.info('Update Maia Learning->Connected to FTPS')
         fileToUpload = {"maialearning_acalanes_students.csv":"./student/maialearning_acalanes_students.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
+        thelogger.info('Update Maia Learning->Uploading Students')
         for key, value in fileToUpload.items():
             try:  
                 sftpClient.put(key, value)
@@ -113,9 +126,10 @@ if __name__ == '__main__':
                 thelogger.info("SFTP failed due to error [" + str(err) + "]")
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
-           
+        # Staff Upload------------------------
         fileToUploadstaff = {"maialearning_acalanes_staff.csv":"./teacher/maialearning_acalanes_staff.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
+        thelogger.info('Update Maia Learning->Uploading Staff')
         for key, value in fileToUploadstaff.items():
             try:  
                 sftpClient.put(key, value)
@@ -132,10 +146,28 @@ if __name__ == '__main__':
                 thelogger.info("SFTP failed due to error [" + str(err) + "]")
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
-        
+        #Parent Upload--------------------------
+        fileToUploadparents = {"maialearning_acalanes_parents.csv":"./parent/maialearning_acalanes_parents.csv"}
+        sftpClient = paramiko.SFTPClient.from_transport(tp)
+        thelogger.info('Update Maia Learning->Uploading Parents')
+        for key, value in fileToUploadparents.items():
+            try:  
+                sftpClient.put(key, value)
+                print("[" + key + "] successfully uploaded to [" + value + "]")
+                thelogger.info("[" + key + "] successfully uploaded to [" + value + "]")
+                msgbody += "[" + key + "] successfully uploaded to [" + value + "]\n"
+            except PermissionError as err:
+                print("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
+                thelogger.info("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
+                msgbody += "SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]\n"
+                WasThereAnError = True
+            except Exception as err:
+                print("SFTP failed due to error [" + str(err) + "]")
+                thelogger.info("SFTP failed due to error [" + str(err) + "]")
+                msgbody += "SFTP failed due to error [" + str(err) + "]\n"
+                WasThereAnError = True
 
-
-
+        # close connection
         sftpClient.close()
         tp.close()
         thelogger.info("Closed SFTP connections")
@@ -150,9 +182,15 @@ if __name__ == '__main__':
         thelogger.info("Can't connect due to other error [" + str(err) + "]")
         msgbody +="Can't connect due to other error [" + str(err) + "]"
         WasThereAnError = True
+    thelogger.info('Update Maia Learning->Removing CSV files')
     os.remove(dest_filename)
+    os.remove(dest_filename_staff)
+    os.remove(dest_filename_parents)
     '''
-    msgbody += str(len(sql_query.index)) + ' records in file uploaded.\n'
+    msgbody += 'still in test mode, nothing sent to sftp....whole section skipped in code\n'
+    msgbody += str(len(sql_query.index)) + ' Student records in file uploaded.\n'
+    msgbody += str(len(sql_query_staff.index)) + ' Staff records in file uploaded.\n'
+    msgbody += str(len(sql_query_parents.index)) + ' Parent records in file uploaded.\n'
     if WasThereAnError:
         msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Maia Learning Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     else:
