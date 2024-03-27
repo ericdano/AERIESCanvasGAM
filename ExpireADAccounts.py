@@ -75,9 +75,8 @@ def modifyADUsers(dataframe,configs):
     ClearPhone =''
     
     conn = Connection(server, user='{0}\\{1}'.format(domainName, userName), password=password, auto_bind=True)
-    #Old Version ->conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
-    conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)],
-                                     'telephoneNumber': [('MODIFY_DELETE',[])],
+    conn.modify(dataframe['DN'][d], {'userAccountControl': [('MODIFY_REPLACE', 2)]})
+    conn.modify(dataframe['DN'][d], {'telephoneNumber': [('MODIFY_DELETE',[])],
                                      'Pager':  [('MODIFY_DELETE',[])],
                                      'ipPhone':  [('MODIFY_DELETE',[])]})
 

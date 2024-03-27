@@ -41,7 +41,6 @@ if __name__ == '__main__':
     with open(confighome) as f:
         configs = json.load(f)
     thelogger = logging.getLogger('MyLogger')
-    dest_filename = "maialearning_acalanes_students.csv"
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
@@ -63,13 +62,11 @@ if __name__ == '__main__':
     WasThereAnError = False
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
-    #thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
     # connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     sql_query = pd.read_sql_query("""SELECT ALTSCN.ALTSC AS School_ID, STU.ID as StudentID, STU.SEM as Email, STU.FN AS FirstName, STU.MN AS MiddleName, STU.LN AS LastName, STU.FNA as NickName, LEFT(CONVERT(VARCHAR, STU.BD, 101),5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth, STU.SX as Gender, STU.GR as Grade, TECH.GYR AS Classof, STU.AD as Address1, '' as Address2, STU.CY as City, STU.ST as State, STU.ZC as Zipcode, '' as Country, '' as Citizenship, '' as EnrollmentEndDate, '' as Telephone, '' as FAFSA, '' as Race, '' as Ethnicity, STU.CU AS AssignedCounselor FROM STU INNER JOIN TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN INNER JOIN ALTSCN ON STU.SC = ALTSCN.SCID WHERE (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2') AND STU.ID <> 3006323 AND STU.ID <> 3007723 ORDER BY School_ID, Lastname, Firstname""", engine)
-    msgbody += "Got AERIES data for students\n"
     thelogger.info('Update Maia Learning->Got AERIES data for students')
     sql_query['SchoolID'] = sql_query['School_ID'].apply(change_school_id)
     sql_query.drop(['School_ID'], axis=1, inplace=True)
@@ -79,7 +76,7 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Wrote student temp CSV to disk')
     msgbody += "Got AERIES data for Students\n"
     # Now do the staff
-    sql_query_staff = pd.read_sql_query("""SELECT PSC AS School_ID, FN AS FirstName, LN AS LastName, EM AS Email, 'Teacher' AS Role, '' AS RoleUpdate FROM STF WHERE DEL = 0 AND TG = '' AND EM > '' AND PSC < 7 AND (TI = 'CERTIFICATED AEA' OR TI = 'Teacher')""", engine)
+    sql_query_staff = pd.read_sql_query("""SELECT PSC AS School_ID, FN AS FirstName, LN AS LastName, EM AS Email, 'Teacher' AS Role, '' AS RoleUpdate FROM STF WHERE DEL = 0 AND TG = '' AND EM > '' AND PSC < 7 AND PSC > 0 AND (TI = 'CERTIFICATED AEA' OR TI = 'Teacher')""", engine)
     sql_query_staff['SchoolID'] = sql_query_staff['School_ID'].apply(change_school_id)
     sql_query_staff.drop(['School_ID'], axis=1, inplace=True)
     first_column_staff = sql_query_staff.pop('SchoolID')
@@ -102,7 +99,7 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Connecting to Maia Learning via FTPS')
     hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     hostFingerprint = hostkeys.lookup(server)['ssh-rsa']
-    '''
+   
     try:
         tp = paramiko.Transport(server,22)
         tp.connect(username = user, password = passwd, hostkey=hostFingerprint)
@@ -110,6 +107,7 @@ if __name__ == '__main__':
         fileToUpload = {"maialearning_acalanes_students.csv":"./student/maialearning_acalanes_students.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
         thelogger.info('Update Maia Learning->Uploading Students')
+        
         for key, value in fileToUpload.items():
             try:  
                 sftpClient.put(key, value)
@@ -146,6 +144,7 @@ if __name__ == '__main__':
                 thelogger.info("SFTP failed due to error [" + str(err) + "]")
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
+        '''
         #Parent Upload--------------------------
         fileToUploadparents = {"maialearning_acalanes_parents.csv":"./parent/maialearning_acalanes_parents.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
@@ -166,7 +165,7 @@ if __name__ == '__main__':
                 thelogger.info("SFTP failed due to error [" + str(err) + "]")
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
-
+        '''
         # close connection
         sftpClient.close()
         tp.close()
@@ -183,11 +182,13 @@ if __name__ == '__main__':
         msgbody +="Can't connect due to other error [" + str(err) + "]"
         WasThereAnError = True
     thelogger.info('Update Maia Learning->Removing CSV files')
+    
+    '''
     os.remove(dest_filename)
     os.remove(dest_filename_staff)
+    
     os.remove(dest_filename_parents)
     '''
-    msgbody += 'still in test mode, nothing sent to sftp....whole section skipped in code\n'
     msgbody += str(len(sql_query.index)) + ' Student records in file uploaded.\n'
     msgbody += str(len(sql_query_staff.index)) + ' Staff records in file uploaded.\n'
     msgbody += str(len(sql_query_parents.index)) + ' Parent records in file uploaded.\n'
