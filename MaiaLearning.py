@@ -90,11 +90,12 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Wrote staff temp CSV to disk')
     msgbody += "Got AERIES data for Staff\n"
     # Now do the Parents
-    sql_query_parents = pd.read_sql_query("""SELECT STU.SC AS School_ID, STU.ID AS Studentid, CON.FN AS FirstName, CON.LN AS LastName, CON.EM AS Email, '' AS PhoneNumber FROM STU INNER JOIN CON ON STU.ID = CON.PID WHERE STU.TG = '' AND STU.DEL = 0 AND STU.SC < 7 AND STU.SP <> '2' AND (CON.CD = 'P1' OR CON.CD = 'P2') AND CON.EM > ''""", engine)
+    sql_query_parents = pd.read_sql_query("""SELECT STU.SC AS School_ID, STU.ID AS StudentId, CON.FN AS FirstName, CON.LN AS LastName, CON.EM AS Email, '' AS PhoneNumber FROM STU INNER JOIN CON ON STU.ID = CON.PID WHERE STU.TG = '' AND STU.DEL = 0 AND STU.SC < 7 AND STU.SP <> '2' AND (CON.CD = 'P1' OR CON.CD = 'P2') AND CON.EM > ''""", engine)
     sql_query_parents['SchoolID'] = sql_query_parents['School_ID'].apply(change_school_id)
     sql_query_parents.drop(['School_ID'], axis=1, inplace=True)
     first_column_parents = sql_query_parents.pop('SchoolID')
     sql_query_parents.insert(0,'SchoolID',first_column_parents)
+    sql_query_parents[["RemoveConnection"]]  = ""
     sql_query_parents.to_csv(dest_filename_parents,index=False)
     thelogger.info('Update Maia Learning->Wrote Parents temp CSV to disk')
     msgbody += "Got AERIES data for Parents\n"
