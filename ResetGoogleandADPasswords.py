@@ -79,8 +79,8 @@ def main():
   thelogger.setLevel(logging.DEBUG)
   handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
   thelogger.addHandler(handler)
-  thelogger.info('Changing Passwords CSV->Connecting to Zeus...')
-  msgbody += 'Checking domain server Zeus....\n'
+  thelogger.info('Changing Passwords CSV->Connecting to zeus...')
+  msgbody += 'Checking domain server zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs)
  # print(users.entries)
   df = pd.DataFrame(columns = ['DN','email','domain'])
