@@ -19,3 +19,5 @@ CanvasGroups_GoogleSheetToGroup.py - Takes a master list of a teacher email, Goo
 AllCampusStudentInformationCourses.py - Is a script that takes data from AERIES and then puts students in an informational course, and a corresponding section of that course for their grade. It is used for campus wide announcements and stuff.
 
 ExpireADAccounts.py - Set an expiration date in AD, and this script will then, when it finds accounts with that date, disable AD/Google/Canvas accounts for the users/
+
+AERIES Canvas Course Renamer and Crosslister - One of the issues we have with the current AERIES to Canvas sync is that the naming of the classes suck. And a lot of classes need to be hand cross-listed. This script solves that issue, and will rename a class with the School year (24-25) Course Name - LastName Period format.
