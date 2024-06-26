@@ -2,6 +2,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 import pandas as pd
 from pathlib import Path
+from timeit import default_timer as timer
 import requests, json, logging, smtplib, datetime, sys
 from canvasapi import Canvas
 from canvasapi.exceptions import CanvasException
@@ -11,75 +12,17 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 """
- Script to rename classes in Canvas that are from the previous term
- We generally are keeping all previous classes in our Canvas rather than deleting them
- However, it is confusing for the teachers to have like 5 ESL Morning classes from different terms in their dashboard
- So, this script will RENAME a class depending on the TERM you are looking for
- The best way to do this is to GRAB all the courses, append the new names to them
- and then go through it again and anything in the TERM ID will be changed to the new name
- run it like this
- python canvas_rename_course_endofterm.py 'SUM2021' 'Summer 2021 -' 'SUM21'
- this will look for your SIS TERM ID of FALL2020 and then prepend the second argument to the class
-
- suggest commenting out the LAST TWO LINES at the end of this file before you make changes to make sure things are correct!!!!!!!!
-
- ie the course = canvas.get_course(cid)
- and course.update(course={'name': newname})
-"""
-
-"""                      
-def resetSampleDataInBeta(canvas, AeriesData):
-    column_names = ["courseid","coursename","sis_id","newcoursename"]
-    df = pd.DataFrame(columns = column_names)
-    tempDF = pd.DataFrame(columns = column_names)
-    for index, row in df.iterrows():
-        if i.term['sis_term_id'] == termidlookingfor:
-            #print(i.id," ",i.name," ",i.term['sis_term_id'])
-            tempDF = pd.DataFrame([{'courseid':i.id,
-                'coursename':i.name,
-                'sistermid':i.term['sis_term_id'],
-                'newcoursename':prependname + i.name}])
-            df = pd.concat([df,tempDF],axis=0, ignore_index=True)
-"""
-
+2024
+Script to clean up Canvas from AERIES import. Renames the classes in the format 
+24-25 English 1 - Cousins
+Where 24-25 is the academic year
+English 1 is the course
+and Cousins is the instructor's last name
 
 """
-def getCanvasCourses(canvasaccount,canvasid):
-    logging.info('Starting to rename classes')
-    logging.info('going to look for ' + termidlookingfor + 'and prepend ' + prependname + 'to it')
-    column_names = ["courseid","coursename","sistermid","newcoursename"]
-    df = pd.DataFrame(columns = column_names)
-    tempDF = pd.DataFrame(columns = column_names)
-    courses=canvasaccount.get_courses(include=['term','sis_term_id'])
-    for i in courses:
-        if i.term['sis_term_id'] == termidlookingfor:
-            #print(i.id," ",i.name," ",i.term['sis_term_id'])
-            tempDF = pd.DataFrame([{'courseid':i.id,
-                'coursename':i.name,
-                'sistermid':i.term['sis_term_id'],
-                'newcoursename':prependname + i.name}])
-            df = pd.concat([df,tempDF],axis=0, ignore_index=True)
-    # Now go through and update the SIS_ID and Course_codes and tack on a suffex and rename the course
-    print(df)
-    for index, row in df.iterrows():
-        bid = row["courseid"]
-        c = canvasid.get_course(bid)
-        new_sis_id = c.sis_course_id + prependccstr
-        newcoursename = prependname + c.name
-        #print(new_sis_id)
-        #print(course.sis_course_id)
-        print("Updating term->",termidlookingfor," courseid:",c.sis_course_id," to ", new_sis_id, " and ",c.name," to ",newcoursename)
-        logging.info('Updating term->' + termidlookingfor + ' courseid:' + c.sis_course_id + ' to ' + c.sis_course_id + prependccstr + ' and ' + c.name + ' to ' + newcoursename)
-        c.update(course={'course_code':new_sis_id,
-                            'sis_course_id':new_sis_id,
-                            'name':newcoursename})
-    logging.info('Done -- RollOver_classes.py')
-    print('Done!')
-"""
-
 
 if __name__ == '__main__':
-    #start_of_timer = timer()
+    start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
@@ -167,7 +110,17 @@ if __name__ == '__main__':
         course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
         course.create_course_section(course_section={"name":sql_query['NewCourseTitle'][i]})
     """
-    #---------------------------------------------------
+    # Fix for not having SIS_ID in the section
+    """
+    for i in sql_query.index:
+        course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
+        sections = course.get_sections()
+        print("Course - " + str(sql_query['SIS_ID'][i]))
+        for section in sections:
+            print(section.name +" id - " + str(section.id))
+            section.edit(course_section={"sis_section_id":sql_query['SIS_ID'][i]})
+    """
+    #-----------section.edit(----------------------------------------
     #findCross = sql_query[sql_query.duplicated(['CourseName','NewCourseTitle'], keep='first')].sort_values('CourseNum')
     sql_query.sort_values(by=['CourseName','NewCourseTitleSort','CourseNum'], inplace = True)
     print(sql_query)
@@ -179,7 +132,8 @@ if __name__ == '__main__':
     # Cross Listing 
     # Assumption is that this is done once, and therefore we can assume no classes have sections, so we can start at 0 for sections and 
     # increment from there
-    CurrentMasterSectionSIS_ID = ""
+    CurrentMasterSectionSIS_ID = 0
+    CurrentMasterSectionCourseName = ""
     # This just sees what sections are related in each course
     # each course has to have a section
     """
@@ -193,18 +147,24 @@ if __name__ == '__main__':
     """
     for i in sql_query.index:
         if sql_query['Dup'][i] == False:
-            CurrentMasterSectionSIS_ID = sql_query['SIS_ID'][i]
-            print('Skipped ' + str(sql_query['SIS_ID'][i]))
+            CurrentMasterSectionSIS_ID =  canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
+            CurrentMasterSectionCourseName = sql_query['NewCourseTitle'][i]
+            print('Found a potential class->' + str(sql_query['SIS_ID'][i]))
+            msgbody += ('Found a potential class->' + str(sql_query['SIS_ID'][i]) + ' ' + sql_query['NewCourseTitle'][i] + '\n')
         elif sql_query['Dup'][i] == True:
             course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
             sections = course.get_sections()
             for section in sections:
                 new_section = section.cross_list_section(CurrentMasterSectionSIS_ID)
-            print('Cross listed ' + str(sql_query['SIS_ID'][i]))
-        elif i > 6:
-            print('Safety exit')
-            exit(1)
+            print('Cross listed ' + str(sql_query['SIS_ID'][i]) + ' to ' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName)
+            msgbody += ('Crosslisted ->' + str(sql_query['SIS_ID'][i]) + ' ' + sql_query['NewCourseTitle'][i] + ' to SIS_ID->' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName + '\n')
         else:
             print('Error!')
             exit(1)
     print("Done!")
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Canvas Renamer and Crosslister " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    end_of_timer = timer()
+    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msg.set_content(msgbody)
+    s = smtplib.SMTP(configs['SMTPServerAddress'])
+    s.send_message(msg)
