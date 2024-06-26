@@ -182,7 +182,7 @@ if __name__ == '__main__':
     CurrentMasterSectionSIS_ID = ""
     # This just sees what sections are related in each course
     # each course has to have a section
-
+    """
     for i in sql_query.index:
         course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
         sections = course.get_sections()
@@ -190,7 +190,7 @@ if __name__ == '__main__':
         for section in sections:
             print(section.name +" id - " + str(section.id))
 
-        """
+    """
     for i in sql_query.index:
         if sql_query['Dup'][i] == False:
             CurrentMasterSectionSIS_ID = sql_query['SIS_ID'][i]
@@ -198,8 +198,8 @@ if __name__ == '__main__':
         elif sql_query['Dup'][i] == True:
             course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
             sections = course.get_sections()
-            #for section in sections:
-            new_section = sections[0].cross_list_section(course.id)
+            for section in sections:
+                new_section = section.cross_list_section(CurrentMasterSectionSIS_ID)
             print('Cross listed ' + str(sql_query['SIS_ID'][i]))
         elif i > 6:
             print('Safety exit')
@@ -208,4 +208,3 @@ if __name__ == '__main__':
             print('Error!')
             exit(1)
     print("Done!")
-    """
