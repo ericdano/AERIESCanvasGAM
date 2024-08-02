@@ -54,7 +54,7 @@ mfa2reset = 'auhsd\edannewitz'
 
 engine = create_engine(connection_url)
 with engine.begin() as connection:
-    result = connection.execute(text("""UPDATE UGN SET MFA =0 WHERE UN ='staff\jmerken'"""))
+    result = connection.execute(text("""UPDATE UGN SET MFA =0 WHERE UN ='staff\xmartinez'"""))
 print(result)
 if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
