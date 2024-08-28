@@ -26,7 +26,7 @@ def getADSearch(domainserver,baseou,configs):
   userName = 'tech'
   password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  with Connection(Server(serverName, get_info=ldap.ALL),
+  with Connection(Server(serverName, get_info=ldap3.ALL),
                   user='{0}\\{1}'.format(domainName, userName), 
                   password=password, 
                   auto_bind=True) as conn:
