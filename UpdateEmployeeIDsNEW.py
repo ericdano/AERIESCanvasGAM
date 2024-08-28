@@ -41,7 +41,6 @@ def main():
   thelogger.setLevel(logging.DEBUG)
   handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
   thelogger.addHandler(handler)
-  #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
   msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
   connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
   connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
