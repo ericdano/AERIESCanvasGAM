@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE, ALL
 from logging.handlers import SysLogHandler
 import arrow
 from ms_active_directory import ADDomain
