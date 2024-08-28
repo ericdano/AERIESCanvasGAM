@@ -13,11 +13,17 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 """
 2024
-Script to clean up Canvas from AERIES import. Renames the classes in the format 
+This script does a LOT. It should be run in stages against your BETA instance first.
+
+It renames courses (not the SECTIONS)
 24-25 English 1 - Cousins
 Where 24-25 is the academic year
 English 1 is the course
 and Cousins is the instructor's last name
+
+It then will CROSSLIST sections
+
+Then it will rename the section to a simpler name (so if it was period 1, and there are 5 sections, it will just call that course 24-25 English - Cousins)
 
 This script needs to have SQL read access to the following tables in AERIES (we are hosted)
 CRS, MST, FTF, STF
@@ -25,6 +31,10 @@ CRS, MST, FTF, STF
 This script also uses Pandas for Python. I find Pandas an incredible tool to be able to process datasets easily. It does most all of the heavy
 lifting here.
 
+Script was used in the 2024 gear up for school. Only big issues were the case of Instructors who have the SAME last name and teach the SAME course. It did happen. TWICE.
+
+Also, if you have multiple sites, you should run it PER site rather than trying to hit the whole instance. So in the AERIES query, divide it out by site. 
+I will have it do that at some point by itself, but right now you should do it per site manually. Otherwise, if you have teachers with the same last name, same subject, but multiple sites......it will crosslist all them together.
 
 """
 
