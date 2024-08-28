@@ -20,18 +20,23 @@ def getConfigs():
     configs = json.load(f)
   return configs
 
-def getADSearch(domain,useremail,configs):
-#  serverName = 'LDAP://' + domainserver
-  if domain == 'staff':
-    domainname = 'staff.acalanes.k12.ca.us'
-  else:
-    domainname = 'acalanes.k12.ca.us'
+def getADSearch(domainserver,baseou,configs):
+  serverName = 'LDAP://' + domainserver
+  domainName = 'AUHSD'
   userName = 'tech'
   password = configs['ADPassword']
-  domain = ADDomain(domainname)
-  session = domain.create_session_as_user('tech@acalanes.k12.ca.us',password)
-  user = session.find_user_by_sam_name(useremail,['employeeID'])
-  return(user)
+  base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
+  with Connection(Server(serverName),
+                  user='{0}\\{1}'.format(domainName, userName), 
+                  password=password, 
+                  auto_bind=True) as conn:
+
+    results = conn.extend.standard.paged_search(search_base= base, 
+                                             search_filter = '(objectclass=user)', 
+                                             search_scope=SUBTREE,
+                                             attributes=['displayName','mail','sAMAccountName','employeeID'],
+                                             get_operational_attributes=False, paged_size=15)
+  return results
 
 
 def main():
@@ -51,12 +56,12 @@ def main():
   print(dataframe1)
   #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
   msgbody += 'Checking domain server Zeus....\n'
-  user = getADSearch('auhsd','mroberts',configs)
-  if user is None:
-    user = getADSearch('staff','mroberts',configs)
-  print(user)
-  print(user.get('employeeID'))
-  employeeID = user.get('employeeID')
+  users = getADSearch('zeus','AUHSD Staff',configs) 
+  df = pd.DataFrame(columns = ['DN','email','domain','employeeID'])
+  thelogger.info('ExpireADAccounts->Connecting to Paris...')
+  users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
+  print(users)
+  print(users2)
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   msg['From'] = configs['SMTPAddressFrom']
