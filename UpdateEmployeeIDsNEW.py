@@ -57,17 +57,19 @@ def main():
   #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
   msgbody += 'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs) 
-  df = pd.DataFrame(columns = ['DN','email','domain','employeeID'])
+  df = pd.DataFrame(columns = ['DN','email','employeeID','domain'])
   thelogger.info('ExpireADAccounts->Connecting to Paris...')
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
   for user in users:  
     tempDF = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
+                          'employeeID': str(user['attributes']['employeeID']),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
   for user in users2:  
     tempDF2 = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
+                          'employeeID': str(user['attributes']['employeeID']),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
   print(df)
