@@ -64,7 +64,7 @@ def main():
   for user in users:  
     tempDF = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
-                          'employeeID': str(user['attributes']['employeeID']),
+                          'employeeID': str(user['employeeID']),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
   for user in users2:  
