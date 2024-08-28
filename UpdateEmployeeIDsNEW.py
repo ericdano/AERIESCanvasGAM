@@ -60,8 +60,18 @@ def main():
   df = pd.DataFrame(columns = ['DN','email','domain','employeeID'])
   thelogger.info('ExpireADAccounts->Connecting to Paris...')
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
-  print(users)
-  print(users2)
+  for user in users:  
+    tempDF = pd.DataFrame([{'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
+                          'domain': 'zeus'}])
+    df = pd.concat([df,tempDF], axis=0, ignore_index=True)
+  for user in users2:  
+    tempDF2 = pd.DataFrame([{'DN': str(user['dn']),
+                          'email': str(user['attributes']['mail']),
+                          'domain': 'zeus'}])
+    df = pd.concat([df,tempDF], axis=0, ignore_index=True)
+  print(df)
+
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   msg['From'] = configs['SMTPAddressFrom']
