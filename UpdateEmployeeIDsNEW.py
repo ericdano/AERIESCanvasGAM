@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE, ALL
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE, ALL_ATTRIBUTES
 from logging.handlers import SysLogHandler
 import arrow
 from ms_active_directory import ADDomain
@@ -26,7 +26,7 @@ def getADSearch(domainserver,baseou,configs):
   userName = 'tech'
   password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  with Connection(Server(serverName, get_info=ldap3.ALL),
+  with Connection(Server(serverName, get_info=ldap3.ALL_ATTRIBUTES),
                   user='{0}\\{1}'.format(domainName, userName), 
                   password=password, 
                   auto_bind=True) as conn:
