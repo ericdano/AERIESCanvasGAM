@@ -255,11 +255,12 @@ if __name__ == '__main__':
         msgbody +="Can't connect due to other error [" + str(err) + "]"
         WasThereAnError = True
     thelogger.info('Update Maia Learning->Removing CSV files')
-
-    os.remove(dest_filename)
-    os.remove(dest_filename_staff)
-    os.remove(dest_filename_gpa)
-    os.remove(dest_filename_parents)
+    DontDelete = False
+    if not(DontDelete):
+        os.remove(dest_filename)
+        os.remove(dest_filename_staff)
+        os.remove(dest_filename_gpa)
+        os.remove(dest_filename_parents)
 
     msgbody += str(len(sql_query.index)) + ' Student records in file uploaded.\n'
     msgbody += str(len(sql_query_gpa.index)) + ' GPA records in file uploaded.\n'

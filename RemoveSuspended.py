@@ -42,21 +42,41 @@ if __name__ == '__main__':
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
-    msgbody += 'Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n'  
+    msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n'  
   thelogger.info('RemoveSuspendedUsers->Running GAM to remove suspended users from groups')
   stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'groups'])
   if stat1 != 0:
     WasThereAnError = True
-    thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+    thelogger.critical('RemoveSuspendedUsers->GAM returned an error for the last command')
     msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
-  msgbody += 'Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
+  msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
   thelogger.info('RemoveSuspendedUsers->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups.')
+  #Remove Google Licenses from Suspended Users
+  # Delete License 1010310008
+  thelogger.info('Remove Google License->Removing Student Licenses of Suspended Accounts')
+  stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'license','1010310008'])
+  if stat1 != 0:
+    WasThereAnError = True
+    thelogger.critical('Remove Google Licenses->GAM returned an error for the last command')
+    msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
+  msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310008. GAM Status->' + str(stat1) + '\n' 
+  thelogger.info('Remove Google Licenses->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310008.')
+  thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
+  # Delete License 1010310009
+  thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
+  stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'license','1010310009'])
+  if stat1 != 0:
+    WasThereAnError = True
+    thelogger.critical('Remove Google Licenses->GAM returned an error for the last command')
+    msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
+  msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete licsense 1010310009. GAM Status->' + str(stat1) + '\n' 
+  thelogger.info('Remove Google Licenses->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310009.')
   os.remove(filetempname)
   msgbody += 'Done!'
   if WasThereAnError:
-    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Remove Suspended Users From Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Remove Google License and Groups from Users " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   else:
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Remove Suspended Users From Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Remove Google License and Groups from Users " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   end_of_timer = timer()
   msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
   msg.set_content(msgbody)
