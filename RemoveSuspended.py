@@ -15,6 +15,10 @@ except it is Python, does some logging, and emails what happens (crontab was doi
 # Shell script remove suspended users from groups
 # alias gam="/usr/local/gamadv-xtd3/gam"
 # /usr/local/gamadv-xtd3/gam print users query isSuspended=true | /usr/local/gamadv-xtd3/gam csv - gam user ~primaryEmail delete groups
+
+Also added GAM stuff to remove Google EDU licenses from Suspended users. 
+
+
 """
 if __name__ == '__main__':
 # One time initialization
