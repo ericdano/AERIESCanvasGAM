@@ -21,6 +21,8 @@ def getConfigs():
     configs = json.load(f)
   return configs
 
+
+'''
 def getADSearch(domainserver,baseou,configs):
   serverName = 'LDAP://' + domainserver
   domainName = 'AUHSD'
@@ -38,6 +40,37 @@ def getADSearch(domainserver,baseou,configs):
                                              attributes=['displayName','mail','userAccountControl','sAMAccountName','employeeID'],
                                              get_operational_attributes=False, paged_size=15)
   return results
+'''
+
+def getADSearch(domainserver,baseou,configs):
+  serverName = domainserver + 'acalanes.k12.ca.us'
+  domainName = 'AUHSD'
+  userName = 'tech'
+  password = configs['ADPassword']
+  base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
+  server = ldap3.Server(serverName,get_info=ldap3.ALL)
+  conn = ldap3.Connection(server, user='{0}\\{1}'.format(thedomain,theuser), password=password, auto_bind=True)
+  search_base = 'OU=AUHSD Staff'
+  search_filter = '(objectClass=user)'  # Adjust if needed to target specific users
+  attributes = ['employeeID','mail','sAMAccountName','displayName','userAccountControl']
+  # Perform the search
+  conn.search(search_base, search_filter, attributes=attributes)
+  # Iterate over the results and extract the employeeID
+  '''
+  for entry in conn.entries:
+    try:
+        employee_id = entry['employeeID'].value
+        mail = str(entry['mail'])
+        sAMAccountName = str(entry['sAMAccountName'])
+        displayname = str(entry['displayName'])
+        useraccountcontrol = str(entry['userAccountControl'])
+        print(f"Employee ID: {employee_id} email: {mail} SAMAccount: {sAMAccountName} DisplayName: {displayname} userACC: {useraccountcontrol}")
+    except ldap3.core.exceptions.LDAPKeyError:
+        print("employeeID attribute not found for this user")
+  '''
+# Unbind (disconnect) from the server 
+  conn.unbind()
+  return conn.entries
 
 
 def main():
@@ -59,8 +92,22 @@ def main():
   msgbody += 'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs) 
   df = pd.DataFrame(columns = ['DN','email','employeeID','domain'])
+
   thelogger.info('ExpireADAccounts->Connecting to Paris...')
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
+  for user in users
+    employee_id = entry['employeeID'].value
+    mail = str(entry['mail'])
+    sAMAccountName = str(entry['sAMAccountName'])
+    displayname = str(entry['displayName'])
+    useraccountcontrol = str(entry['userAccountControl'])
+    print(f"Employee ID: {employee_id} email: {mail} SAMAccount: {sAMAccountName} DisplayName: {displayname} userACC: {useraccountcontrol}")
+    tempDF = pd.DataFrame([{'DN': displayname,
+                          'email': mail,
+                          'employeeID': employee_id,
+                          'domain': 'zeus'}])
+    df = pd.concat([df,tempDF], axis=0, ignore_index=True)
+  '''
   for user in users:  
     tempDF = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
@@ -73,6 +120,7 @@ def main():
                           'employeeID': str(user['attributes']['employeeID']),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
+  '''
   print(df)
 
   msg = EmailMessage()
