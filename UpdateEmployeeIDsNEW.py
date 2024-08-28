@@ -34,7 +34,7 @@ def getADSearch(domainserver,baseou,configs):
     results = conn.extend.standard.paged_search(search_base= base, 
                                              search_filter = '(objectclass=user)', 
                                              search_scope=SUBTREE,
-                                             attributes=['displayName','mail','sAMAccountName','employeeID'],
+                                             attributes=['displayName','mail','userAccountControl','sAMAccountName'],
                                              get_operational_attributes=False, paged_size=15)
   return results
 
