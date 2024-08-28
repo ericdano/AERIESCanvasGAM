@@ -33,6 +33,8 @@ lifting here.
 
 Script was used in the 2024 gear up for school. Only big issues were the case of Instructors who have the SAME last name and teach the SAME course. It did happen. TWICE.
 
+OH, and if you have terms.....like a Year long term, and a Fall and a Spring term, you should be careful of those as well, crosslisting will lump those all together.
+
 Also, if you have multiple sites, you should run it PER site rather than trying to hit the whole instance. So in the AERIES query, divide it out by site. 
 I will have it do that at some point by itself, but right now you should do it per site manually. Otherwise, if you have teachers with the same last name, same subject, but multiple sites......it will crosslist all them together.
 
@@ -136,6 +138,7 @@ if __name__ == '__main__':
     ---------------------------------------------------------
     # Fix for not having SIS_ID in the section
     # Don't need to run, saved for historical reference
+    # Mainly for making Sandbox/sample classes
     
     for i in sql_query.index:
         course = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
