@@ -42,21 +42,21 @@ def getADSearch(domainserver,baseou,configs):
   return results
 '''
 
-def getADSearch(domainserver,baseou,configs):
-  serverName = domainserver + 'acalanes.k12.ca.us'
+def getADSearch(domainserver,baseou,configs,datafr):
+  serverName = domainserver + '.acalanes.k12.ca.us'
   domainName = 'AUHSD'
   userName = 'tech'
   password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
   server = ldap3.Server(serverName,get_info=ldap3.ALL)
-  conn = ldap3.Connection(server, user='{0}\\{1}'.format(thedomain,theuser), password=password, auto_bind=True)
+  conn = ldap3.Connection(server, user='{0}\\{1}'.format(domainName,userName), password=password, auto_bind=True)
   search_base = 'OU=AUHSD Staff'
   search_filter = '(objectClass=user)'  # Adjust if needed to target specific users
   attributes = ['employeeID','mail','sAMAccountName','displayName','userAccountControl']
   # Perform the search
   conn.search(search_base, search_filter, attributes=attributes)
   # Iterate over the results and extract the employeeID
-  '''
+
   for entry in conn.entries:
     try:
         employee_id = entry['employeeID'].value
@@ -65,12 +65,18 @@ def getADSearch(domainserver,baseou,configs):
         displayname = str(entry['displayName'])
         useraccountcontrol = str(entry['userAccountControl'])
         print(f"Employee ID: {employee_id} email: {mail} SAMAccount: {sAMAccountName} DisplayName: {displayname} userACC: {useraccountcontrol}")
+        datafr = pd.DataFrame([{'DN': displayname,
+                          'email': mail,
+                          'employeeID': employee_id,
+                          'domain': domainserver}])
     except ldap3.core.exceptions.LDAPKeyError:
         print("employeeID attribute not found for this user")
-  '''
+
+
+    df = pd.concat([df,datafr], axis=0, ignore_index=True)
 # Unbind (disconnect) from the server 
   conn.unbind()
-  return conn.entries
+  return df
 
 
 def main():
@@ -90,23 +96,13 @@ def main():
   print(dataframe1)
   #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
   msgbody += 'Checking domain server Zeus....\n'
-  users = getADSearch('zeus','AUHSD Staff',configs) 
   df = pd.DataFrame(columns = ['DN','email','employeeID','domain'])
 
+  users = getADSearch('zeus','AUHSD Staff',configs,df) 
+
   thelogger.info('ExpireADAccounts->Connecting to Paris...')
-  users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
-  for user in users
-    employee_id = entry['employeeID'].value
-    mail = str(entry['mail'])
-    sAMAccountName = str(entry['sAMAccountName'])
-    displayname = str(entry['displayName'])
-    useraccountcontrol = str(entry['userAccountControl'])
-    print(f"Employee ID: {employee_id} email: {mail} SAMAccount: {sAMAccountName} DisplayName: {displayname} userACC: {useraccountcontrol}")
-    tempDF = pd.DataFrame([{'DN': displayname,
-                          'email': mail,
-                          'employeeID': employee_id,
-                          'domain': 'zeus'}])
-    df = pd.concat([df,tempDF], axis=0, ignore_index=True)
+  users2 = getADSearch('paris','Acad Staff,DC=staff',configs,df)
+
   '''
   for user in users:  
     tempDF = pd.DataFrame([{'DN': str(user['dn']),
