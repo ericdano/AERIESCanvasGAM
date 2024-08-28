@@ -26,7 +26,7 @@ def getADSearch(domainserver,baseou,configs):
   userName = 'tech'
   password = configs['ADPassword']
   base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  with Connection(Server(serverName),
+  with Connection(Server(serverName, get_info=ldap.ALL),
                   user='{0}\\{1}'.format(domainName, userName), 
                   password=password, 
                   auto_bind=True) as conn:
@@ -34,7 +34,7 @@ def getADSearch(domainserver,baseou,configs):
     results = conn.extend.standard.paged_search(search_base= base, 
                                              search_filter = '(objectclass=user)', 
                                              search_scope=SUBTREE,
-                                             attributes=['displayName','mail','userAccountControl','sAMAccountName'],
+                                             attributes=['displayName','mail','userAccountControl','sAMAccountName','employeeID'],
                                              get_operational_attributes=False, paged_size=15)
   return results
 
@@ -63,13 +63,13 @@ def main():
   for user in users:  
     tempDF = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
-                          'employeeID': str(user['attributes']['employeeID']),
+                          'employeeID': str(user['employeeID'].value),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
   for user in users2:  
     tempDF2 = pd.DataFrame([{'DN': str(user['dn']),
                           'email': str(user['attributes']['mail']),
-                          'employeeID': str(user['attributes']['employeeID']),
+                          'employeeID': str(user['employeeID'].value),
                           'domain': 'zeus'}])
     df = pd.concat([df,tempDF], axis=0, ignore_index=True)
   print(df)
