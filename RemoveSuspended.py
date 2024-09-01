@@ -46,7 +46,7 @@ if __name__ == '__main__':
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
-    msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n'  
+    msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(rc2) + '\n'  
   thelogger.info('RemoveSuspendedUsers->Running GAM to remove suspended users from groups')
   stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'groups'])
   if stat1 != 0:
