@@ -25,7 +25,7 @@ def GetAERIESData(thelogger,configs):
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     with engine.begin() as connection:
-        sql_query = pd.read_sql_query('SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)',engine)
+        sql_query = pd.read_sql_query("""SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)""",engine)
         thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
     sql_query.sort_values(by=['SC'])
     return sql_query
@@ -65,9 +65,13 @@ def main():
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     AERIESData = GetAERIESData(thelogger,configs)
     #print(AERIESData)
+    # Change numeric to String and prepend STU_ to it
+    AERIESData['ID'] = AERIESData['ID'].astype(str)
+    AERIESData['ID'] = 'STU_' + AERIESData['ID']
     df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
     StudentsDF = pd.DataFrame(columns=['ID'])
-    Canvas_API_URL = configs['CanvasAPIURL']
+    # USING BETA CanvasBETAAPIURL
+    Canvas_API_URL = configs['CanvasBETAAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     thelogger.info('AUHSD Catchall Course Update->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
@@ -81,18 +85,18 @@ def main():
         #print(section.students)
         canvasdf = pd.DataFrame(columns=['ID'])
         for s in section.students:
-            # Old call, Pandas 1.5 it is depreciated -> canvasdf = canvasdf.append({'ID' : s['sis_user_id']}, ignore_index=True)
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-        #create sets
-        #print(canvasdf)
         print(Newdf)
         print(canvasdf)
-        aerieslist = set(pd.to_numeric(Newdf.ID))
-        canvaslist = set(pd.to_numeric(canvasdf.ID))
-        #diff sets
-        studentsinaeriesnotincanvas = aerieslist - canvaslist
-        studentsincanvasnotinaeries = canvaslist - aerieslist
+
+        studentsinaeriesnotincanvas = Newdf['ID'][~Newdf['ID'].isin(canvasdf['ID'])].unique()
+        studentsincanvasnotinaeries = canvasdf['ID'][~canvasdf['ID'].isin(Newdf['ID'])].unique()
+        print('Students in Aeries not in Canvas')
+        print(studentsinaeriesnotincanvas)
+        print('Students in Canvas not in AERIES')
+        print(studentsincanvasnotinaeries)
+        
         #
         """
          First go through and REMOVE them from the course and section
@@ -101,19 +105,21 @@ def main():
         """
         print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
         msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
+        print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
         course = canvas.get_course(SiteClassesList['CourseID'][i])
         enrollments = course.get_enrollments(type='StudentEnrollment')
-        print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
+       
         thelogger.info('AUHSD Catchall Course Update->Removing Users in Canvas but not in AERIES')
         if len(studentsincanvasnotinaeries):
             for e in enrollments:
+                print(e.sis_user_id)
                 if e.sis_user_id is None:
-                    print('Null in user id->' + str(e.id))
+                    print('Null in user id->' + str(e.id + ' ' + e.sis_user_id))
                     #print(e)
                     msgbody += "Error->Null in user id->" + str(e.id) + '\n'
                     thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
                     WasThereAnError = True
-                elif int(e.sis_user_id) in studentsincanvasnotinaeries:
+                elif str(e.sis_user_id) in studentsincanvasnotinaeries:
                     print('Removing student->' + str(e.sis_user_id))
                     msgbody += 'Removing student->' + str(e.sis_user_id) + '\n'
                     thelogger.info('AUHSD Catchall Course Update-> Deleting student->' + str(e.sis_user_id))
@@ -125,8 +131,9 @@ def main():
                         thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas error->') + str(exc1)
                         WasThereAnError = True
                 else:
-                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type ->' + str(e.id))
-                    msgbody += 'AUHSD Catchall Course Update->sis_user_id not there and sis_user_id is not None type ->' + str(e.id) + '\n'
+                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) + ' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id))
+                    msgbody += 'AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) +' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id) + '\n'
+                    print('AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) +' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id))
                     WasThereAnError = True
                     pass
         else:
@@ -161,7 +168,7 @@ def main():
         else:
             print('No students in section that are in Aeries but not in Canvas')
             msgbody += 'No students in section that are in Aeries but not in Canvas\n'
-            thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Aeries but not in Canvas')            
+            thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Aeries but not in Canvas')       
     end_of_timer = timer()
     if WasThereAnError == True:
         msg['Subject'] = "ERROR!! -> Canvas Catch-all Informational Course Update"
@@ -174,6 +181,6 @@ def main():
     thelogger.info('AUHSD Catchall Course Update->->Sent status message')
     thelogger.info('AUHSD Catchall Course Update->->DONE! - took ' + str(end_of_timer - start_of_timer))
     print('Done!!!')
-
+    
 if __name__ == '__main__':
     main()

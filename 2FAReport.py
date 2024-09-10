@@ -7,6 +7,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+import multiprocessing,platform
+
 """
 Basically, a Windows version of this crontab job
 except it is Python, does some logging, and emails what happens (crontab was doing that though.....)
@@ -29,13 +31,15 @@ if __name__ == '__main__':
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
   WasThereAnError = False
-  filetempname = '.\suspendedusers.csv'
+  filetempname = '.\2faauhsd.csv'
   os.chdir('E:\\PythonTemp')
-  if sys.platform == 'darwin':
-    multiprocessing.set_start_method('fork')
+  if platform.system() != 'Linux':
+    multiprocessing.freeze_support()
+    multiprocessing.set_start_method('spawn')
   gam.initializeLogging()
   thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
   rc2 = gam.CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=true'])
+  exit(1)
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')

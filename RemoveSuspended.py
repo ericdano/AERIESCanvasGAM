@@ -43,6 +43,7 @@ if __name__ == '__main__':
   gam.initializeLogging()
   thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
   rc2 = gam.CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=true'])
+
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
