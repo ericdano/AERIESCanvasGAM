@@ -150,11 +150,11 @@ def main():
                 thelogger.info('AUHSD Catchall Course Update->Adding user ' + str(currentuserid))
                 try:
                     user = canvas.get_user(currentuserid,'sis_user_id')
-                    course.enroll_user(
-                        user,
-                        enrollment_type = "StudentEnrollment",
-                        enrollment={'enrollment_state': 'active'}
-                    )
+                    #course.enroll_user(
+                    #    user,
+                    #    enrollment_type = "StudentEnrollment",
+                    #    enrollment={'enrollment_state': 'active'}
+                    #)
                     course.enroll_user(
                         user,
                         enrollment_type = "StudentEnrollment",

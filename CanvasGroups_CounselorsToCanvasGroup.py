@@ -40,55 +40,46 @@ msgbody = ''
 # The counseling CSV has counselors email address, there sis_id, canvas group and grade
 # Grade can have a field All in it that it will then place into a All students
 # at site group for the counselor
-CounselorCanvasGroups = pd.read_csv(CounselorCSV)
+CounselorCanvasSection = pd.read_csv(CounselorCSV)
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-#connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
+
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 #-----Canvas Info
-Canvas_API_URL = configs['CanvasAPIURL']
+Canvas_API_URL = configs['CanvasBETAAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
 thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
 msgbody += 'Starting Canvas Counselor Groups for AUHSD Script\n'
-for i in CounselorCanvasGroups.index:
-  CounselorEmail = CounselorCanvasGroups['email'][i]
-  CounselorSISID = CounselorCanvasGroups['SISID'][i]
-  GradeToGet = CounselorCanvasGroups['Grade'][i]
+for i in CounselorCanvasSection.index:
+  CounselorEmail = CounselorCanvasSection['email'][i]
+  GradeToGet = CounselorCanvasSection['Grade'][i]
   print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
-  CanvasGroupID = CounselorCanvasGroups['CanvasGroupID'][i]
-  msgbody += 'Matching for ' + CounselorEmail + ' - SIS ID->' + str(CounselorSISID) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasGroupID) + '\n'
-  if (GradeToGet == str('All')):
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\'',engine)
-  else:
-    dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + GradeToGet + '\'',engine)
-  #print('Matching for ' + CounselorEmail + ' Grade ' + str(GradeToGet) + ' CanvasGroupID ' + str(CanvasGroupID))
-  #print(sql_query)
+  CanvasSectionID = CounselorCanvasSection['CanvasSectionID'][i]
+  msgbody += 'Matching for ' + CounselorEmail + ' - Counselor->' + str(CounselorEmail) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasSectionID) + '\n'
+  aeriesSQLData = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + str(GradeToGet) + '\'',engine)
   thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Making SET of Aeries IDs')
-  print('Making SET of Aeries IDs')
-  aerieslist = set(dataframe1.ID)
   # Now go get the group off Canvas
-  msgbody += 'Getting exisiting users from group id->' + str(CanvasGroupID) + '\n'
-  group = canvas.get_group(CanvasGroupID,include=['users'])
-  dataframe2 = pd.DataFrame(group.users,columns=['sis_user_id'])
-  canvaslist = set(pd.to_numeric(dataframe2.sis_user_id))
-#  print('Canvas')
-#  print(canvaslist)
-  #Subtract items from the Aeries set that are in the Canvas set
-  #The resulting set is the SIS_IDs we need to ADD to the Group
-  studentstoadd = aerieslist - canvaslist
-  #Subtract items from Canvaslist set that are in Aeries set. 
-  #These are students that need to be removed from the group
-  studentstoremove = canvaslist - aerieslist
-  #Keep the teacher in the group though, so take them OUT of the set
-  studentstoremove.remove(CounselorSISID) # Keep teacher in canvas group
-#  print('Students to add')
-#  print(studentstoadd)
-#  print('Students to remove')
-#  print(studentstoremove)
+  msgbody += 'Getting exisiting users from group id->' + str(CanvasSectionID) + '\n'
+  #
+  section = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i],include=["students"])
+  # make a dataframe that has Student SIS IDs in it
+  canvasdf = pd.DataFrame(columns=['ID'])
+  for s in section.students:
+    tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
+    canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+
+
+  studentsinaeriesnotincanvas = aeriesSQLData['ID'][~aeriesSQLData['ID'].isin(canvasdf['ID'])].unique()
+  studentsincanvasnotinaeries = canvasdf['ID'][~canvasdf['ID'].isin(aeriesSQLData['ID'])].unique()
+  print('Students in Aeries not in Canvas')
+  print(studentsinaeriesnotincanvas)
+  print('Students in Canvas not in AERIES')
+  print(studentsincanvasnotinaeries)
+  exit(1)
   for student in studentstoremove:
     thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Looking up student->'+str(student)+' in Canvas')
     msgbody += 'Looking up student->'+str(student)+' in Canvas' + '\n'
