@@ -17,17 +17,37 @@ This script pulls ALL students from AERIES. Sorts them by site and grade, and pu
 and section in that course by Grade
 
 """
-def GetAERIESData(thelogger,configs):
+# Site to process SiteAbbr, Number, Main Canvas Course Code
+sitestoprocess = [('CHS',4,13087),
+        ('MHS',3,16077)]
+
+def GetAERIESData(thelogger,schoolcode,grade,configs):
 
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
 
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    the_query = f"""
+    SELECT
+        ID,
+        SEM,
+        SC,
+        GR
+    FROM
+        STU
+    WHERE
+        STU.DEL=0
+        AND STU.TG = ''
+        AND STU.SC='{schoolcode}'
+        AND GR='{grade}'
+    """
     engine = create_engine(connection_url)
     with engine.begin() as connection:
-        sql_query = pd.read_sql_query("""SELECT ID, SEM, SC, GR FROM STU WHERE DEL=0 AND STU.TG = \'\' AND (SC < 8 OR SC = 30)""",engine)
+        sql_query = pd.read_sql_query(the_query,engine)
         thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
-    sql_query.sort_values(by=['SC'])
+    #sql_query['ID'] = sql_query['ID'].astype(str)
+    sql_query['ID'] = 'STU_' + sql_query['ID'].astype(str)
+    #sql_query.sort_values(by=['SC'])
     return sql_query
 
 def main():
@@ -61,126 +81,102 @@ def main():
     at site group for the counselor
     """
     SiteClassesList = pd.read_csv(SiteClassesCSV)
-    #populate a table
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-    AERIESData = GetAERIESData(thelogger,configs)
-    #print(AERIESData)
-    # Change numeric to String and prepend STU_ to it
-    AERIESData['ID'] = AERIESData['ID'].astype(str)
-    AERIESData['ID'] = 'STU_' + AERIESData['ID']
-    df = AERIESData.sort_values(by=['SC','GR'], ascending = [True,True])
-    StudentsDF = pd.DataFrame(columns=['ID'])
     # USING BETA CanvasBETAAPIURL
-    Canvas_API_URL = configs['CanvasBETAAPIURL']
+    #Canvas_API_URL = configs['CanvasBETAAPIURL']
+    Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     thelogger.info('AUHSD Catchall Course Update->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
     for i in SiteClassesList.index:
-        print('Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' +  str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]))
-        msgbody += 'Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' +  str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]) + '\n'
-        thelogger.info('AUHSD Catchall Course Update->' + 'Finding for ' + str(SiteClassesList['Site'][i]) + ' Grade ' + str(SiteClassesList['GradeLevel'][i]) + ' Course ID-> ' + str(SiteClassesList['CourseID'][i]) + ' Section ID->' + str(SiteClassesList['SectionID'][i]))
-        Newdf = df.loc[(df['SC'] == SiteClassesList['SiteID'][i]) & (df['GR'] == SiteClassesList['GradeLevel'][i])]
-        section = canvas.get_section(SiteClassesList['SectionID'][i],include=["students"])
-        #print(section.students)
+        GradeToGet = SiteClassesList['Grade'][i]
+        SchoolSite = SiteClassesList['SiteID'][i]
+        CanvasSectionID = SiteClassesList['CanvasSectionID'][i]
+        # Get AERIES Students for the site
+        aeriesSQLData = GetAERIESData(thelogger,SchoolSite,GradeToGet,configs)
+        thelogger.info('Getting exisiting users from Course id->' + str(CanvasSectionID))
+        print('Getting exisiting users from Course id->' + str(CanvasSectionID))
+        # Now go get the group off Canvas
+        msgbody += 'Getting exisiting users from Course id->' + str(CanvasSectionID) + '\n'
+        # Used to DELETE students from course and sections
+        course = canvas.get_course(SiteClassesList['CanvasMainCourseID'][i])
+        MainCourseEnrollments = course.get_enrollments(type='StudentEnrollment')
+        # used to get students in a section
+        section = canvas.get_section(SiteClassesList['CanvasSectionID'][i],include=["students"])
+        # make a dataframe that has Student SIS IDs in it
         canvasdf = pd.DataFrame(columns=['ID'])
+        print('Section looking at ->' + str(section))
+        print('CanvasSectionID->' + str(SiteClassesList['CanvasSectionID'][i]))
+        # get sis_user_id's out of Canvas data
+        print(section)
+        # comment out if loading NEW Courses
         for s in section.students:
             tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
             canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-        print(Newdf)
-        print(canvasdf)
-
-        studentsinaeriesnotincanvas = Newdf['ID'][~Newdf['ID'].isin(canvasdf['ID'])].unique()
-        studentsincanvasnotinaeries = canvasdf['ID'][~canvasdf['ID'].isin(Newdf['ID'])].unique()
+        # End of new Course section
+        # add STU_ to AERIES data
+        #aeriesSQLData['ID'] = 'STU_' + aeriesSQLData['ID'].astype(str)
+        studentsinaeriesnotincanvas = aeriesSQLData['ID'][~aeriesSQLData['ID'].isin(canvasdf['ID'])].unique()
+        studentsincanvasnotinaeries = canvasdf['ID'][~canvasdf['ID'].isin(aeriesSQLData['ID'])].unique()
         print('Students in Aeries not in Canvas')
         print(studentsinaeriesnotincanvas)
         print('Students in Canvas not in AERIES')
         print(studentsincanvasnotinaeries)
-        
-        #
-        """
-         First go through and REMOVE them from the course and section
-         If they are misaligned because they are in the wrong grade, it will add them back to the top course again regardless
-        for currentuserid in studentsincanvasnotinaeries:
-        """
-        print('Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries))
-        msgbody += 'Students in Canvas not in Aeries' + str(studentsincanvasnotinaeries) + '\n'
-        print('Going to Delete students from course ' + str(SiteClassesList['CourseID'][i]))
-        course = canvas.get_course(SiteClassesList['CourseID'][i])
-        enrollments = course.get_enrollments(type='StudentEnrollment')
-       
-        thelogger.info('AUHSD Catchall Course Update->Removing Users in Canvas but not in AERIES')
-        if len(studentsincanvasnotinaeries):
-            for e in enrollments:
-                print(e.sis_user_id)
-                if e.sis_user_id is None:
-                    print('Null in user id->' + str(e.id + ' ' + e.sis_user_id))
-                    #print(e)
-                    msgbody += "Error->Null in user id->" + str(e.id) + '\n'
-                    thelogger.error('AUHSD Catchall Course Update->Found null in sis_user_id for user ' + str(e.id))
-                    WasThereAnError = True
-                elif str(e.sis_user_id) in studentsincanvasnotinaeries:
-                    print('Removing student->' + str(e.sis_user_id))
-                    msgbody += 'Removing student->' + str(e.sis_user_id) + '\n'
-                    thelogger.info('AUHSD Catchall Course Update-> Deleting student->' + str(e.sis_user_id))
-                    try:
-                        e.deactivate(task="delete") 
-                    except CanvasException as exc1:
-                        print('Error->' + str(exc1))
-                        msgbody += "Error->" + str(exc1) + str(e.sis_user_id) +  + '\n'
-                        thelogger.error('AUHSD Catchall Course Update-> Error Deleting student->' + str(e.sis_user_id) + ' Canvas error->') + str(exc1)
-                        WasThereAnError = True
-                else:
-                    thelogger.error('AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) + ' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id))
-                    msgbody += 'AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) +' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id) + '\n'
-                    print('AUHSD Catchall Course Update->sis_user_id not there ' + str(SiteClassesList['CourseID'][i]) +' and sis_user_id is not None type ->' + str(e.id) + ' ' + str(e.sis_user_id))
-                    WasThereAnError = True
-                    pass
-        else:
-            print('No students in section that are in Canvas but not in Aeries')
-            msgbody += 'No students in section that are in Canvas but not in Aeries\n'
-            thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Canvas but not in Aeries')
-        print('\n')        
-        #Enroll Student into Canvas Section
-        print('Students in Aeries not in Canvas' + str(studentsinaeriesnotincanvas))
-        msgbody += 'Students in Aeries not in Canvas' + str(studentsinaeriesnotincanvas) + '\n'
-        if len(studentsinaeriesnotincanvas):
-            for currentuserid in studentsinaeriesnotincanvas:
-                print('Enrolling student->' + str(currentuserid) + ' into Course ' + str(SiteClassesList['CourseID'][i]) + ' section ' + str(SiteClassesList['SectionID'][i]))
-                thelogger.info('AUHSD Catchall Course Update->Adding user ' + str(currentuserid))
+        # Remove students who should not be in the course first
+        for student in studentsincanvasnotinaeries:
+            thelogger.info('Canvas Catchall->Looking up student->'+str(student)+' in Canvas')
+            msgbody += 'Looking up student->'+str(student)+' in Canvas to delete from course' + '\n'
+            print('Looking up student->'+str(student)+' in Canvas to delete from course')
+            try:
+                user = canvas.get_user(str(student),'sis_user_id')
+            except CanvasException as g:
+                if str(g) == "Not Found":
+                    print('Cannot find user sis_id->'+str(student))
+                    msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
+                    WasThereAnErr = True
+                    thelogger.info('Canvas Catchall->Cannot find user sis_id->'+str(student))
+            else:
+                lookfordelete = False
                 try:
-                    user = canvas.get_user(currentuserid,'sis_user_id')
-                    #course.enroll_user(
-                    #    user,
-                    #    enrollment_type = "StudentEnrollment",
-                    #    enrollment={'enrollment_state': 'active'}
-                    #)
-                    course.enroll_user(
-                        user,
-                        enrollment_type = "StudentEnrollment",
-                        enrollment={'course_section_id': SiteClassesList['SectionID'][i],'enrollment_state': 'active'}
-                    )
-                except CanvasException as exc2:
-                    print('Error->' + str(exc2))
-                    msgbody += 'Error->' + str(exc2) + '\n'
-                    thelogger.error('AUHSD Catchall Course Update-> Error looking up user sis_user_id->' + str(currentuserid) + ' Canvas error ' + str(exc2))
-                    WasThereAnError = True
-        else:
-            print('No students in section that are in Aeries but not in Canvas')
-            msgbody += 'No students in section that are in Aeries but not in Canvas\n'
-            thelogger.info('AUHSD Catchall Course Update-> No students in section that are in Aeries but not in Canvas')       
-    end_of_timer = timer()
-    if WasThereAnError == True:
-        msg['Subject'] = "ERROR!! -> Canvas Catch-all Informational Course Update"
-    else:
-        msg['Subject'] = "Canvas Catch-all Informational Course Update"
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
-    msg.set_content(msgbody)
-    s = smtplib.SMTP(configs['SMTPServerAddress'])
-    s.send_message(msg)
-    thelogger.info('AUHSD Catchall Course Update->->Sent status message')
-    thelogger.info('AUHSD Catchall Course Update->->DONE! - took ' + str(end_of_timer - start_of_timer))
-    print('Done!!!')
-    
+                    for stu in MainCourseEnrollments:
+                        # You have to loop through all the enrollments for the class and then find the student id in the enrollment then tell it to delete it.
+                        if stu.user_id == user.id:
+                            lookfordelete = True
+                            stu.deactivate(task="delete")
+                            print('Deleted student ->'+str(user.id) + ' from course')
+                            msgbody += 'Deleted student ->'+str(user.id) + ' from course' + '\n'
+                            thelogger.info('Deleted student ->'+str(user.id) + ' from course')   
+                except CanvasException as e:
+                    if str(e) == "Not Found":
+                        print('User not in course CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
+                        msgbody += 'User not in course CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
+                        thelogger.info('Canvas Catchall->Some sort of exception happened when removing student->'+str(student)+' from Group')
+                print('Removed Student->'+str(student)+' from Canvas group')
+                msgbody += 'Removed Student->'+str(student)+' from Canvas course' + '\n'
+                thelogger.info('Canvas Catchall->Removed Student->'+str(student)+' from Canvas group')
+        # Now add students to group
+        # Get the course then loop adding students
+        SectionToAddTo = canvas.get_section(SiteClassesList['CanvasSectionID'][i])
+        for student in studentsinaeriesnotincanvas:
+            print(student)
+            user = canvas.get_user(str(student),'sis_user_id')
+            msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'
+            
+            print(course)
+            print(SectionToAddTo.id)
+            print(user)
+            course.enroll_user(
+                                user,
+                                enrollment_type = "StudentEnrollment",
+                                enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
+                            )
+            print('Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
+            msgbody += 'Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID) + '\n'
+            thelogger.info('Canvas Catchall->Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
+        thelogger.info('Canvas Catchall->Closed AERIES connection')
+        msgbody+='Done!'
+
+        
 if __name__ == '__main__':
     main()

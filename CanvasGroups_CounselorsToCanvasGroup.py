@@ -11,7 +11,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+from collections.abc import Iterable
 
+
+    
 WasThereAnErr = False
 start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
@@ -29,8 +32,8 @@ else:
     thelogger.addHandler(handler)
 
 CounselorCSV = Path.home() / ".Acalanes" / "CanvasCounselingGroups.csv"
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loaded config file and logfile started for AUHSD Counseling Canvas')
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Loading Counseling CSV file')
+thelogger.info('Canvas Groups for Counselors->Loaded config file and logfile started for AUHSD Counseling Canvas')
+thelogger.info('Canvas Groups for Counselors->Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
 MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD Counseling To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -47,9 +50,12 @@ connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] +
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 #-----Canvas Info
-Canvas_API_URL = configs['CanvasBETAAPIURL']
+#Canvas_API_URL = configs['CanvasBETAAPIURL']
+Canvas_API_URL = configs['CanvasAPIURL']
+#----------------------------------------
+
 Canvas_API_KEY = configs['CanvasAPIKey']
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Connecting to Canvas')
+thelogger.info('Canvas Groups for Counselors->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
@@ -57,33 +63,69 @@ msgbody += 'Starting Canvas Counselor Groups for AUHSD Script\n'
 for i in CounselorCanvasSection.index:
   CounselorEmail = CounselorCanvasSection['email'][i]
   GradeToGet = CounselorCanvasSection['Grade'][i]
+  SchoolSite = CounselorCanvasSection['Site'][i]
   print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
   CanvasSectionID = CounselorCanvasSection['CanvasSectionID'][i]
   msgbody += 'Matching for ' + CounselorEmail + ' - Counselor->' + str(CounselorEmail) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasSectionID) + '\n'
-  aeriesSQLData = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND EM = \'' + CounselorEmail + '\' AND GR = \'' + str(GradeToGet) + '\'',engine)
-  thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Making SET of Aeries IDs')
+  # OLD SQL Query
+  # aeriesSQLData = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND ALTSC = \'' + SchoolID + '\' AND EM = \'' + CounselorEmail + '\' AND GR = \'' + str(GradeToGet) + '\'',engine)
+  the_query = f"""
+  SELECT
+    ALTSCH.ALTSC,
+    STU.LN,
+    STU.ID,
+    STU.SEM,
+    STU.GR,
+    STU.CU,
+    TCH.EM
+  FROM
+    STU
+  INNER JOIN
+    TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
+  INNER JOIN
+    ALTSCH ON STU.SC = ALTSCH.SCID
+  WHERE
+    (STU.SC < 5)
+    AND STU.DEL = 0
+    AND ALTSC = '{SchoolSite}'
+    AND STU.TG = ''
+    AND STU.SP <> '2'
+    AND STU.CU > 0
+    AND EM = '{CounselorEmail}'
+    AND GR = '{GradeToGet}'
+  """
+  aeriesSQLData = pd.read_sql_query(the_query,engine)
+  thelogger.info('Canvas Groups for Counselors->Making SET of Aeries IDs')
   # Now go get the group off Canvas
   msgbody += 'Getting exisiting users from group id->' + str(CanvasSectionID) + '\n'
-  #
+  # Used to DELETE students from course and sections
+  course = canvas.get_course(CounselorCanvasSection['CanvasMainCourseID'][i])
+  MainCourseEnrollments = course.get_enrollments(type='StudentEnrollment')
+  # used to get students in a section
   section = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i],include=["students"])
   # make a dataframe that has Student SIS IDs in it
   canvasdf = pd.DataFrame(columns=['ID'])
+  print('Section looking at ->' + str(section))
+  print('CanvasSectionID->' + str(CounselorCanvasSection['CanvasSectionID'][i]))
+  # get sis_user_id's out of Canvas data
+  print(section)
+  # comment out if loading NEW Counselors
   for s in section.students:
     tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
     canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-
-
+  # End of new Counselor section
+  # add STU_ to AERIES data
+  aeriesSQLData['ID'] = 'STU_' + aeriesSQLData['ID'].astype(str)
   studentsinaeriesnotincanvas = aeriesSQLData['ID'][~aeriesSQLData['ID'].isin(canvasdf['ID'])].unique()
   studentsincanvasnotinaeries = canvasdf['ID'][~canvasdf['ID'].isin(aeriesSQLData['ID'])].unique()
   print('Students in Aeries not in Canvas')
   print(studentsinaeriesnotincanvas)
   print('Students in Canvas not in AERIES')
   print(studentsincanvasnotinaeries)
-  exit(1)
-  for student in studentstoremove:
-    thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Looking up student->'+str(student)+' in Canvas')
-    msgbody += 'Looking up student->'+str(student)+' in Canvas' + '\n'
-    print('Looking up student->'+str(student)+' in Canvas')
+  for student in studentsincanvasnotinaeries:
+    thelogger.info('Canvas Groups for Counselors->Looking up student->'+str(student)+' in Canvas')
+    msgbody += 'Looking up student->'+str(student)+' in Canvas to delete from course' + '\n'
+    print('Looking up student->'+str(student)+' in Canvas to delete from course')
     try:
       user = canvas.get_user(str(student),'sis_user_id')
     except CanvasException as g:
@@ -91,41 +133,46 @@ for i in CounselorCanvasSection.index:
         print('Cannot find user sis_id->'+str(student))
         msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
         WasThereAnErr = True
-        thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Cannot find user sis_id->'+str(student))
+        thelogger.info('Canvas Groups for Counselors->Cannot find user sis_id->'+str(student))
     else:
+      lookfordelete = False
       try:
-        n = group.remove_user(user.id)
+        for stu in MainCourseEnrollments:
+                # You have to loop through all the enrollments for the class and then find the student id in the enrollment then tell it to delete it.
+          if stu.user_id == user.id:
+            lookfordelete = True
+            stu.deactivate(task="delete")
+            print('Deleted student ->'+str(user.id) + ' from course')
+            msgbody += 'Deleted student ->'+str(user.id) + ' from course' + '\n'
+            thelogger.info('Deleted student ->'+str(user.id) + ' from course')
       except CanvasException as e:
         if str(e) == "Not Found":
             print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
             msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
-            thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Some sort of exception happened when removing student->'+str(student)+' from Group')
+            thelogger.info('Canvas Groups for Counselors->Some sort of exception happened when removing student->'+str(student)+' from Group')
       print('Removed Student->'+str(student)+' from Canvas group')
       msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
-      thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Removed Student->'+str(student)+' from Canvas group')
+      thelogger.info('Canvas Groups for Counselors->Removed Student->'+str(student)+' from Canvas group')
   # Now add students to group
-  for student in studentstoadd:
-    msgbody += 'going to try to add '+ str(student) + ' to group ' + str(CanvasGroupID) + '\n'
-    try:
-      user = canvas.get_user(str(student),'sis_user_id')
-    except CanvasException as f:
-      if str(f) == "Not Found":
-        print('Cannot find user id->'+str(student))
-        msgbody += '<b>Cannot find user id->'+str(student) + ' might be a new student who is not in Canvas yet</b>\n'
-        WasThereAnErr = True
-        thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Cannot find user id!')
-    else:    
-      try:
-        n = group.create_membership(user.id)
-      except CanvasException as e:
-        if str(e) == "Not Found":
-          print('User not in group')
-          msgbody += 'User not in group ' + str(user.id) + '\n'
-          WasThereAnErr = True
-      print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
-      msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID) + '\n'
-      thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasGroupID))
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Closed AERIES connection')
+  # Get the course then loop adding students
+  SectionToAddTo = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i])
+  for student in studentsinaeriesnotincanvas:
+    print(student)
+    user = canvas.get_user(str(student),'sis_user_id')
+    msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'
+       
+    print(course)
+    print(SectionToAddTo.id)
+    print(user)
+    course.enroll_user(
+                        user,
+                        enrollment_type = "StudentEnrollment",
+                        enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
+                    )
+    print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+    msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID) + '\n'
+    thelogger.info('Canvas Groups for Counselors->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
 if WasThereAnErr:
@@ -136,6 +183,6 @@ msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Sent Status Message')
-thelogger.info('CanvasGroups_CounselorsToCanvasGroup->Done!' + str(end_of_timer - start_of_timer))
+thelogger.info('Canvas Groups for Counselors->Sent Status Message')
+thelogger.info('Canvas Groups for Counselors->Done!' + str(end_of_timer - start_of_timer))
 print('Done!!!')

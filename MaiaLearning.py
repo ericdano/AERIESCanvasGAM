@@ -70,8 +70,51 @@ if __name__ == '__main__':
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
 
-    sql_query = pd.read_sql_query("""SELECT ALTSCN.ALTSC AS School_ID, STU.ID AS StudentID, STU.SEM AS Email, STU.FN AS FirstName, STU.MN AS MiddleName, STU.LN AS LastName, STU.FNA AS NickName, LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth, STU.SX AS Gender, STU.GR AS Grade, TECH.GYR AS Classof, STU.AD AS Address1, '' AS Address2, STU.CY AS City, STU.ST AS State, STU.ZC AS Zipcode, '' AS Country, '' AS Citizenship, '' AS EnrollmentEndDate, '' AS Telephone, '' AS FAFSA, '' AS Race, '' AS Ethnicity, TCH.EM AS AssignedCounselor FROM STU INNER JOIN TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN INNER JOIN ALTSCN ON STU.SC = ALTSCN.SCID INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN WHERE (STU.SC < 8) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')""",engine)
-    # old query sql_query = pd.read_sql_query("""SELECT ALTSCN.ALTSC AS School_ID, STU.ID as StudentID, STU.SEM as Email, STU.FN AS FirstName, STU.MN AS MiddleName, STU.LN AS LastName, STU.FNA as NickName, LEFT(CONVERT(VARCHAR, STU.BD, 101),5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth, STU.SX as Gender, STU.GR as Grade, TECH.GYR AS Classof, STU.AD as Address1, '' as Address2, STU.CY as City, STU.ST as State, STU.ZC as Zipcode, '' as Country, '' as Citizenship, '' as EnrollmentEndDate, '' as Telephone, '' as FAFSA, '' as Race, '' as Ethnicity, STU.CU AS AssignedCounselor FROM STU INNER JOIN TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN INNER JOIN ALTSCN ON STU.SC = ALTSCN.SCID WHERE (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2') AND STU.ID <> 3006323 AND STU.ID <> 3007723 ORDER BY School_ID, Lastname, Firstname""", engine)
+    #sql_query = pd.read_sql_query("""SELECT ALTSCN.ALTSC AS School_ID, STU.ID AS StudentID, STU.SEM AS Email, STU.FN AS FirstName, STU.MN AS MiddleName, STU.LN AS LastName, STU.FNA AS NickName, LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth, STU.SX AS Gender, STU.GR AS Grade, TECH.GYR AS Classof, STU.AD AS Address1, '' AS Address2, STU.CY AS City, STU.ST AS State, STU.ZC AS Zipcode, '' AS Country, '' AS Citizenship, '' AS EnrollmentEndDate, '' AS Telephone, '' AS FAFSA, '' AS Race, '' AS Ethnicity, TCH.EM AS AssignedCounselor FROM STU INNER JOIN TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN INNER JOIN ALTSCN ON STU.SC = ALTSCN.SCID INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN WHERE (STU.SC < 8) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')""",engine)
+    the_query = f"""
+    SELECT
+        ALTSCN.ALTSC AS School_ID,
+        STU.ID AS StudentID,
+        STU.SEM AS Email,
+        STU.FN AS FirstName,
+        STU.MN AS MiddleName,
+        STU.LN AS LastName,
+        STU.FNA AS NickName,
+        LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth,
+        STU.SX AS Gender,
+        STU.GR AS Grade,
+        TECH.GYR AS Classof,
+        STU.AD AS Address1,
+        '' AS Address2,
+        STU.CY AS City,
+        STU.ST AS State,
+        STU.ZC AS Zipcode,
+        '' AS Country,
+        '' AS Citizenship,
+        '' AS EnrollmentEndDate,
+        '' AS Telephone,
+        '' AS FAFSA,
+        '' AS Race,
+        '' AS Ethnicity,
+        TCH.EM AS AssignedCounselor
+    FROM
+        STU
+    INNER JOIN
+        TECH ON STU.SC = TECH.SC
+        AND STU.SN = TECH.SN
+    INNER JOIN
+        ALTSCN ON STU.SC = ALTSCN.SCID
+    INNER JOIN
+        TCH ON STU.SC = TCH.SC
+        AND STU.CU = TCH.TN
+    WHERE
+        (STU.SC < 8)
+        AND (STU.DEL = 0)
+        AND (STU.TG = '')
+        AND (STU.SP <> '2')
+
+    """
+    sql_query = pd.read_sql_query(the_query,engine)
     thelogger.info('Update Maia Learning->Got AERIES data for students')
     # Fix for CEP
     sql_query['School_ID'] = sql_query['School_ID'].replace(['7'],'6')
