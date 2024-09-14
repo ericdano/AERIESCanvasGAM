@@ -17,12 +17,9 @@ This script pulls ALL students from AERIES. Sorts them by site and grade, and pu
 and section in that course by Grade
 
 """
-# Site to process SiteAbbr, Number, Main Canvas Course Code
-sitestoprocess = [('CHS',4,13087),
-        ('MHS',3,16077)]
 
 def GetAERIESData(thelogger,schoolcode,grade,configs):
-
+    # Gets ARIES data by schoolcode and grade level
     thelogger.info('All Campus Student Canvas Groups->Connecting To AERIES to get ALL students for Campus')
 
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
@@ -74,6 +71,7 @@ def main():
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
     msgbody = ''
+    MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD Canvas Catch-All " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     """
     The Site CSV has the Site Abbreviation, SiteID, Canvas CourseID, Grade Level, and Canvas Section ID
     Site,SiteID,CourseID,GradeLevel,SectionID
@@ -134,7 +132,7 @@ def main():
                 if str(g) == "Not Found":
                     print('Cannot find user sis_id->'+str(student))
                     msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
-                    WasThereAnErr = True
+                    WasThereAnError = True
                     thelogger.info('Canvas Catchall->Cannot find user sis_id->'+str(student))
             else:
                 lookfordelete = False
@@ -152,6 +150,7 @@ def main():
                         print('User not in course CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
                         msgbody += 'User not in course CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
                         thelogger.info('Canvas Catchall->Some sort of exception happened when removing student->'+str(student)+' from Group')
+                        WasThereAnError = True
                 print('Removed Student->'+str(student)+' from Canvas group')
                 msgbody += 'Removed Student->'+str(student)+' from Canvas course' + '\n'
                 thelogger.info('Canvas Catchall->Removed Student->'+str(student)+' from Canvas group')
@@ -174,9 +173,20 @@ def main():
             print('Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
             msgbody += 'Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID) + '\n'
             thelogger.info('Canvas Catchall->Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
-        thelogger.info('Canvas Catchall->Closed AERIES connection')
-        msgbody+='Done!'
-
-        
+    thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
+    msgbody += 'Done!'
+    end_of_timer = timer()
+    if WasThereAnError:
+        msg['Subject'] = "Error! - " + MessageSub1
+    else:
+        msg['Subject'] = MessageSub1
+    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msg.set_content(msgbody)
+    s = smtplib.SMTP(configs['SMTPServerAddress'])
+    s.send_message(msg)
+    thelogger.info('Canvas Catchall->Sent Status Message')
+    thelogger.info('Canvas Catchall->Done!' + str(end_of_timer - start_of_timer))
+    print('Done!!!')
+            
 if __name__ == '__main__':
     main()
