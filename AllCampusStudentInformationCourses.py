@@ -42,9 +42,7 @@ def GetAERIESData(thelogger,schoolcode,grade,configs):
     with engine.begin() as connection:
         sql_query = pd.read_sql_query(the_query,engine)
         thelogger.info('All Campus Student Canvas Groups->Closed AERIES connection')
-    #sql_query['ID'] = sql_query['ID'].astype(str)
     sql_query['ID'] = 'STU_' + sql_query['ID'].astype(str)
-    #sql_query.sort_values(by=['SC'])
     return sql_query
 
 def main():
@@ -85,6 +83,7 @@ def main():
     Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     thelogger.info('AUHSD Catchall Course Update->Connecting to Canvas')
+    msgbody += 'AUHSD Catchall Course Update->Connecting to Canvas' + '\n'
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
     for i in SiteClassesList.index:
@@ -105,7 +104,9 @@ def main():
         # make a dataframe that has Student SIS IDs in it
         canvasdf = pd.DataFrame(columns=['ID'])
         print('Section looking at ->' + str(section))
+        msgbody += 'Section looking at ->' + str(section) + '\n'
         print('CanvasSectionID->' + str(SiteClassesList['CanvasSectionID'][i]))
+        msgbody += 'CanvasSectionID->' + str(SiteClassesList['CanvasSectionID'][i]) + '\n'
         # get sis_user_id's out of Canvas data
         print(section)
         # comment out if loading NEW Courses
@@ -160,8 +161,7 @@ def main():
         for student in studentsinaeriesnotincanvas:
             print(student)
             user = canvas.get_user(str(student),'sis_user_id')
-            msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'
-            
+            msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'       
             print(course)
             print(SectionToAddTo.id)
             print(user)
@@ -173,7 +173,7 @@ def main():
             print('Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
             msgbody += 'Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID) + '\n'
             thelogger.info('Canvas Catchall->Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
-    thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
+    thelogger.info('Canvas Catchall->Closed AERIES connection')
     msgbody += 'Done!'
     end_of_timer = timer()
     if WasThereAnError:
