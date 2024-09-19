@@ -20,8 +20,61 @@ def GetAERIESData(thelogger,configs):
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     thelogger.info('UpdateACISCounselingListsInGoogle->Connecting to AERIES to get ACIS ALL student emails')
-    sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM, CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM, CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
-    sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM, CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM, CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC = 6) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
+    query1 = f"""
+        SELECT
+            ALTSCH.ALTSC,
+            STU.LN,
+            STU.SEM,
+            STU.GR,
+            STU.CU,
+            TCH.EM,
+            CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM,
+            CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM
+        FROM
+            STU
+        INNER JOIN
+            TCH ON STU.SC = TCH.SC
+            AND STU.CU = TCH.TN
+        INNER JOIN
+            ALTSCH ON STU.SC = ALTSCH.SCID
+        WHERE
+            (STU.SC = 6)
+        AND STU.DEL = 0
+        AND STU.TG = ''
+        AND STU.CU > 0
+    ORDER BY
+        ALTSCH.ALTSC,
+        STU.CU,
+        STU.LN
+    """
+    sql_query = pd.read_sql_query(query1,engine)
+    query2 = f"""
+        SELECT
+            ALTSCH.ALTSC,
+            STU.LN,
+            STU.SEM,
+            STU.GR,
+            STU.CU,
+            TCH.EM,
+            CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM,
+            CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM
+        FROM
+            STU
+        INNER JOIN
+            TCH ON STU.SC = TCH.SC
+            AND STU.CU = TCH.TN
+        INNER JOIN
+            ALTSCH ON STU.SC = ALTSCH.SCID
+        WHERE (STU.SC = 6)
+        AND STU.DEL = 0
+        AND STU.TG = '' 
+        AND STU.CU > 0
+    ORDER BY
+        ALTSCH.ALTSC,
+        STU.CU,
+        STU.LN
+    """
+    sql_query2 = pd.read_sql_query(query2,engine)
     thelogger.info('UpdateACISCounselingListsInGoogle->AERIES connection closed')
     for SITEEM, SEM in sql_query.groupby('SITEEM'):
         filename = SITEEM.replace("@auhsdschools.org","")+"ALL.csv"

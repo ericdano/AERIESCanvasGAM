@@ -55,32 +55,25 @@ dataframe1 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.ID, STU.LN, STU.SEM, ST
 pd.set_option('display.max_rows',dataframe1.shape[0]+1)
 #Now make a set of JUST the SIS_USER_IDs from Aeries
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Making SET of Aeries IDs')
+aerieslist = set(dataframe1.ID)
+print('Making Sets for comparison')
 #Get Exisiting users SIS_USER_ID from Counseling Group
+thelogger.info('CanvasGroups_ACISCounselingToCanvas->Getting users in ACIS Canvas group')
 group = canvas.get_group(10831,include=['users'])
 dataframe2 = pd.DataFrame(group.users,columns=['sis_user_id'])
-print(dataframe1)
-dataframe1.drop(dataframe1.columns.difference(['EM',
-                                              'CU',
-                                              'GR',
-                                              'SEM',
-                                              'ALTSC',
-                                              'LN']),axis=1,inplace=True)
-print('Dataframe 1')
-print(dataframe1)
-#print('Dataframe 2')
-#print(dataframe2)
 #pd.set_option('display.max_rows',dataframe2.shape[0]+1)
 #print(dataframe2)
 
+#Make a set of JUST SIS_USER_IDs that are currently in the Canvas Group
+canvaslist = set(pd.to_numeric(dataframe2.sis_user_id))
 #Subtract items from the Aeries set that are in the Canvas set
 #The resulting set is the SIS_IDs we need to ADD to the Group
-#studentstoadd = aerieslist - canvaslist
+studentstoadd = aerieslist - canvaslist
 #Subtract items from Canvaslist set that are in Aeries set. 
 #These are students that need to be removed from the group
-#studentstoremove = canvaslist - aerieslist
+studentstoremove = canvaslist - aerieslist
 #Keep the teacher in the group though, so take them OUT of the set
-#studentstoremove.remove(counselors[0][3]) # Keep teacher in canvas group
-'''
+studentstoremove.remove(counselors[0][3]) # Keep teacher in canvas group
 print('Processing ACIS Students')
 msgbody += 'Looking for Students to remove from groups\n'
 for student in studentstoremove:
@@ -131,4 +124,3 @@ s.send_message(msg)
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Sent Status Message')
 thelogger.info('CanvasGroups_ACISCounselingToCanvas->Done! - Took ' + str(end_of_timer - start_of_timer))
 print('Done!!!')
-'''

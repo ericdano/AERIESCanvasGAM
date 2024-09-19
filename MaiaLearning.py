@@ -127,7 +127,25 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Wrote student temp CSV to disk')
     msgbody += "Got AERIES data for Students\n"
     # Now do the staff
-    sql_query_staff = pd.read_sql_query("""SELECT PSC AS School_ID, FN AS FirstName, LN AS LastName, EM AS Email, 'Teacher' AS Role, '' AS RoleUpdate FROM STF WHERE DEL = 0 AND TG = '' AND EM > '' AND PSC < 7 AND PSC > 0 AND (TI = 'CERTIFICATED AEA' OR TI = 'Teacher' OR TI = 'Associate Principal' OR TI = 'CERTIFICATED MANAGEMENT')""", engine)
+    staff_query = f"""
+        SELECT
+            PSC AS School_ID,
+            FN AS FirstName,
+            LN AS LastName,
+            EM AS Email,
+            'Teacher' AS Role,
+            '' AS RoleUpdate
+        FROM
+            STF
+        WHERE
+            DEL = 0
+            AND TG = ''
+            AND EM > ''
+            AND PSC < 7
+            AND PSC > 0
+            AND (TI = 'CERTIFICATED AEA' OR TI = 'Teacher' OR TI = 'Associate Principal' OR TI = 'CERTIFICATED MANAGEMENT')
+    """
+    sql_query_staff = pd.read_sql_query(staff_query,engine)
     sql_query_staff['SchoolID'] = sql_query_staff['School_ID'].apply(change_school_id)
     sql_query_staff.drop(['School_ID'], axis=1, inplace=True)
     first_column_staff = sql_query_staff.pop('SchoolID')
@@ -136,7 +154,27 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Wrote staff temp CSV to disk')
     msgbody += "Got AERIES data for Staff\n"
     # Now do the Parents
-    sql_query_parents = pd.read_sql_query("""SELECT STU.SC AS School_ID, STU.ID AS StudentId, CON.FN AS FirstName, CON.LN AS LastName, CON.EM AS Email, '' AS PhoneNumber FROM STU INNER JOIN CON ON STU.ID = CON.PID WHERE STU.TG = '' AND STU.DEL = 0 AND STU.SC < 7 AND STU.SP <> '2' AND (CON.CD = 'P1' OR CON.CD = 'P2') AND CON.EM > ''""", engine)
+    parent_query = f"""
+        SELECT
+            STU.SC AS School_ID,
+            STU.ID AS StudentId,
+            CON.FN AS FirstName,
+            CON.LN AS LastName,
+            CON.EM AS Email,
+            '' AS PhoneNumber
+        FROM
+            STU
+        INNER JOIN
+            CON ON STU.ID = CON.PID
+        WHERE
+            STU.TG = ''
+            AND STU.DEL = 0
+            AND STU.SC < 7
+            AND STU.SP <> '2'
+            AND (CON.CD = 'P1' OR CON.CD = 'P2')
+            AND CON.EM > ''
+    """
+    sql_query_parents = pd.read_sql_query(parent_query, engine)
     sql_query_parents['SchoolID'] = sql_query_parents['School_ID'].apply(change_school_id)
     sql_query_parents.drop(['School_ID'], axis=1, inplace=True)
     first_column_parents = sql_query_parents.pop('SchoolID')
@@ -146,7 +184,42 @@ if __name__ == '__main__':
     thelogger.info('Update Maia Learning->Wrote Parents temp CSV to disk')
     msgbody += "Got AERIES data for Parents\n"
     # Now do the GPA
-    sql_query_gpa = pd.read_sql_query("""SELECT SC as School_ID, ID AS StudentID, TP AS WGPA, TPN AS CGPA, '' AS 'French BAC', '' AS 'IB Final', '' AS 'IB Predicted' FROM STU WHERE SC < 7 AND DEL = 0 AND TG = '' AND SP <> '2'""", engine)
+    old_gpa_query = f"""
+        SELECT
+            SC as School_ID,
+            ID AS StudentID,
+            TP AS WGPA,
+            TPN AS CGPA,
+            '' AS 'French BAC',
+            '' AS 'IB Final',
+            '' AS 'IB Predicted'
+        FROM
+            STU
+        WHERE
+            SC < 7
+            AND DEL = 0
+            AND TG = ''
+            AND SP <> '2'
+    """
+
+    new_gpa_query = f"""
+        SELECT
+            SC as School_ID,
+            ID AS StudentID,
+            GP AS WGPA,
+            GPN AS CGPA,
+            '' AS 'French BAC',
+            '' AS 'IB Final',
+            '' AS 'IB Predicted'
+        FROM
+            STU
+        WHERE
+            SC < 7
+            AND DEL = 0
+            AND TG = ''
+            AND SP <> '2'
+    """
+    sql_query_gpa = pd.read_sql_query(new_gpa_query, engine)
     sql_query_gpa['SchoolID'] = sql_query_gpa['School_ID'].apply(change_school_id)
     sql_query_gpa.drop(['School_ID'], axis=1, inplace=True)
     first_column_gpa = sql_query_gpa.pop('SchoolID')

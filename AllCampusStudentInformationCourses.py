@@ -160,19 +160,26 @@ def main():
         SectionToAddTo = canvas.get_section(SiteClassesList['CanvasSectionID'][i])
         for student in studentsinaeriesnotincanvas:
             print(student)
-            user = canvas.get_user(str(student),'sis_user_id')
-            msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'       
-            print(course)
-            print(SectionToAddTo.id)
-            print(user)
-            course.enroll_user(
-                                user,
-                                enrollment_type = "StudentEnrollment",
-                                enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
-                            )
-            print('Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
-            msgbody += 'Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID) + '\n'
-            thelogger.info('Canvas Catchall->Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
+            try:
+                user = canvas.get_user(str(student),'sis_user_id')
+                msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'       
+                print(course)
+                print(SectionToAddTo.id)
+                print(user)
+                course.enroll_user(
+                                    user,
+                                    enrollment_type = "StudentEnrollment",
+                                    enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
+                                )
+                print('Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
+                msgbody += 'Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID) + '\n'
+                thelogger.info('Canvas Catchall->Added Student id->'+str(student)+' to Canvas course->' + str(CanvasSectionID))
+            except CanvasException as ef:
+                if str(ef) == "Not Found":
+                    print('User not in Canvas yet-> sis_id->'+ str(student))
+                    msgbody += 'User not in Canvas yet -> sis_id->'+ str(student)+'\n'
+                    thelogger.info('Canvas Catchall->User in AERIES not in Canvas yet sis_id->'+str(student))
+                    WasThereAnError = True
     thelogger.info('Canvas Catchall->Closed AERIES connection')
     msgbody += 'Done!'
     end_of_timer = timer()

@@ -67,8 +67,6 @@ for i in CounselorCanvasSection.index:
   print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
   CanvasSectionID = CounselorCanvasSection['CanvasSectionID'][i]
   msgbody += 'Matching for ' + CounselorEmail + ' - Counselor->' + str(CounselorEmail) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasSectionID) + '\n'
-  # OLD SQL Query
-  # aeriesSQLData = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.ID, STU.SEM, STU.GR, STU.CU, TCH.EM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 AND ALTSC = \'' + SchoolID + '\' AND EM = \'' + CounselorEmail + '\' AND GR = \'' + str(GradeToGet) + '\'',engine)
   the_query = f"""
   SELECT
     ALTSCH.ALTSC,
@@ -158,20 +156,25 @@ for i in CounselorCanvasSection.index:
   SectionToAddTo = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i])
   for student in studentsinaeriesnotincanvas:
     print(student)
-    user = canvas.get_user(str(student),'sis_user_id')
-    msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'
-       
-    print(course)
-    print(SectionToAddTo.id)
-    print(user)
-    course.enroll_user(
+    try:
+      user = canvas.get_user(str(student),'sis_user_id')
+      msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'    
+      print(course)
+      print(SectionToAddTo.id)
+      print(user)
+      course.enroll_user(
                         user,
                         enrollment_type = "StudentEnrollment",
                         enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
-                    )
-    print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
-    msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID) + '\n'
-    thelogger.info('Canvas Groups for Counselors->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+                      )
+      print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+      msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID) + '\n'
+      thelogger.info('Canvas Groups for Counselors->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+    except CanvasException as ef:
+      if str(ef) == "Not Found":
+        print('User in AERIES not in Canvas yet sis_id->'+ str(student))
+        msgbody += 'User in AERIES not in Canvas yet sis_id-> sis_id->'+ str(student) + '\n'
+        thelogger.info('Canvas Groups for Counselors->User in AERIES not in Canvas yet sis_id->'+str(student))
 thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
