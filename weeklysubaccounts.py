@@ -36,9 +36,22 @@ def main():
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
     thelogger.info('Subaccounts->Connecting to Zeus...')
-    campuses = [('mhs',
-                'bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org')]
-    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,chenriksen@auhsdschools.org,shadley@auhsdschools.org,rkahrer@auhsdschools.org'
+    '''
+    campuses = [('mhs','bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
+                ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org'),
+                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,tcatanesi@auhsdschools.org'),
+                ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,tvu@auhsdschools.org'),
+                ('dv','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
+    
+    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org'
+    '''
+    campuses = [('mhs','edannewitz@auhsdschools.org'),
+                ('chs','edannewitz@auhsdschools.org'),
+                ('ahs','edannewitz@auhsdschools.org'),
+                ('llhs','edannewitz@auhsdschools.org'),
+                ('dv','edannewitz@auhsdschools.org')]
+    
+    docontacts = 'edannewitz@auhsdschools.org'
     pendulum.week_starts_at(pendulum.MONDAY)
     pendulum.week_ends_at(pendulum.FRIDAY)
     today = pendulum.now().add(days=3)
@@ -54,9 +67,7 @@ def main():
         msgbody += "Passwords for Substitute Teacher accounts this week are:\n\n"
         gam.initializeLogging()
         for i in range(5):
-            
             msgindv = EmailMessage()
-
             password = xp.generate_xkcdpassword(mywords, delimiter="",numwords=1)
             num1 = random.randint(10,99)
             password = random.choice(string.ascii_uppercase) + password + str(num1)
