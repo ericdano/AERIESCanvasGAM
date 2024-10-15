@@ -36,14 +36,15 @@ def main():
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
     thelogger.info('Subaccounts->Connecting to Zeus...')
-    '''
+    
     campuses = [('mhs','bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
                 ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org'),
                 ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,tcatanesi@auhsdschools.org'),
                 ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,tvu@auhsdschools.org'),
                 ('dv','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
     
-    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org'
+    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org'
+    docontacts2 = 'edannewitz@auhsdschools.org'
     '''
     campuses = [('mhs','edannewitz@auhsdschools.org'),
                 ('chs','edannewitz@auhsdschools.org'),
@@ -52,6 +53,7 @@ def main():
                 ('dv','edannewitz@auhsdschools.org')]
     
     docontacts = 'edannewitz@auhsdschools.org'
+    '''
     pendulum.week_starts_at(pendulum.MONDAY)
     pendulum.week_ends_at(pendulum.FRIDAY)
     today = pendulum.now().add(days=3)
@@ -87,14 +89,13 @@ def main():
             s = smtplib.SMTP('10.99.0.202')
             msgindv['Subject'] = "Password for " + theuser + " " + theweekof
             msgindv['From'] = 'dontreply@auhsdschools.org'
-            msgindv['To'] = str(df['contacts'][x] + "," + docontacts)
+            msgindv['To'] = str(df['contacts'][x] + "," + docontacts2)
             msgbody2 = "Password for " + theuser + " this week is " + password + "\n"
             msgindv.set_content(msgbody2)
             s.send_message(msgindv)
         s = smtplib.SMTP('10.99.0.202')
         msg['Subject'] = "Sub Account Passwords for " + df['campusname'][x].upper() + " " + theweekof
         msg['From'] = 'donotreply@auhsdschools.org'
-        #msg['To'] = 'edannewitz@auhsdschools.org'
         msg['To'] = str(df['contacts'][x] + "," + docontacts)
         msg.set_content(msgbody)
         s.send_message(msg)

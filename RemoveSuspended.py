@@ -41,9 +41,9 @@ if __name__ == '__main__':
   if sys.platform == 'darwin':
     multiprocessing.set_start_method('fork')
   gam.initializeLogging()
+ 
   thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
   rc2 = gam.CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=true'])
-
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
@@ -59,23 +59,23 @@ if __name__ == '__main__':
   #Remove Google Licenses from Suspended Users
   # Delete License 1010310008
   thelogger.info('Remove Google License->Removing Student Licenses of Suspended Accounts')
-  stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'license','1010310008'])
+  stat1 = gam.CallGAMCommand(['gam','query','isSuspended=True','del','license','1010310008'])
   if stat1 != 0:
     WasThereAnError = True
-    thelogger.critical('Remove Google Licenses->GAM returned an error for the last command')
-    msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
-  msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310008. GAM Status->' + str(stat1) + '\n' 
-  thelogger.info('Remove Google Licenses->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310008.')
+    thelogger.critical('Remove Google Licenses 08->GAM returned an error for the last command')
+    msgbody += 'ERROR! gam query isSuspended=True del license 1010310008. GAM Status->' + str(stat1) + '\n' 
+  msgbody += 'RAN gam query isSuspended=True del license 1010310008. GAM Status->' + str(stat1) + '\n' 
+  thelogger.info('Remove Google Licenses->Success! Ran gam query isSuspended=True del license 1010310008.')
   thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
   # Delete License 1010310009
   thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
-  stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'license','1010310009'])
+  stat1 = gam.CallGAMCommand(['gam','query','isSuspended=True','del','license','1010310009'])
   if stat1 != 0:
     WasThereAnError = True
     thelogger.critical('Remove Google Licenses->GAM returned an error for the last command')
-    msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
-  msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete licsense 1010310009. GAM Status->' + str(stat1) + '\n' 
-  thelogger.info('Remove Google Licenses->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete license 1010310009.')
+    msgbody += 'ERROR! gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
+  msgbody += 'RAN gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
+  thelogger.info('Remove Google Licenses->Success! Ran gam query isSuspended=True del license 1010310009.')
   os.remove(filetempname)
   msgbody += 'Done!'
   if WasThereAnError:
