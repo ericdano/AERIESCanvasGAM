@@ -50,11 +50,11 @@ os.chdir('E:\\PythonTemp')
 #mfa2reset = 'auhsd\edannewitz'
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-mfa2reset = 'auhsd\mcooper'
+mfa2reset = ''
 
 engine = create_engine(connection_url)
 with engine.begin() as connection:
-    result = connection.execute(text("""UPDATE UGN SET MFA = 0 WHERE UN ='auhsd\mcooper'"""))
+    result = connection.execute(text("""UPDATE UGN SET MFA = 0 WHERE UN ='staff\mleavitt'"""))
 print(result)
 if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
