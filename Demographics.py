@@ -15,9 +15,10 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.9+ script to pull data from AERIES and to send it Care/Solace.
+ Python 3.11+ script to pull data from AERIES and to send it Care/Solace.
 
- Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
+ Uses a .JSON file specified in confighome which has a logserveraddress, ssh hostkey, and the login info for CareSolace.
+
 """
 
 if __name__ == '__main__':
@@ -97,9 +98,9 @@ if __name__ == '__main__':
     ORDER BY PSC
     """
     sql_query_demo = pd.read_sql_query(QueryDemo, engine)
-    print(sql_query_demo)
+    #print(sql_query_demo)
     sql_query_staff = pd.read_sql_query(QueryStaff,engine)
-    print(sql_query_staff)
+    #print(sql_query_staff)
  
     sql_query_demo.to_csv(dest_filename_demo, index = False)
     sql_query_staff.to_csv(dest_filename_staff, index = False)
@@ -152,7 +153,6 @@ if __name__ == '__main__':
                 thelogger.info("SFTP failed due to error [" + str(err) + "]")
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
-     
     except paramiko.ssh_exception.AuthenticationException as err:
         print ("Can't connect due to authentication error [" + str(err) + "]")
         thelogger.info("Can't connect due to authentication error [" + str(err) + "]")
@@ -173,12 +173,11 @@ if __name__ == '__main__':
         print(f"Directory '{remote_dir}' not found.")
     sftpClient.close()
     tp.close()
-    thelogger.info('Update Maia Learning->Removing CSV files')
+    thelogger.info('Update Care/Solace->Removing CSV files')
     DontDelete = False
     if not(DontDelete):
         os.remove(dest_filename_staff)
         os.remove(dest_filename_demo)
-
     msgbody += str(len(sql_query_demo.index)) + ' student demographics in file uploaded.\n'
     msgbody += str(len(sql_query_staff.index)) + ' staff demographics in file uploaded.\n'
     thelogger.info('Update Care/Solace->Closed FTP and deleted temp CSV')
