@@ -52,8 +52,9 @@ if __name__ == '__main__':
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    QueryDemo = f"""
-    WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
+    """
+    Old Query
+WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
         CTE2 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'RC1')
     SELECT
         S.ID AS 'Student ID',
@@ -78,6 +79,39 @@ if __name__ == '__main__':
     INNER JOIN CTE1 ON S.HL = CTE1.CD
     INNER JOIN CTE2 ON S.RC1 = CTE2.CD
     WHERE S.TG = '' AND S.DEL = 0 AND (S.SC = 30 OR S.SC < 8)
+    
+    """
+    QueryDemo = f"""
+    WITH COD_HL AS (SELECT CD, DE
+        FROM COD
+        WHERE TC = 'STU' AND FC = 'HL'),
+    COD_RC1 AS (SELECT CD, DE
+        FROM COD
+        WHERE TC = 'STU' AND FC = 'RC1')
+    SELECT
+        S.ID AS 'Student ID',
+        S.FN AS 'First Name',
+        S.MN AS 'Middle Name',
+        S.LN AS 'Last Name',
+        S.GR AS 'Grade Level',
+        S.SC AS 'School Site',
+        S.FNA AS 'Preferred Name',
+        S.CID AS 'State Student ID (SSID)',
+        CONVERT(char(10), S.BD, 101) AS 'Date of Birth',
+        S.SX AS 'Gender',
+        '' AS 'Pronouns',
+        S.ETH AS 'Hispanic?',
+        S.RC1 AS 'Ethnicity',
+        HL.DE AS 'Preferred Language',
+        RC1.DE AS 'Ethnicity'
+    FROM STU S
+    INNER JOIN COD_HL HL ON S.HL = HL.CD
+    INNER JOIN COD_RC1 RC1 ON S.RC1 = RC1.CD
+    WHERE S.TG = ''
+        AND S.DEL = 0
+        AND (S.SC = 30 OR S.SC < 8)
+        AND S.SP <> '2'
+    OR (S.GR = 8 AND S.SP = '2');
     """
     QueryStaff = f"""
     SELECT FN AS 'First name',
