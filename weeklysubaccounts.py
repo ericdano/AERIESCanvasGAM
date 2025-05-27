@@ -90,7 +90,17 @@ def main():
             msgindv['Subject'] = "Password for " + theuser + " " + theweekof
             msgindv['From'] = 'dontreply@auhsdschools.org'
             msgindv['To'] = str(df['contacts'][x] + "," + docontacts2)
-            msgbody2 = "Password for " + theuser + " this week is " + password + "\n"
+            msgbody2 = "Login for Windows\n"
+            msgbody2 += "STAFF\\" + theuser + "\n"
+            msgbody2 += password + "\n"
+            msgbody2 += "\n"
+            msgbody2 += "\n"
+            msgbody2 += "Login for Mac\n"
+            msgbody2 += theuser + "\n"
+            msgbody2 += password + "\n"
+            msgbody2 += "\n"
+            msgbody2 += "\n"
+            msgbody2 += "Google login and password: " + theuser + "   " + password + "\n"
             msgindv.set_content(msgbody2)
             s.send_message(msgindv)
         s = smtplib.SMTP('10.99.0.202')
