@@ -8,7 +8,7 @@ from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 import ldap3, random, string
 from pathlib import Path
 """
- Based on a program written for COVID, this program takes 10 substitute accounts across sites, and rotates the passwords for them every week.
+ Based on a program written for COVID, this program takes 5 substitute accounts across sites, and rotates the passwords for them every week.
  
 
 campuses = [('ahs','jlarsen@auhsdschools.org,potoole@auhsdschools.org,tcatanesi@auhsdschools.org',''),
@@ -91,12 +91,12 @@ def main():
             msgindv['From'] = 'dontreply@auhsdschools.org'
             msgindv['To'] = str(df['contacts'][x] + "," + docontacts2)
             msgbody2 = "Login for Windows\n"
-            msgbody2 += "STAFF\\" + theuser + "\n"
+            msgbody2 += "STAFF\\" + adusername + "\n"
             msgbody2 += password + "\n"
             msgbody2 += "\n"
             msgbody2 += "\n"
             msgbody2 += "Login for Mac\n"
-            msgbody2 += theuser + "\n"
+            msgbody2 += adusername + "\n"
             msgbody2 += password + "\n"
             msgbody2 += "\n"
             msgbody2 += "\n"
