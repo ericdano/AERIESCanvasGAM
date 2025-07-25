@@ -46,6 +46,7 @@ def main():
     docontacts = 'edannewitz@auhsdschools.org'
     #End Test Stuff
     '''
+
     docontacts2 = 'edannewitz@auhsdschools.org'
 
     pendulum.week_starts_at(pendulum.MONDAY)
