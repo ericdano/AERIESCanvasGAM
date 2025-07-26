@@ -61,10 +61,10 @@ if __name__ == '__main__':
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.SC IN (6) AND MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E' AND MST.CN <> 'Z5011N' AND MST.CN <> 'Z5016N' AND MST.CN <> 'Z5017N') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
     """
     #print(sql_query)
-    sql_query["SIS_ID"] = "2025~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
-    #sql_query["NewCourseTitle"] = "24-25 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " " + sql_query['CourseNum']
-    sql_query["NewCourseTitle"] = "24-25 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] 
-    sql_query["NewCourseTitleSort"] = "24-25 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
+    sql_query["SIS_ID"] = "2026~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
+    #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " " + sql_query['CourseNum']
+    sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] 
+    sql_query["NewCourseTitleSort"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
     sql_query["NewCourseSectionData"] = sql_query["SectionNum"].astype(str) + " - " + sql_query["CourseTitle"].astype(str)
     sql_query.to_csv('export.csv')
     #print(sql_query)
@@ -73,29 +73,29 @@ if __name__ == '__main__':
     #sql_query.to_csv('export2.csv')
     """
     # Using BETA URL 
-    #Canvas_API_URL = configs['CanvasBETAAPIURL']
-    Canvas_API_URL = configs['CanvasAPIURL']
+    Canvas_API_URL = configs['CanvasBETAAPIURL']
+    #Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     thelogger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
     """
     Term IDs 
-    2025~4_S,2025~4_F - CHS
-    2025~3_S,2025~3_F - MHS
-    2025~1_S,2025~1_F - LLHS
-    2025~2_S,2025~2_F - AHS
-    2025~6_S,2025~6_F - ACIS
+    2026~4_S,2026~4_F - CHS
+    2026~3_S,2026~3_F - MHS
+    2026~1_S,2026~1_F - LLHS
+    2026~2_S,2026~2_F - AHS
+    2026~6_S,2026~6_F - ACIS
     """
     d = {'Site':['AHS','AHS','LLHS','LLHS','CHS','CHS','MHS','MHS','ACIS','ACIS'],
-        'Term':['2025~2_S','2025~2_F','2025~1_S','2025~1_F','2025~4_S','2025~4_F','2025~3_S','2025~3_F','2025~6_S','2025~6_F']}
+        'Term':['2026~2_S','2026~2_F','2026~1_S','2026~1_F','2026~4_S','2026~4_F','2026~3_S','2026~3_F','2026~6_S','2026~6_F']}
     column_names = ["courseid","coursename","sistermid"]
     TermDF = pd.DataFrame(columns = column_names)
     tempDF = pd.DataFrame(columns = column_names)
     courses=account.get_courses(include=['term','sis_term_id'])
     # Gather all the Canvas courses in the Terms we need
     for i in courses:
-        if i.term['sis_term_id'] in ('2025~2_S','2025~2_F','2025~1_S','2025~1_F','2025~4_S','2025~4_F','2025~3_S','2025~3_F','2025~6_S','2025~6_F'):
+        if i.term['sis_term_id'] in ('2026~2_S','2026~2_F','2026~1_S','2026~1_F','2026~4_S','2026~4_F','2026~3_S','2026~3_F','2026~6_S','2026~6_F'):
             print(i.id," ",i.name," ",i.term['sis_term_id'])
             tempDF = pd.DataFrame([{'courseid':i.id,
                                     'coursename':i.name,
