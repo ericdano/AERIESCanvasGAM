@@ -44,6 +44,8 @@ if __name__ == '__main__':
     msgbody = ''
 
     """
+    Get Sample Data from AERIES
+    
     msgbody += 'Using Database->' + str(configs['AERIESSQLServer']) + '\n'
     WasThereAnError = False
 #    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServerSandbox'] + ";DATABASE=" + configs['AERIESDatabaseSB'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
