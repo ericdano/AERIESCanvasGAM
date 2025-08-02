@@ -44,24 +44,27 @@ if __name__ == '__main__':
     msgbody = ''
 
     """
-    Get Sample Data from AERIES
+    Get Data from AERIES
     
     msgbody += 'Using Database->' + str(configs['AERIESSQLServer']) + '\n'
     WasThereAnError = False
-#    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServerSandbox'] + ";DATABASE=" + configs['AERIESDatabaseSB'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
+
+    # Sandbox was only used in 2024 because AERIES roll over was not completed
+    #    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServerSandbox'] + ";DATABASE=" + configs['AERIESDatabaseSB'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     
     #MHS Query
-    """
-    #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""", engine)
-    #
+    '''
+    #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, 
+                                      MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""", engine)
+    # Think the above is not right, the stuff below, by School, is what you should use
     #LLHS Query
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.SC IN (1,2,3,4,6,7) AND MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E' AND MST.CN <> 'Z5011N' AND MST.CN <> 'Z5016N' AND MST.CN <> 'Z5017N') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.SC IN (6) AND MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E' AND MST.CN <> 'Z5011N' AND MST.CN <> 'Z5016N' AND MST.CN <> 'Z5017N') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
-    """
+    '''
     #print(sql_query)
     sql_query["SIS_ID"] = "2026~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
     #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " " + sql_query['CourseNum']
@@ -82,28 +85,33 @@ if __name__ == '__main__':
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
     """
+    This should be run, to prevent issues, by TERM id. 
+    So, run all the S ones, then F ones, and then Y ones in whatever order
     Term IDs 
-    2026~4_S,2026~4_F - CHS
-    2026~3_S,2026~3_F - MHS
-    2026~1_S,2026~1_F - LLHS
-    2026~2_S,2026~2_F - AHS
-    2026~6_S,2026~6_F - ACIS
+    2026~1_S,2026~1_F,2026~1_Y - LLHS
+    2026~2_S,2026~2_F,2026~2_Y - AHS
+    2026~3_S,2026~3_F,2026~3_Y - MHS
+    2026~4_S,2026~4_F,2026~4_Y - CHS
+    2026~6_S,2026~6_F,2026~6_Y - ACIS
     """
-    d = {'Site':['AHS','AHS','LLHS','LLHS','CHS','CHS','MHS','MHS','ACIS','ACIS'],
-        'Term':['2026~2_S','2026~2_F','2026~1_S','2026~1_F','2026~4_S','2026~4_F','2026~3_S','2026~3_F','2026~6_S','2026~6_F']}
+    #d = {'Site':['AHS','AHS','LLHS','LLHS','CHS','CHS','MHS','MHS','ACIS','ACIS'],
+    #    'Term':['2026~2_S','2026~2_F','2026~1_S','2026~1_F','2026~4_S','2026~4_F','2026~3_S','2026~3_F','2026~6_S','2026~6_F']}
     column_names = ["courseid","coursename","sistermid"]
     TermDF = pd.DataFrame(columns = column_names)
     tempDF = pd.DataFrame(columns = column_names)
+    print('Gathering Canvas Courses')
     courses=account.get_courses(include=['term','sis_term_id'])
     # Gather all the Canvas courses in the Terms we need
     for i in courses:
-        if i.term['sis_term_id'] in ('2026~2_S','2026~2_F','2026~1_S','2026~1_F','2026~4_S','2026~4_F','2026~3_S','2026~3_F','2026~6_S','2026~6_F'):
+        if i.term['sis_term_id'] in ('2026~1_Y','2026~2_Y','2026~3_Y','2026~4_Y','2026~64_Y'):
             print(i.id," ",i.name," ",i.term['sis_term_id'])
             tempDF = pd.DataFrame([{'courseid':i.id,
                                     'coursename':i.name,
                                     'sistermid':i.term['sis_term_id']}])
             TermDF = pd.concat([TermDF,tempDF],axis=0, ignore_index=True)
+    print('These are the courses')
     print(TermDF)
+    TermDF.to_csv('termdump2025.csv',index=False)
     # After DeCrossListing, now you lets go through by Campus and Term and
     # cross list classes
     TermDF.sort_values(by=['coursename','sistermid'], inplace = True)
@@ -111,6 +119,8 @@ if __name__ == '__main__':
     bool_series = TermDF.duplicated(['coursename','sistermid'], keep='first')
     TermDF['Dup'] = bool_series
     print(TermDF)
+    TermDF.to_csv('termdumpBOOL2025.csv',index=False)
+    exit(1)
     CurrentMasterSectionSIS_ID = 0
     CurrentMasterSectionCourseName = ""
     for i in TermDF.index:
@@ -139,11 +149,12 @@ if __name__ == '__main__':
                 course = canvas.get_course(TermDF['courseid'][i])
                 sections = course.get_sections()
                 #cross list the section
-                for section in sections:
-                    new_section = section.cross_list_section(CurrentMasterSectionSIS_ID)
+                #for section in sections:
+                #    new_section = section.cross_list_section(CurrentMasterSectionSIS_ID)
                 print('Cross listed ' + str(TermDF['courseid'][i]) + ' to ' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName)
                 msgbody += 'Crosslisted ->' + str(TermDF['courseid'][i]) + ' ' + TermDF['coursename'][i] + ' to SIS_ID->' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName + '\n'
                 # Rename the course title of the section we are cross listing
+                '''
                 try:
                     course.update(course={'course_code': CurrentMasterSectionSimpleCourseName,
                                             'name': CurrentMasterSectionSimpleCourseName})
@@ -160,6 +171,7 @@ if __name__ == '__main__':
                     if str(e) == "Not Found":
                         print("PANIC - Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES")
                         msgbody += "PANIC - Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES\n"
+                '''
             except CanvasException as g:
                 if str(g) == "Not Found":
                     print("PANIC - Potential course for cross reference, Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES")
