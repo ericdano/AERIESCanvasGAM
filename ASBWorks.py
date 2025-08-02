@@ -60,21 +60,40 @@ if __name__ == '__main__':
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
-#    connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    sql_query = pd.read_sql_query("""SELECT STU.SC AS School, STU.SN AS Student#, STU.ID AS ID#,STU.FN AS 'First Name', STU.MN AS 'Middle Name', STU.LN AS 'Last Name',STU.AD AS 'Mailing Address', STU.CY AS City, STU.ST AS State, STU.ZC AS 'Zip Code', STU.TL AS 'Home Phone',STU.GR AS Grade FROM STU WHERE STU.SC < 5 AND STU.DEL = 0 AND STU.TG = '' AND STU.SP <> '2'""", engine)
-    #print(sql_query)
+    TheASBQuery = f"""
+    SELECT STU.SC AS School,
+            STU.SN AS Student#,
+            STU.ID AS ID#,
+            STU.FN AS 'First Name',
+            STU.MN AS 'Middle Name',
+            STU.LN AS 'Last Name',
+            STU.AD AS 'Mailing Address',
+            STU.CY AS City,
+            STU.ST AS State,
+            STU.ZC AS 'Zip Code',
+            STU.TL AS 'Home Phone',
+            STU.GR AS Grade 
+    FROM STU WHERE
+        STU.SC < 5
+        AND STU.DEL = 0
+        AND STU.TG = ''
+        AND STU.SP <> '2'
+    """
+    sql_query = pd.read_sql_query(TheASBQuery, engine)
     sql_query['School'].mask(sql_query['School'] == 1,'LLHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 2,'AHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 3,'MHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 4,'CHS1', inplace=True)
-    #print(sql_query)
+    print(sql_query)
     sql_query.to_csv(dest_filename, index = False)
     thelogger.info('Update ASB Works->Wrote temp CSV to disk')
     msgbody += "Got AERIES data, connecting to FTPS\n"
     thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
+    #exit(1)
+
     ftp = MyFTP_TLS()
     ftp.ssl_version = ssl.PROTOCOL_TLSv1_2
     ftp.connect(server, 21)

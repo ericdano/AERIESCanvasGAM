@@ -10,9 +10,14 @@ with open(confighome) as f:
 Canvas_API_URL = configs['CanvasAPIURL']
 Canvas_API_KEY = configs['CanvasAPIKey']
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
+
+
 account = canvas.get_account(1)
 user = canvas.get_user(141)
 course = canvas.get_course(9295)
+print(user)
+print(course)
+'''
 course.enroll_user(
     user,
     enrollment_type = "StudentEnrollment",
@@ -37,4 +42,5 @@ for stu in enrollments:
 #                if stu.user_id == user.id:
 #                    lookfordelete = True
 #                    stu.deactivate(task='delete')
+'''
 print('Done')

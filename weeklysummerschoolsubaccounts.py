@@ -8,7 +8,7 @@ from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 import ldap3, random, string
 from pathlib import Path
 """
- Based on a program written for COVID, this program takes 5 substitute accounts across sites, and rotates the passwords for them every week.
+ Based on a program written for COVID, this program takes 5 substitute accounts Summer School, and rotates the passwords for them every week.
  
 
 campuses = [('ahs','jlarsen@auhsdschools.org,potoole@auhsdschools.org,tcatanesi@auhsdschools.org',''),
@@ -37,23 +37,18 @@ def main():
     thelogger.addHandler(handler)
     thelogger.info('Subaccounts->Connecting to Zeus...')
     
-    campuses = [('mhs','bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
-                ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org'),
-                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,tcatanesi@auhsdschools.org'),
-                ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,tvu@auhsdschools.org'),
-                ('dv','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
-    
+    campuses = [('sum','cstanton@auhsdschools.org,jyee@auhsdschools.org,jdrury@auhsdschools.org')]
     docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org'
-    docontacts2 = 'edannewitz@auhsdschools.org'
+  
     '''
-    campuses = [('mhs','edannewitz@auhsdschools.org'),
-                ('chs','edannewitz@auhsdschools.org'),
-                ('ahs','edannewitz@auhsdschools.org'),
-                ('llhs','edannewitz@auhsdschools.org'),
-                ('dv','edannewitz@auhsdschools.org')]
-    
+    #Test stuff
+    campuses = [('sum','edannewitz@auhsdschools.org')]    
     docontacts = 'edannewitz@auhsdschools.org'
+    #End Test Stuff
     '''
+
+    docontacts2 = 'edannewitz@auhsdschools.org'
+
     pendulum.week_starts_at(pendulum.MONDAY)
     pendulum.week_ends_at(pendulum.FRIDAY)
     today = pendulum.now().add(days=3)
@@ -66,15 +61,15 @@ def main():
     for x in df.index:
         msgbody = ''
         msg = EmailMessage()
-        msgbody += "Passwords for Substitute Teacher accounts this week are:\n\n"
+        msgbody += "Passwords for Summer School Substitute Teacher accounts this week are:\n\n"
         gam.initializeLogging()
-        for i in range(5):
+        for i in range(3):
             msgindv = EmailMessage()
             password = xp.generate_xkcdpassword(mywords, delimiter="",numwords=1)
             num1 = random.randint(10,99)
             password = random.choice(string.ascii_uppercase) + password + str(num1)
-            theuser = str(df['campusname'][x]) + "substitute" + str(i+1) + "@auhsdschools.org"
-            adusername = str(df['campusname'][x]) + "substitute" + str(i+1)
+            theuser = str(df['campusname'][x]) + "schoolsub" + str(i+1) + "@auhsdschools.org"
+            adusername = str(df['campusname'][x]) + "schoolsub" + str(i+1)
             print(theuser)
             print(password)
             msgbody+="Substitute Account -> " + theuser + "     Password -> " + password + "\n"
