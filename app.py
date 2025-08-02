@@ -2,6 +2,22 @@ import os
 from flask import Flask, request, render_template_string, session, redirect, url_for, flash
 from ldap3 import Server, Connection, SIMPLE, ALL, SUBTREE
 from ldap3.core.exceptions import LDAPBindError
+import ftplib, ssl, sys, os, datetime, json, smtplib, logging
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import result, URL
+from sqlalchemy.exc import IntegrityError, OperationalError
+import sqlalchemy
+from io import StringIO
+from pathlib import Path
+from ssl import SSLSocket
+from timeit import default_timer as timer
+import pandas as pd
+import ldap3
+from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from logging.handlers import SysLogHandler
 
 # --- Flask App Initialization ---
 app = Flask(__name__)
@@ -116,10 +132,44 @@ HOME_TEMPLATE = """
             <div class="px-4 py-6 sm:px-0 bg-white rounded-xl shadow-lg">
                 <div class="border-4 border-dashed border-gray-200 rounded-lg h-96 p-8 text-center">
                     <h2 class="text-3xl font-bold text-gray-800">Authentication Successful</h2>
-                    <p class="mt-4 text-gray-600">You have successfully logged in and can now access this protected content.</p>
+                    <p class="mt-4 text-gray-600">Please enter the domain of the user, and the users login</p>
+                    <p class="mt-4 text-gray-600">Example-> Domain -> staff Login -> jdoe</p>
                 </div>
             </div>
+            
         </div>
+        <form class="bg-white shadow-lg rounded-xl px-8 pt-6 pb-8 mb-4" method="post" action="{{ url_for('resetaeries2fa') }}">
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">AERIES 2FA Reset Login</h1>
+
+            <!-- Flash messages section -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="mb-4 px-4 py-3 rounded-lg relative {{ 'bg-red-100 border border-red-400 text-red-700' if category == 'error' else 'bg-blue-100 border border-blue-400 text-blue-700' }}" role="alert">
+                    <span class="block sm:inline">{{ message }}</span>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="domain">
+                    Domain
+                </label>
+                <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="domain" name="domain" type="text" placeholder="domain" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="login">
+                    Login
+                </label>
+                <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="login" name="login" type="login" placeholder="******************" required>
+            </div>
+            <div class="flex items-center justify-between">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full" type="submit">
+                    Sign In
+                </button>
+            </div>
+        </form>
     </main>
 </body>
 </html>
@@ -211,8 +261,49 @@ def logout():
     session.pop('username', None)
     flash('You have been successfully logged out.', 'info')
     return redirect(url_for('login'))
+@app.route('resetaeries2fa')
+def resetaeries2fa():
+    flashmsg = ""
+    if request.method == 'POST':
+        domain = request.form.get('domain')
+        login = request.form.get('login')
 
-
+        if not domain or not login:
+            flash('A Domain and passLoginword are required.', 'error')
+            return redirect(url_for('home'))
+        
+        connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
+        connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+        engine = create_engine(connection_url)
+        try:
+            with engine.begin() as connection:
+                result = connection.execute(text("UPDATE UGN SET MFA = 0 WHERE UN =" + domain + "\\" + login))
+                print(result)
+        except IntegrityError as e:
+            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
+            print('Integrity Error!')
+            flashmsg = "An Integrity occured on the reset the MFA on " + login + " in the " + domain + " domain."
+        except OperationalError as e:
+            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
+            print('Operational Error!')
+            flashmsg = "An Operational Error occured on the reset the MFA on " + login + " in the " + domain + " domain."
+        except Exception as e:
+            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
+            print('Exception!!')
+            flashmsg = "An exception occured on the reset the MFA on " + login + " in the " + domain + " domain."
+        finally:
+            msg['Subject'] = str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgbody += "No errors resetting 2FA on account " + domain + "\\" + login + "\n"
+            print('Success!')
+            flashmsg = "successfully reset the MFA on " + login + " in the " + domain + " domain."
+            msg.set_content(msgbody)
+            s = smtplib.SMTP(configs['SMTPServerAddress'])
+            s.send_message(msg)
+        flash('You have' + flashmsg, 'info')
+    return redirect(url_for('home'))
 # --- Main Execution ---
 if __name__ == '__main__':
     # To run this on your server, you would typically use a production WSGI server
@@ -221,6 +312,14 @@ if __name__ == '__main__':
     #
     # The command below is for development and testing purposes.
     # '0.0.0.0' makes the server accessible from other devices on the network.
+    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+    with open(confighome) as f:
+        configs = json.load(f)
+    msg = EmailMessage()
+    msg['From'] = configs['SMTPAddressFrom']
+    msg['To'] = "edannewitz@auhsdschools.org"
+    msgbody = ''
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     print("Starting Flask development server...")
     print(f"Access the application at http://<your_server_ip>:{5000}")
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -53,14 +53,27 @@ if __name__ == '__main__':
 
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    
+   
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, 
     #                                  MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""", engine)
     # These are not use the bottom one
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.SC IN (1,2,3,4,6,7) AND MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E' AND MST.CN <> 'Z5011N' AND MST.CN <> 'Z5016N' AND MST.CN <> 'Z5017N') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
     #sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle, MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle, FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName FROM MST INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.SC IN (6) AND MST.DEL = 0 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E' AND MST.CN <> 'Z5011N' AND MST.CN <> 'Z5016N' AND MST.CN <> 'Z5017N') ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
+    """
+    Use THIS ONE 2025
 
-    #Use THIS ONE 2025
+    Change the MST.SM to whatever term you want, so S is Spring, F is Fall and Y is Year round
+    change MST.SC to whatever SITE you are using. We have these 5
+        
+    This should be run, to prevent issues, by TERM id. 
+    So, run all the S ones, then F ones, and then Y ones in whatever order
+    Term IDs 
+    2026~1_S,2026~1_F,2026~1_Y - LLHS
+    2026~2_S,2026~2_F,2026~2_Y - AHS
+    2026~3_S,2026~3_F,2026~3_Y - MHS
+    2026~4_S,2026~4_F,2026~4_Y - CHS
+    2026~6_S,2026~6_F,2026~6_Y - ACIS
+    """
     sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle,
                  MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle,
                  FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName, MST.SM as Semester FROM MST
@@ -74,6 +87,7 @@ if __name__ == '__main__':
     #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " " + sql_query['CourseNum']
 
     # REMEMBER TO CHANGE THE FALL and SPRING and leave BLANK if YEAR
+    # If you mess this up, it's real easy just to rename everything again.
     # ------------------------------------------------------------------------------------------------------------------
     #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
     #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Fall"
@@ -81,7 +95,7 @@ if __name__ == '__main__':
     sql_query["NewCourseTitleSort"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
     sql_query["NewCourseSectionData"] = sql_query["SectionNum"].astype(str) + " - " + sql_query["CourseTitle"].astype(str)
 
-    sql_query.to_csv('export.csv')
+    #sql_query.to_csv('export.csv')
     print(sql_query)
 
 
@@ -92,16 +106,7 @@ if __name__ == '__main__':
     thelogger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
-    """
-    This should be run, to prevent issues, by TERM id. 
-    So, run all the S ones, then F ones, and then Y ones in whatever order
-    Term IDs 
-    2026~1_S,2026~1_F,2026~1_Y - LLHS
-    2026~2_S,2026~2_F,2026~2_Y - AHS
-    2026~3_S,2026~3_F,2026~3_Y - MHS
-    2026~4_S,2026~4_F,2026~4_Y - CHS
-    2026~6_S,2026~6_F,2026~6_Y - ACIS
-    """
+
      #------------------------------------------------------
     # Rename Courses
     # This takes the inital AERIES data and renames classes
@@ -127,10 +132,12 @@ if __name__ == '__main__':
     print(bool_series)
     sql_query['Dup'] = bool_series
     print(sql_query)
-    sql_query.to_csv('exportbool2025.csv')
+    #sql_query.to_csv('exportbool2025.csv')
 
     # -----------------------
     # Cross listing
+    # It will complain about things, but generally ignore it and you will be fine
+    #
     for i in sql_query.index:
         if sql_query['Dup'][i] == False:
             try:
