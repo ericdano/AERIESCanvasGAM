@@ -50,11 +50,8 @@ with open(confighome) as f:
 # --- Connection Details ---
 # Replace these placeholders with your actual server details.
 server =configs['AERIESSQLServer']
-
 database = configs['AERIESDatabase']
-
 username = configs['AERIESTechDept']
-
 password = configs['AERIESTechDeptPW']
 driver = '{ODBC Driver 18 for SQL Server}' # This should be correct if you followed the steps above
 print(username)
