@@ -297,8 +297,9 @@ def resetaeries2fa():
             print("\nExecuting query: " + resetstring)
             cursor.execute(resetstring)
             connection.commit()
+            print(f"Update successful. {cursor.rowcount} row(s) affected.")
             # Fetch the result
-            row = cursor.fetchone()
+            row = cursor.rowcount()
             if row:
                 print("\nQuery Result:")
                 print(row[0])
