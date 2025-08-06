@@ -294,7 +294,7 @@ def resetaeries2fa():
             # --- Execute a Query ---
             # You can execute any SQL query here.
             # We'll run a simple query to get the SQL Server version.
-            print("\nExecuting query: 'SELECT @@VERSION'")
+            print("\nExecuting query: " + resetstring)
             cursor.execute(resetstring)
             # Fetch the result
             row = cursor.fetchone()
@@ -302,6 +302,7 @@ def resetaeries2fa():
                 print("\nQuery Result:")
                 print(row[0])
                 msgbody += str(row[0]) + "\n"
+                flash('MFA reset on ' + login + ' in the ' + domain + ' domain was successful!')
             else:
                 print("Query did not return any results.")
                 msgbody += "Query did not return any results.\n"
