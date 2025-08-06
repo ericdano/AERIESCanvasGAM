@@ -299,11 +299,11 @@ def resetaeries2fa():
             connection.commit()
             print(f"Update successful. {cursor.rowcount} row(s) affected.")
             # Fetch the result
-            row = cursor.rowcount()
-            if row:
+            row = cursor.rowcount
+            if row <> 0:
                 print("\nQuery Result:")
-                print(row[0])
-                msgbody += str(row[0]) + "\n"
+                print(row)
+                msgbody += str(row) + "\n"
                 flash('MFA reset on ' + login + ' in the ' + domain + ' domain was successful!')
             else:
                 print("Query did not return any results.")
