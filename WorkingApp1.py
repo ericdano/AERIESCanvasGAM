@@ -296,6 +296,7 @@ def resetaeries2fa():
             # We'll run a simple query to get the SQL Server version.
             print("\nExecuting query: " + resetstring)
             cursor.execute(resetstring)
+            connection.commit()
             # Fetch the result
             row = cursor.fetchone()
             if row:
