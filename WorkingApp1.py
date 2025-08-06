@@ -278,8 +278,6 @@ def resetaeries2fa():
         password = configs['AERIESTechDeptPW']
         driver = '{ODBC Driver 18 for SQL Server}' # This should be correct if you followed the steps above
         resetstring= "UPDATE UGN SET MFA = 0 WHERE UN ='" + domain + "\\" + login +"'"
-        #connection_string = "DRIVER={[ODBC+Driver+18+for+SQL+Server];SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
-        #connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
         # --- Establish Connection ---
         connection = None # Initialize connection to None
         try:
@@ -293,16 +291,13 @@ def resetaeries2fa():
 
             # Create a cursor object
             cursor = connection.cursor()
-
             # --- Execute a Query ---
             # You can execute any SQL query here.
             # We'll run a simple query to get the SQL Server version.
             print("\nExecuting query: 'SELECT @@VERSION'")
             cursor.execute(resetstring)
-
             # Fetch the result
             row = cursor.fetchone()
-
             if row:
                 print("\nQuery Result:")
                 print(row[0])
@@ -334,21 +329,11 @@ def resetaeries2fa():
             if connection:
                 print("\nClosing the database connection.")
                 connection.close()
-                print("Connection closed.")
-                msg['Subject'] = str(configs['SMTPStatusMessage'] + msgsubjectstr)
-                msg.set_content(msgbody)
-                s = smtplib.SMTP(configs['SMTPServerAddress'])
-                s.send_message(msg)
-        
-
-
-#
-#            msgsubjectstr = "ERROR! AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
-#            msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
-#            print('Exception!!')
-#            flash('An exception occured on the reset the MFA on ' + login + ' in the ' + domain + ' domain.')
-#        finally:
-#            
+            print("Connection closed.")
+            msg['Subject'] = str(configs['SMTPStatusMessage'] + msgsubjectstr)
+            msg.set_content(msgbody)
+            s = smtplib.SMTP(configs['SMTPServerAddress'])
+            s.send_message(msg)            
 
     return redirect(url_for('home'))
 # --- Main Execution ---
