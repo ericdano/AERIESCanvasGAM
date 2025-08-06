@@ -13,8 +13,6 @@ from ssl import SSLSocket
 from timeit import default_timer as timer
 import pandas as pd
 import ldap3
-from waitress import serve
-from aeriesapp import app
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -268,7 +266,7 @@ def resetaeries2fa():
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
-    msgbody = ''
+    msgsubjectstr = ""
     msgbody=""
     if request.method == 'POST':
         domain = request.form.get('domain')
@@ -278,7 +276,7 @@ def resetaeries2fa():
            # flash('A Domain and passLoginword are required.', 'error')
             return redirect(url_for('login'))
         resetstring= "UPDATE UGN SET MFA = 0 WHERE UN ='" + domain + "\\" + login +"'"
-        connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
+        connection_string = "DRIVER={[ODBC+Driver+18+for+SQL+Server];SERVER=" + configs['AERIESSQLServer']  + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESTechDept'] + ";PWD=" + configs['AERIESTechDeptPW'] + ";"
         connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
         engine = create_engine(connection_url)
         try:
@@ -288,22 +286,22 @@ def resetaeries2fa():
                 flash('Successfully reset the MFA on ' + login + ' in the ' + domain + ' domain.')
                 msgbody += "No errors resetting 2FA on account " + domain + "\\" + login + "\n"
         except IntegrityError as e:
-            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            mssubjectstr = "ERROR! AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
             msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
             print('Integrity Error!')
             flash('An Integrity occured on the reset the MFA on ' + login + ' in the ' + domain + ' domain.')
         except OperationalError as e:
-            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgsubjectstr = "ERROR! AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
             msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
             print('Operational Error!')
             flash('An Operational Error occured on the reset the MFA on ' + login + ' in the ' + domain + ' domain.')
         except Exception as e:
-            msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msgsubjectstr = "ERROR! AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
             msgbody += "Errors resetting 2FA on " + login + "in domain " + domain + "\n"
             print('Exception!!')
             flash('An exception occured on the reset the MFA on ' + login + ' in the ' + domain + ' domain.')
         finally:
-            msg['Subject'] = str(configs['SMTPStatusMessage'] + " AERIES 2FA Reset " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+            msg['Subject'] = str(configs['SMTPStatusMessage'] + msgsubjectstr)
             msg.set_content(msgbody)
             s = smtplib.SMTP(configs['SMTPServerAddress'])
             s.send_message(msg)
