@@ -31,7 +31,7 @@ DontDeleteFiles = False
 os.chdir('E:\\PythonTemp')
 output_dir = "E:\\PythonTemp"
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-Sites = {'Site':['AHS','CHS','LLHS','MHS','ACIS'],
+Sites = {'Site':['LLHS','MHS','NOPE','CHS','ACIS'],
          'SiteNum':[1,2,3,4,6]}
 sitesdf = pd.DataFrame(Sites)
 QueryStr = f"SELECT STU.SEM, STU.GR, STU.SC FROM STU WHERE STU.SC IN ('1','2','3','4','6') ORDER BY STU.SC, STU.GR"
