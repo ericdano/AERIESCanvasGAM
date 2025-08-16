@@ -107,7 +107,7 @@ print(file_list)
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
 for row in file_list.itertuples(index=False):
-    print(f"filename: {row.file_name}, groupname: {row.group_name}")
+    print(f"filename: {row.filename}, groupname: {row.groupname}")
     thelogger.info("Student Google Group Updater>Processing filename: {row.file_name}, groupname: {row.group_name}")
     msgbody += "Processing filename: {row.file_name}, groupname: {row.group_name}\n"
     #stat1 = gam.CallGAMCommand(['gam','update', 'group', '{row.group_name}', 'sync', 'members', 'file', '{row.file_name}'])
