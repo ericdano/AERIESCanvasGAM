@@ -11,6 +11,21 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
+"""
+This Python Script talks to AERIES, gets students from 5 sites, sorts them by Grade 
+and Site, makes CSV files split out by Grade and Site, and then calls
+GAM to update student lists with the same name as the csv file name.
+
+Example, ahsgrade10students.csv updates the ahsgrade10students Google group
+etc.
+
+Script sends what it does to a logging server, and will also email what it
+did or did not do to a set of users as well
+
+2025 by Eric Dannewitz
+
+"""
+
 start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
@@ -46,7 +61,7 @@ ORDER BY
     STU.SC,
     STU.GR
 """
-
+# Logging is a good thing
 thelogger.info(f"Student Google Group Updater->Gathering all students")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
@@ -56,6 +71,7 @@ with engine.begin() as connection:
     df = pd.read_sql_query(QueryStr,connection)
     thelogger.info('Student Google Group Updater>Closed AERIES connection')
 print(df)
+msgbody += "Connected to AERIES and got all the student email addresses\n"
 #print to make sure we have some data
 sc_mapping = {
     1: 'llhs',
@@ -85,30 +101,34 @@ for name, group_df in Grouped:
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
+thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
+msgbody += "Created temp CSV files for GAM to use\n"
 df2 = pd.DataFrame(file_list)
-for index, row in df2.iterrows():
-   print(f"filename: {file_name}, groupname: {group_name}")
-    #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to12studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
+# We created another dataframe containing the csv filenames and the google group name
+# and now we use that to call GAM to update the list from the CSV
+for row in df2.itertuples(index=False):
+    print(f"filename: {row.file_name}, groupname: {row.group_name}")
+    thelogger.info("Student Google Group Updater>Processing filename: {row.file_name}, groupname: {row.group_name}")
+    msgbody += "Processing filename: {row.file_name}, groupname: {row.group_name}\n"
+    #stat1 = gam.CallGAMCommand(['gam','update', 'group', '{row.group_name}', 'sync', 'members', 'file', '{row.file_name}'])
     #if stat1 != 0:
         #WasThereAnError = True
-        #thelogger.info('UpdateACISStuParentListsInGoogle->GAM returned an error from last command')
-    #if not DontDeleteFiles:
-        #os.remove('acisstudentparents.csv')
-print("\nProcess complete.")
+        #thelogger.info('Student Google Group Updater->GAM returned an error from last command')
+        #msgbody += "GAM returned an error from last command\n"
+    if not DontDeleteFiles:
+        os.remove('{row.file_name}')
 
-
-#msgbody += 'Synced ACIS Student Parent list. Gam Status->' + str(stat1) + '\n' 
-#msgbody+='Done!'
-#thelogger.info('UpdateACISStuParentListsInGoogle->Done Syncing to Google Groups')
-#if WasThereAnError:
-#    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 12 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-#else:
-#    msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Grades 9 to 12 Student and Parents to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-#end_of_timer = timer()
-#msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+msgbody+='Done!'
+thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
+if WasThereAnError:
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Student Google Group Updater " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+else:
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Student Google Group Updater " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+end_of_timer = timer()
+msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 #msg.set_content(msgbody)
 #s = smtplib.SMTP(configs['SMTPServerAddress'])
 #s.send_message(msg)
-#thelogger.info('UpdateACISStuParentListsInGoogle->Sent status message')
-#thelogger.info('UpdateACISStuParentListsInGoogle->Done - Took ' + str(end_of_timer - start_of_timer))
-
+thelogger.info('Student Google Group Updater->Sent status message')
+thelogger.info('Student Google Group Updater->Done - Took ' + str(end_of_timer - start_of_timer))
+print("\nProcess complete.")
