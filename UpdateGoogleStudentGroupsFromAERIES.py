@@ -103,7 +103,6 @@ for name, group_df in Grouped:
     print(f"Saved {name}")
 thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
-print('------------------')
 print(file_list)
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
@@ -117,8 +116,7 @@ for row in file_list.itertuples(index=False):
         #thelogger.info('Student Google Group Updater->GAM returned an error from last command')
         #msgbody += "GAM returned an error from last command\n"
     if not DontDeleteFiles:
-        print(f"{row.filename}")
-        #os.remove({row.filename})
+        os.remove({row.filename})
 print(msgbody)
 msgbody+='Done!'
 thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
