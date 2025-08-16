@@ -26,3 +26,12 @@ AERIES Canvas Course Renamer and Crosslister - One of the issues we have with th
 
 UpdateGoogleStaffInfo.ps1 - We use Active Directory, so all the staff info is in there. This powershell script makes a csv of staff data, and the GAM is used to update the stuff in Google
 
+UpddateGoogleStudentGroupsFromAERIES.py - Looks in AERIES SIS, gets all the students from 5 sites, makes CSV files by Site and Grade, and then updates Google Groups with GAM that are based off the CSV file name
+So, ahsgrade9students list is updated from the ahsgrade9students.csv file.
+
+DisableADAccountsinAD.ps1 - goes through a CSV and disables accounts.
+
+CreateNewStudents2025.ps1 - Powershell script to create Students in the correct OU, with the correct groups, and create the correct H:\ drive path for the account
+
+fixstudentdirectoryownership.ps1 - To fix an issue with CreateNewStudents2025 being so fast, permissions we not being correctly set because the NAS did not have enough time to receive the information from the
+AD Server that a new user was created. This will SHOULD be run right after CreateNewStudents2025
