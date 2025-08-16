@@ -34,7 +34,7 @@ msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 Sites = {'Site':['AHS','CHS','LLHS','MHS','ACIS'],
          'SiteNum':[1,2,3,4,6]}
 sitesdf = pd.DataFrame(Sites)
-QueryStr = f"SELECT STU.SEM, STU.GR, STU.SC FROM STU ORDER BY STU.SC, STU.GR"
+QueryStr = f"SELECT STU.SEM, STU.GR, STU.SC FROM STU WHERE STU.SC IN ['1','2','3','4','6'] ORDER BY STU.SC, STU.GR"
 thelogger.info(f"Student Google Group Updater Gathering all students")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
