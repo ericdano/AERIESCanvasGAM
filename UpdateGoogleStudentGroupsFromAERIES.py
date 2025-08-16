@@ -51,7 +51,7 @@ Grouped = sql_query1.groupby(['SC','GR'])
 print(Grouped)
 print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
-    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
+    file_name = f"{'_'.join(str(name)).replace(' ', '_')}.csv"
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
 print("\nProcess complete.")
