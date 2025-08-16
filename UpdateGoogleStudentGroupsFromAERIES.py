@@ -35,7 +35,7 @@ thelogger = logging.getLogger('MyLogger')
 thelogger.setLevel(logging.DEBUG)
 handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
 thelogger.addHandler(handler)
-#prep status (msg) email
+#prep status (msg) email and stuff
 msg = EmailMessage()
 msg['From'] = configs['SMTPAddressFrom']
 msg['To'] = configs['SendInfoEmailAddr']
@@ -72,7 +72,7 @@ with engine.begin() as connection:
     thelogger.info('Student Google Group Updater>Closed AERIES connection')
 print(df)
 msgbody += "Connected to AERIES and got all the student email addresses\n"
-#print to make sure we have some data
+# Mapping of site numbers to abbrivations of school names
 sc_mapping = {
     1: 'llhs',
     2: 'ahs',
@@ -80,7 +80,7 @@ sc_mapping = {
     4: 'chs',
     6: 'acis'
 }
-#Set up Mappingn to translate Site Codes to text
+#Set up Mapping to translate Site Codes to text
 df['SC'] = df['SC'].replace(sc_mapping)
 print("Updated DataFrame with 'SC' values replaced:")
 print(df.head())
@@ -89,7 +89,7 @@ print("\nUpdated DataFrame with 'GR' values modified:")
 print(df.head())
 Grouped = df.groupby(['SC','GR'])
 print(Grouped)
-# We'll create an empty list to hold the filenames for GAM.
+# We'll create an empty dataframe to hold the filenames for GAM to process.
 file_list = pd.DataFrame(columns=['filename','groupname'])
 print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
@@ -101,25 +101,28 @@ for name, group_df in Grouped:
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
+# All CSV files created
 thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
-print(file_list)
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
+# we are going to loop through the file_list dataframe which contains the csv filename and the name of the group to update
 for row in file_list.itertuples(index=False):
     print(f"filename: {row.filename}, groupname: {row.groupname}")
     thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
-    #stat1 = gam.CallGAMCommand(['gam','update', 'group', '{row.group_name}', 'sync', 'members', 'file', '{row.file_name}'])
+    # Call GAM from Python
+    #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'f"{row.group_name}"', 'sync', 'members', 'file', 'f"{row.file_name}"'])
     #if stat1 != 0:
         #WasThereAnError = True
         #thelogger.info('Student Google Group Updater->GAM returned an error from last command')
-        #msgbody += "GAM returned an error from last command\n"
+        #msgbody += f"GAM returned an error from last command on {row.group_name} {row.file_name}\n"
     if not DontDeleteFiles:
+        # Delete CSV when done
         os.remove(f"{row.filename}")
-print(msgbody)
-msgbody+='Done!'
+msgbody+='Done!\n'
 thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
+# Now email status report
 if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Student Google Group Updater " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
 else:
