@@ -46,6 +46,7 @@ with engine.begin() as connection:
 #for index,row in df.iterrows():
 #    for i in range(9,13):
 # We just care about STU.SEM and STU.GR and STU.SC
+print(sql_query1)
 Grouped = sql_query1.groupby(['SC','GR'])
 print(Grouped)
 print("Iterating through groups and creating CVS")
