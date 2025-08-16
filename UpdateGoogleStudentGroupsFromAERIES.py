@@ -41,17 +41,31 @@ connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_st
 engine = create_engine(connection_url)
 with engine.begin() as connection:
     #thelogger.info('UpdateACISStuParentListsInGoogle->Connecting to AERIES to get Parental emails')
-    sql_query1 = pd.read_sql_query(QueryStr,connection)
+    df= pd.read_sql_query(QueryStr,connection)
     #thelogger.info('UpdateACISStuParentListsInGoogle->Closed AERIES connection')
 #for index,row in df.iterrows():
 #    for i in range(9,13):
 # We just care about STU.SEM and STU.GR and STU.SC
 print(sql_query1)
-Grouped = sql_query1.groupby(['SC','GR'])
+sc_mapping = {
+    1: 'AHS',
+    2: 'LLHS',
+    3: 'CHS',
+    4: 'MHS',
+    5: 'E',
+    6: 'ACIS'
+}
+df['SC'] = df['SC'].replace(sc_mapping)
+print("Updated DataFrame with 'SC' values replaced:")
+print(df.head())
+df['GR'] = df['GR'].apply(lambda x: f"GR {x}")
+print("\nUpdated DataFrame with 'GR' values modified:")
+print(df.head())
+Grouped = df.groupby(['SC','GR'])
 print(Grouped)
 print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
-    file_name = f"{'_'.join(str(name)).replace(' ', '_')}.csv"
+    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
