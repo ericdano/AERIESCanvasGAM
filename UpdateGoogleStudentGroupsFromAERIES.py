@@ -31,53 +31,70 @@ DontDeleteFiles = False
 os.chdir('E:\\PythonTemp')
 output_dir = "E:\\PythonTemp"
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-QueryStr = f"SELECT STU.SEM, STU.GR, STU.SC FROM STU WHERE STU.SC IN ('1','2','3','4','6') ORDER BY STU.SC, STU.GR"
-thelogger.info(f"Student Google Group Updater Gathering all students")
+QueryStr = f"""
+SELECT
+    SEM, 
+    GR,
+    SC
+FROM
+    STU
+WHERE
+    STU.SC IN ('1','2','3','4','6')
+    AND DEL=0
+    AND TG=''
+ORDER BY
+    STU.SC,
+    STU.GR
+"""
+
+thelogger.info(f"Student Google Group Updater->Gathering all students")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 with engine.begin() as connection:
-    #thelogger.info('UpdateACISStuParentListsInGoogle->Connecting to AERIES to get Parental emails')
-    df= pd.read_sql_query(QueryStr,connection)
-    #thelogger.info('UpdateACISStuParentListsInGoogle->Closed AERIES connection')
-#for index,row in df.iterrows():
-#    for i in range(9,13):
-# We just care about STU.SEM and STU.GR and STU.SC
+    thelogger.info('Student Google Group Updater->Connecting to AERIES to get emails')
+    df = pd.read_sql_query(QueryStr,connection)
+    thelogger.info('Student Google Group Updater>Closed AERIES connection')
 print(df)
+#print to make sure we have some data
 sc_mapping = {
-    1: 'LLHS',
-    2: 'AHS',
-    3: 'MHS',
-    4: 'CHS',
-    6: 'ACIS'
+    1: 'llhs',
+    2: 'ahs',
+    3: 'mhs',
+    4: 'chs',
+    6: 'acis'
 }
+#Set up Mappingn to translate Site Codes to text
 df['SC'] = df['SC'].replace(sc_mapping)
 print("Updated DataFrame with 'SC' values replaced:")
 print(df.head())
-df['GR'] = df['GR'].apply(lambda x: f"GR {x}")
+df['GR'] = df['GR'].apply(lambda x: f"grade{x}students")
 print("\nUpdated DataFrame with 'GR' values modified:")
 print(df.head())
 Grouped = df.groupby(['SC','GR'])
 print(Grouped)
+# We'll create an empty list to hold the filenames for GAM.
+file_list = []
 print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
-    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
+    #    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
+    file_name = f"{''.join(name).replace(' ', '')}.csv"
+    file_list.append({'filename': file_name})
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
+df2 = pd.DataFrame(file_list)
+for filename in df2['filename']:
+   print(filename)
+    #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to12studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
+    #if stat1 != 0:
+        #WasThereAnError = True
+        #thelogger.info('UpdateACISStuParentListsInGoogle->GAM returned an error from last command')
+    #if not DontDeleteFiles:
+        #os.remove('acisstudentparents.csv')
 print("\nProcess complete.")
-#c_name = ["email"]
-#listylist = pd.DataFrame(columns = c_name)
-#listylist["email"] = pd.concat([sql_query1['SEM'],sql_query1['PEM']],axis=0, ignore_index=True)
-#header = ["email"]
-#listylist.to_csv('acisstudentparents.csv',index = False, header = False, columns = header)
-#thelogger.info('UpdateACISStuParentListsInGoogle->Running GAM')
-#stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to12studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
-#if stat1 != 0:
-#    WasThereAnError = True
-#    thelogger.info('UpdateACISStuParentListsInGoogle->GAM returned an error from last command')
-#if not DontDeleteFiles:
-#    os.remove('acisstudentparents.csv')
+
+
 #msgbody += 'Synced ACIS Student Parent list. Gam Status->' + str(stat1) + '\n' 
 #msgbody+='Done!'
 #thelogger.info('UpdateACISStuParentListsInGoogle->Done Syncing to Google Groups')
