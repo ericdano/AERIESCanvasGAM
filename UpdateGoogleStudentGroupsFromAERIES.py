@@ -103,6 +103,7 @@ for name, group_df in Grouped:
     print(f"Saved {name}")
 thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
+print('------------------')
 print(file_list)
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
