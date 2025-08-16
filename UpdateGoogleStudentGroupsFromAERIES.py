@@ -90,23 +90,22 @@ print(df.head())
 Grouped = df.groupby(['SC','GR'])
 print(Grouped)
 # We'll create an empty list to hold the filenames for GAM.
-file_list = []
+file_list = pd.DataFrame(columns=['filename','groupname'])
 print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
     #    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
     file_name = f"{''.join(name).replace(' ', '')}.csv"
     group_name = f"{''.join(name).replace(' ', '')}"
-    file_list.append({'filename': file_name},
-                     {'groupname': group_name})
+    file_list = pd.concat(file_list, {'filename': file_name},{'groupname': group_name})
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
 thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
-df2 = pd.DataFrame(file_list)
+print(file_list)
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
-for row in df2.itertuples(index=False):
+for row in file_list.itertuples(index=False):
     print(f"filename: {row.file_name}, groupname: {row.group_name}")
     thelogger.info("Student Google Group Updater>Processing filename: {row.file_name}, groupname: {row.group_name}")
     msgbody += "Processing filename: {row.file_name}, groupname: {row.group_name}\n"
