@@ -78,7 +78,7 @@ sc_mapping = {
     2: 'ahs',
     3: 'mhs',
     4: 'chs',
-    6: 'acis'
+    6: 'cis'
 }
 #Set up Mapping to translate Site Codes to text
 df['SC'] = df['SC'].replace(sc_mapping)
