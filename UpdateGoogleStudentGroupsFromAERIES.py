@@ -116,7 +116,7 @@ for row in file_list.itertuples(index=False):
         #thelogger.info('Student Google Group Updater->GAM returned an error from last command')
         #msgbody += "GAM returned an error from last command\n"
     if not DontDeleteFiles:
-        os.remove('{row.file_name}')
+        os.remove('{row.filename}')
 
 msgbody+='Done!'
 thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
