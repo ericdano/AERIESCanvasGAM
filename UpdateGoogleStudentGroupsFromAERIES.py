@@ -79,7 +79,9 @@ print("Iterating through groups and creating CVS")
 for name, group_df in Grouped:
     #    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
     file_name = f"{''.join(name).replace(' ', '')}.csv"
-    file_list.append({'filename': file_name})
+    group_name = f"{''.join(name).replace(' ', '')}"
+    file_list.append({'filename': file_name},
+                     {'groupname': group_name})
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
