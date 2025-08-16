@@ -29,7 +29,7 @@ WasThereAnError = False
 DontDeleteFiles = False
 # Change directory to a TEMP Directory where GAM and Python can process CSV files 
 os.chdir('E:\\PythonTemp')
-
+output_path = "E:\\PythonTemp"
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 Sites = {'Site':['AHS','CHS','LLHS','MHS','ACIS'],
          'SiteNum':[1,2,3,4,6]}
