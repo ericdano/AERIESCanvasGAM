@@ -109,8 +109,8 @@ print(file_list)
 # and now we use that to call GAM to update the list from the CSV
 for row in file_list.itertuples(index=False):
     print(f"filename: {row.filename}, groupname: {row.groupname}")
-    thelogger.info("Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
-    msgbody += "Processing filename: {row.filename}, groupname: {row.groupname}\n"
+    thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
+    msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
     #stat1 = gam.CallGAMCommand(['gam','update', 'group', '{row.group_name}', 'sync', 'members', 'file', '{row.file_name}'])
     #if stat1 != 0:
         #WasThereAnError = True
