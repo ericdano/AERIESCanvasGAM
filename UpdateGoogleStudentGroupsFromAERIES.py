@@ -86,8 +86,8 @@ for name, group_df in Grouped:
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
 df2 = pd.DataFrame(file_list)
-for filename in df2['filename']:
-   print(filename)
+for index, row in df2.iterrows():
+   print(f"filename: {file_name}, groupname: {group_name}")
     #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'acisgrades9to12studentsandparents', 'sync', 'members', 'file', 'acisstudentparents.csv'])
     #if stat1 != 0:
         #WasThereAnError = True
