@@ -96,7 +96,7 @@ for name, group_df in Grouped:
     #    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
     file_name = f"{''.join(name).replace(' ', '')}.csv"
     group_name = f"{''.join(name).replace(' ', '')}"
-    new_row_data = {'filename': file_name,'groupname': group_name}
+    new_row_data = {'filename': [file_name],'groupname': [group_name]}
     file_list = pd.concat([file_list, pd.DataFrame([new_row_data])],ignore_index=True)
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
