@@ -31,9 +31,6 @@ DontDeleteFiles = False
 os.chdir('E:\\PythonTemp')
 output_dir = "E:\\PythonTemp"
 msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-Sites = {'Site':['LLHS','MHS','NOPE','CHS','ACIS'],
-         'SiteNum':[1,2,3,4,6]}
-sitesdf = pd.DataFrame(Sites)
 QueryStr = f"SELECT STU.SEM, STU.GR, STU.SC FROM STU WHERE STU.SC IN ('1','2','3','4','6') ORDER BY STU.SC, STU.GR"
 thelogger.info(f"Student Google Group Updater Gathering all students")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
@@ -48,11 +45,10 @@ with engine.begin() as connection:
 # We just care about STU.SEM and STU.GR and STU.SC
 print(df)
 sc_mapping = {
-    1: 'AHS',
-    2: 'LLHS',
-    3: 'CHS',
-    4: 'MHS',
-    5: 'E',
+    1: 'LLHS',
+    2: 'AHS',
+    3: 'MHS',
+    4: 'CHS',
     6: 'ACIS'
 }
 df['SC'] = df['SC'].replace(sc_mapping)
