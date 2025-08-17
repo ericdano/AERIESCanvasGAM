@@ -16,6 +16,8 @@ from canvasapi.exceptions import CanvasException
 This script pulls ALL students from AERIES. Sorts them by site and grade, and puts them into a Canvas Course for the site,
 and section in that course by Grade
 
+
+
 """
 
 def GetAERIESData(thelogger,schoolcode,grade,configs):
