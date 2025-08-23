@@ -120,11 +120,14 @@ for i in CounselorCanvasSection.index:
   #---------------------------
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   for s in section.students:
     tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
     canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
   #
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   try:
@@ -138,6 +141,9 @@ for i in CounselorCanvasSection.index:
       thelogger.info(f"Canvas Groups for Counselors->No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
   
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
