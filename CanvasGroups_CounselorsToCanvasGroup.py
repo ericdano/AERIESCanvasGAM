@@ -189,7 +189,7 @@ for i in CounselorCanvasSection.index:
         msgbody += f"User in AERIES not in Canvas yet sis_id-> sis_id->{student}\n"
         thelogger.info(f"Canvas Groups for Counselors->User in AERIES not in Canvas yet sis_id->{student}")
 thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
-msgbody+='Done!'
+msgbody += 'Done!'
 end_of_timer = timer()
 if WasThereAnErr:
   msg['Subject'] = "Error! - " + MessageSub1
