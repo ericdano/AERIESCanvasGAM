@@ -62,7 +62,7 @@ def main():
         print('try2')
         for course in all_courses:
             academy_teacher_enrollments = course.get_enrollments(role=["Academy Teachers"])
-            print(f"{academy_teacher_enrollments.label}")
+            print(f"{academy_teacher_enrollments.permissions}")
             """
             for enrollment in academy_teacher_enrollments:
                 all_academy_teacher_enrollments.append({

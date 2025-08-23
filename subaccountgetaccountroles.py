@@ -49,6 +49,7 @@ def main():
 
     except Exception as e:
         print(f"An error occurred: {e}")
-    
+    try:
+        roles = subaccount.get_roles()
 if __name__ == '__main__':
     main()
