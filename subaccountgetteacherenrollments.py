@@ -78,7 +78,7 @@ def main():
             # Print the results
             print("\nFound Teacher Enrollments:")
             for enrollment in teacher_enrollments:
-                print(f"Teacher: {enrollment.user['name']} (ID: {enrollment.user_id}) - Course ID: {enrollment.course_id}")
+                print(f"Teacher: {enrollment.user['name']} (ID: {enrollment.user_id}) - Course ID: {enrollment.course_id} - Role {enrollment.role}")
 
     except Exception as e:
         print(f"An error occurred: {e}")
