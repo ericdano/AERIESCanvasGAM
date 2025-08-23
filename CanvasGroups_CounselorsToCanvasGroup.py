@@ -109,12 +109,10 @@ for i in CounselorCanvasSection.index:
   MainCourseEnrollments = course.get_enrollments(type='StudentEnrollment')
   # used to get students in a section
   section = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i],include=["students"])
-  print(section)
-  exit(0)
   # make a dataframe that has Student SIS IDs in it
   canvasdf = pd.DataFrame(columns=['ID'])
-  print('Section looking at ->' + str(section))
-  print('CanvasSectionID->' + str(CounselorCanvasSection['CanvasSectionID'][i]))
+  print(f"Section looking at -> {section}")
+  print(f"CanvasSectionID-> {CounselorCanvasSection['CanvasSectionID'][i]}")
   # get sis_user_id's out of Canvas data
   print(section)
   # comment out if loading NEW Counselors
