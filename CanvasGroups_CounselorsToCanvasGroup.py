@@ -114,11 +114,11 @@ for i in CounselorCanvasSection.index:
   print(f"Section looking at -> {section}")
   print(f"CanvasSectionID-> {CounselorCanvasSection['CanvasSectionID'][i]}")
   # get sis_user_id's out of Canvas data
-  print(section)
   # comment out if loading NEW Counselors
-  for s in section.students:
-    tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
-    canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+  #for s in section.students:
+  #  tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
+  #  canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+  print("here")
   # End of new Counselor section
   # add STU_ to AERIES data
   aeriesSQLData['ID'] = 'STU_' + aeriesSQLData['ID'].astype(str)
