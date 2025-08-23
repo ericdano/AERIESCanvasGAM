@@ -118,18 +118,6 @@ for i in CounselorCanvasSection.index:
   # Use a try statement in case there are no students in the section
   #
   #---------------------------
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  for s in section.students:
-    tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
-    canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-  #
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
   try:
     for s in section.students:
       tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
@@ -140,13 +128,6 @@ for i in CounselorCanvasSection.index:
       msgbody += f"No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways\n"
       thelogger.info(f"Canvas Groups for Counselors->No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
   
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
   #----------------------------
   # End of new Counselor section
   # add STU_ to AERIES data
