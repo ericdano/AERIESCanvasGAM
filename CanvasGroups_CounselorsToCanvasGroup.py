@@ -119,9 +119,9 @@ for i in CounselorCanvasSection.index:
   #
   #
   #---------------------------
-  #for s in section.students:
-  #  tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
-  #  canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+  for s in section.students:
+    tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
+    canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
   #
   #----------------------------
   # End of new Counselor section
