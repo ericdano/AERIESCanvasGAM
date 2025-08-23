@@ -114,11 +114,16 @@ for i in CounselorCanvasSection.index:
   print(f"Section looking at -> {section}")
   print(f"CanvasSectionID-> {CounselorCanvasSection['CanvasSectionID'][i]}")
   # get sis_user_id's out of Canvas data
+  #
   # comment out if loading NEW Counselors
+  #
+  #
+  #---------------------------
   #for s in section.students:
   #  tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
   #  canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
-  print("here")
+  #
+  #----------------------------
   # End of new Counselor section
   # add STU_ to AERIES data
   aeriesSQLData['ID'] = 'STU_' + aeriesSQLData['ID'].astype(str)
@@ -129,17 +134,17 @@ for i in CounselorCanvasSection.index:
   print('Students in Canvas not in AERIES')
   print(studentsincanvasnotinaeries)
   for student in studentsincanvasnotinaeries:
-    thelogger.info('Canvas Groups for Counselors->Looking up student->'+str(student)+' in Canvas')
-    msgbody += 'Looking up student->'+str(student)+' in Canvas to delete from course' + '\n'
-    print('Looking up student->'+str(student)+' in Canvas to delete from course')
+    thelogger.info(f"Canvas Groups for Counselors->Looking up student->{student} in Canvas")
+    msgbody += f"Looking up student-> {student} in Canvas to delete from course\n"
+    print(f"Looking up student->{student} in Canvas to delete from course")
     try:
       user = canvas.get_user(str(student),'sis_user_id')
     except CanvasException as g:
       if str(g) == "Not Found":
-        print('Cannot find user sis_id->'+str(student))
-        msgbody+='<b>Canvas cannot find user sis_id->'+str(student) + ', might be a new student who is not in Canvas yet</b>\n'
+        print(f"Cannot find user sis_id->{student}")
+        msgbody+=f"<b>Canvas cannot find user sis_id->{student}, might be a new student who is not in Canvas yet</b>\n"
         WasThereAnErr = True
-        thelogger.info('Canvas Groups for Counselors->Cannot find user sis_id->'+str(student))
+        thelogger.info(f"Canvas Groups for Counselors->Cannot find user sis_id->{student}")
     else:
       lookfordelete = False
       try:
@@ -148,17 +153,17 @@ for i in CounselorCanvasSection.index:
           if stu.user_id == user.id:
             lookfordelete = True
             stu.deactivate(task="delete")
-            print('Deleted student ->'+str(user.id) + ' from course')
-            msgbody += 'Deleted student ->'+str(user.id) + ' from course' + '\n'
-            thelogger.info('Deleted student ->'+str(user.id) + ' from course')
+            print(f"Deleted student ->{user.id} from course")
+            msgbody += f"Deleted student ->{user.id} from course\n"
+            thelogger.info(f"Deleted student ->{user.id} from course")
       except CanvasException as e:
         if str(e) == "Not Found":
-            print('User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student))
-            msgbody += 'User not in group CanvasID->' + str(user.id) + ' sis_id->'+ str(student) + '\n'
-            thelogger.info('Canvas Groups for Counselors->Some sort of exception happened when removing student->'+str(student)+' from Group')
-      print('Removed Student->'+str(student)+' from Canvas group')
-      msgbody += 'Removed Student->'+str(student)+' from Canvas group' + '\n'
-      thelogger.info('Canvas Groups for Counselors->Removed Student->'+str(student)+' from Canvas group')
+            print(f"User not in group CanvasID->{user.id} sis_id->{student}")
+            msgbody += f"User not in group CanvasID->{user.id} sis_id->{student}\n"
+            thelogger.info(f"Canvas Groups for Counselors->Some sort of exception happened when removing student->{student} from Group")
+      print(f"Removed Student->{student} from Canvas group")
+      msgbody += f"Removed Student->{student} from Canvas group\n"
+      thelogger.info(f"Canvas Groups for Counselors->Removed Student->{student} from Canvas group")
   # Now add students to group
   # Get the course then loop adding students
   SectionToAddTo = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i])
@@ -166,7 +171,7 @@ for i in CounselorCanvasSection.index:
     print(student)
     try:
       user = canvas.get_user(str(student),'sis_user_id')
-      msgbody += 'going to try to add '+ str(student) + ' to section ' + str(SectionToAddTo) + '\n'    
+      msgbody += f"going to try to add {student} to section {SectionToAddTo}\n"    
       print(course)
       print(SectionToAddTo.id)
       print(user)
@@ -175,14 +180,14 @@ for i in CounselorCanvasSection.index:
                         enrollment_type = "StudentEnrollment",
                         enrollment={'course_section_id': SectionToAddTo.id,'enrollment_state': 'active','limit_privileges_to_course_section': True}
                       )
-      print('Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
-      msgbody += 'Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID) + '\n'
-      thelogger.info('Canvas Groups for Counselors->Added Student id->'+str(student)+' to Canvas group->' + str(CanvasSectionID))
+      print(f"Added Student id->{student} to Canvas group->{CanvasSectionID}")
+      msgbody += f"Added Student id->{student} to Canvas group->{CanvasSectionID}\n"
+      thelogger.info(f"Canvas Groups for Counselors->Added Student id->{student} to Canvas group->{CanvasSectionID}")
     except CanvasException as ef:
       if str(ef) == "Not Found":
-        print('User in AERIES not in Canvas yet sis_id->'+ str(student))
-        msgbody += 'User in AERIES not in Canvas yet sis_id-> sis_id->'+ str(student) + '\n'
-        thelogger.info('Canvas Groups for Counselors->User in AERIES not in Canvas yet sis_id->'+str(student))
+        print(f"User in AERIES not in Canvas yet sis_id->{student}")
+        msgbody += f"User in AERIES not in Canvas yet sis_id-> sis_id->{student}\n"
+        thelogger.info(f"Canvas Groups for Counselors->User in AERIES not in Canvas yet sis_id->{student}")
 thelogger.info('Canvas Groups for Counselors->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
