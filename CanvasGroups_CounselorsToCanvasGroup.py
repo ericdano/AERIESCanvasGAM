@@ -115,14 +115,26 @@ for i in CounselorCanvasSection.index:
   print(f"CanvasSectionID-> {CounselorCanvasSection['CanvasSectionID'][i]}")
   # get sis_user_id's out of Canvas data
   #
-  # comment out if loading NEW Counselors
-  #
+  # Use a try statement in case there are no students in the section
   #
   #---------------------------
+<<<<<<< Updated upstream
   for s in section.students:
     tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
     canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
   #
+=======
+  try:
+    for s in section.students:
+      tempDF = pd.DataFrame([{'ID': s['sis_user_id']}])
+      canvasdf = pd.concat([canvasdf,tempDF], axis=0, ignore_index=True)
+  except TypeError as e:
+    if str(e) == "'NoneType' object is not iterable":
+      print(f"No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
+      msgbody += f"No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways\n"
+      thelogger.info(f"Canvas Groups for Counselors->No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
+  
+>>>>>>> Stashed changes
   #----------------------------
   # End of new Counselor section
   # add STU_ to AERIES data
