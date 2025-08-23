@@ -18,6 +18,22 @@ This script was originally written to put students into a Canvas "Group" with th
 However, Canvas Groups seem to not really work well and seem to be deprecated. So now we are using
 a Canvas class for each counselor and putting students into the class section for the counselor.
 
+Takes input from a CSV file that has the following fields
+email, sis_id, CanvasSectionID, Grade, Site, CanvasMainCourseID
+email = counselor email address
+CanvasSectionID = The Canvas section id for the counselor's section
+Grade = Grade to pull from AERIES, can be All to get all grades
+Site = The site code in AERIES to pull from
+CanvasMainCourseID = The main course id in Canvas that the sections are part of (CanvasSectionID). 
+This is needed to remove students from the course when they are no longer with the counselor.
+
+Example CSV file
+Site,SITEID,email,CanvasSectionID,Grade,CanvasMainCourseID																				
+AHS,2,mmeadows@auhsdschools.org,18787,9,18739																				
+AHS,2,mmeadows@auhsdschools.org,18788,10,18739																				
+AHS,2,mmeadows@auhsdschools.org,18789,11,18739																				
+AHS,2,mmeadows@auhsdschools.org,18790,12,18739			
+
 2025 by Eric Dannewitz
 
 '''
@@ -52,13 +68,14 @@ msgbody = ''
 # Grade can have a field All in it that it will then place into a All students
 # at site group for the counselor
 CounselorCanvasSection = pd.read_csv(CounselorCSV)
-msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+msgbody += f"Using Database->{configs['AERIESDatabase']}\n"
 
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
-#-----Canvas Info
-#Canvas_API_URL = configs['CanvasBETAAPIURL']
+#-----Canvas Info -------------------
+# Change around if you need to use the BETA API
+# Canvas_API_URL = configs['CanvasBETAAPIURL']
 Canvas_API_URL = configs['CanvasAPIURL']
 #----------------------------------------
 
@@ -72,9 +89,9 @@ for i in CounselorCanvasSection.index:
   CounselorEmail = CounselorCanvasSection['email'][i]
   GradeToGet = CounselorCanvasSection['Grade'][i]
   SchoolSite = CounselorCanvasSection['Site'][i]
-  print('Processing info for ' + str(CounselorEmail) + ' Grade->' + str(GradeToGet))
+  print(f"Processing info for {CounselorEmail} Grade->{GradeToGet}")
   CanvasSectionID = CounselorCanvasSection['CanvasSectionID'][i]
-  msgbody += 'Matching for ' + CounselorEmail + ' - Counselor->' + str(CounselorEmail) + ' - Grade->' + str(GradeToGet) + ' - Canvas Group ID->' + str(CanvasSectionID) + '\n'
+  msgbody += f"Matching for {CounselorEmail} - Counselor->{CounselorEmail} - Grade->{GradeToGet} - Canvas Group ID->{CanvasSectionID}\n"
   the_query = f"""
   SELECT
     ALTSCH.ALTSC,
@@ -103,7 +120,7 @@ for i in CounselorCanvasSection.index:
   aeriesSQLData = pd.read_sql_query(the_query,engine)
   thelogger.info('Canvas Groups for Counselors->Making SET of Aeries IDs')
   # Now go get the group off Canvas
-  msgbody += 'Getting exisiting users from group id->' + str(CanvasSectionID) + '\n'
+  msgbody += f"Getting exisiting users from group id->{CanvasSectionID}\n"
   # Used to DELETE students from course and sections
   course = canvas.get_course(CounselorCanvasSection['CanvasMainCourseID'][i])
   MainCourseEnrollments = course.get_enrollments(type='StudentEnrollment')
