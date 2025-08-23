@@ -13,6 +13,14 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 from collections.abc import Iterable
 
+'''
+This script was originally written to put students into a Canvas "Group" with the counselor. 
+However, Canvas Groups seem to not really work well and seem to be deprecated. So now we are using
+a Canvas class for each counselor and putting students into the class section for the counselor.
+
+2025 by Eric Dannewitz
+
+'''
 
     
 WasThereAnErr = False
@@ -101,6 +109,8 @@ for i in CounselorCanvasSection.index:
   MainCourseEnrollments = course.get_enrollments(type='StudentEnrollment')
   # used to get students in a section
   section = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i],include=["students"])
+  print(section)
+  exit(0)
   # make a dataframe that has Student SIS IDs in it
   canvasdf = pd.DataFrame(columns=['ID'])
   print('Section looking at ->' + str(section))
