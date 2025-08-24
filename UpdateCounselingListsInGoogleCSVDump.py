@@ -18,15 +18,62 @@ def GetAERIESData(thelogger,configs):
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
-    sql_query = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM, CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM, CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
+    thequery1 = f"""
+    SELECT
+        ALTSCH.ALTSC,
+        STU.LN,
+        STU.SEM,
+        STU.GR,
+        STU.CU,
+        TCH.EM,
+        CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM,
+        CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM
+    FROM STU
+    INNER JOIN
+        TCH ON STU.SC = TCH.SC AND
+        STU.CU = TCH.TN
+    INNER JOIN
+        ALTSCH ON STU.SC = ALTSCH.SCID
+    WHERE
+        (STU.SC < 5) AND
+        STU.DEL = 0 AND STU.TG = '' AND
+        STU.SP <> '2' AND
+        STU.CU > 0
+    ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN
+    """
+    sql_query = pd.read_sql_query(thequery1,engine)
     for SITEEM, SEM in sql_query.groupby('SITEEM'):
         filename = SITEEM.replace("@auhsdschools.org","")+"ALL.csv"
         #filename = filename[1:]
         header = ["SEM"]
         SEM.to_csv(filename, index = False, header = False, columns = header)
     thelogger.info('UpdateCounselingListsInGoogle->Closed AERIES connection')
-    sql_query2 = pd.read_sql_query('SELECT ALTSCH.ALTSC, STU.LN, STU.SEM, STU.GR, STU.CU, TCH.EM, CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM, CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM FROM STU INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN INNER JOIN ALTSCH ON STU.SC = ALTSCH.SCID WHERE (STU.SC < 5) AND STU.DEL = 0 AND STU.TG = \'\' AND STU.SP <> \'2\' AND STU.CU > 0 ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN',engine)
-    print(sql_query2)
+    thequery2 = f"""
+    SELECT
+        ALTSCH.ALTSC,
+        STU.LN,
+        STU.SEM,
+        STU.GR,
+        STU.CU,
+        TCH.EM,
+        CONCAT(ALTSCH.ALTSC,TCH.EM) AS SITEEM,
+        CONCAT(ALTSCH.ALTSC,CAST(STU.GR as VARCHAR),TCH.EM) AS SITEGRADEEM
+    FROM
+        STU
+    INNER JOIN
+        TCH ON STU.SC = TCH.SC AND
+        STU.CU = TCH.TN
+    INNER JOIN
+        ALTSCH ON STU.SC = ALTSCH.SCID
+    WHERE
+        (STU.SC < 5) AND
+        STU.DEL = 0 AND
+        STU.TG = '' AND
+        STU.SP <> '2' AND
+        STU.CU > 0
+    ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN
+    """
+    sql_query2 = pd.read_sql_query(thequery2,engine)
     for SITEGRADEEM, SEM in sql_query2.groupby('SITEGRADEEM'):
         filename2 = SITEGRADEEM.replace("@auhsdschools.org","")+".csv"
         #filename2 = filename2[1:]
@@ -69,7 +116,7 @@ def main():
                     ('MHS','evasquez','vasquez'),
                     ('MHS','econners','conners'),
                     ('MHS','rzielinski','zielinski'),
-                    ('MHS','sshawn','shawn') ]
+                    ('MHS','nganey','ganey')]
     GetAERIESData(thelogger,configs)
 
     print('Done!!!')
