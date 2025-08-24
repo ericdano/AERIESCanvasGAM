@@ -4,7 +4,7 @@ Python scripts/programs to do things with AERIES SIS, Canvas LMS, and Google (us
 
 GuestUsers.py - A program I wrote during COVID lockdown that randomly generates weekly new passwords for a set of Guest Accounts we were using for Zoom.
 
-SuspendUsers.py - A linux run script that goes through all the suspended users and takes them out of Google Groups
+SuspendUsers.py - A linux run script that goes through all the suspended users, puts them in a "Former Staff" OU and takes them out of Google Groups
 
 DisableStudentVacationResponder.py - Weekly run thing to turn off students who think it's funny to put on the vacation responder
 
@@ -13,10 +13,12 @@ StudentAddPagerFromlogonname.ps1 - Powershell Script to go through active direct
 CanvasGroups_ACISCounselingToCanvas.py - Takes an AERIES database query of what students the Independent Study Counselor has and updates the Canvas Group
 
 CanvasGroups_CounselorsToCanvasGroup.py - Takes an AERIES database query of multiple Counselors and updates their Canvas Group
-*Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. Dumb. 
+*Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. This script now
+does the same thing but for a "Class" for each counselor, and each grade is a Section of the main course.
 
 CanvasGroups_GoogleSheetToGroup.py - Takes a master list of a teacher email, Google Sheet ID, Canvas Group ID and updates a Canvas Group based on Emails contained in the Google Sheet ID. Used for making Groups in Canvas for like Librarians who want to message in Canvas to students who might have fines, etc.
 *Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. Dumb. 
+This script hasn't been updated cause no one was using it. Probably needs to be redone to be like the Counselor one.
 
 AllCampusStudentInformationCourses.py - Is a script that takes data from AERIES and then puts students in an informational course, and a corresponding section of that course for their grade. It is used for campus wide announcements and stuff.
 
