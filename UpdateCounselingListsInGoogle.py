@@ -158,7 +158,7 @@ def main():
         # Sync Lists for Grade 10 for counselor
         gamliststring = counselor[0] + counselor[2] + "grade10counselinglist"
         filenamestring = counselor[0] + "10" + counselor[1] + ".csv"
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}"
+        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
