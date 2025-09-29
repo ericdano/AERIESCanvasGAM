@@ -26,31 +26,15 @@ def getConfigs():
     configs = json.load(f)
   return configs
 
-def getConfigsAE():
-  # Function to get passwords and API keys for Adult Ed Canvas and stuff
-  confighome = Path.home() / ".ASAPCanvas" / "ASAPCanvas.json"
-  with open(confighome) as f:
-    configs = json.load(f)
-  return configs
 
-def connectCanvas(configs):
-  # Generic connect to Canvas function
+def DisableCanvasLogins(dataframe,configs):
+  global msgbody
+  # disable Canvas Logins
   Canvas_API_URL = configs['CanvasAPIURL']
   Canvas_API_KEY = configs['CanvasAPIKey']  
   canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
-  return canvas
-
-def DisableCanvasLogins(dataframe,configs,configsae):
-  global msgbody
-  # disable Canvas Logins
   for d in dataframe.index:
     if str(dataframe['email'][d]) != '':
-      if ('OU=AE' in str(dataframe['DN'][d])):
-        # Adult Ed teachers are in the OU=AE from LDAP. 
-        # So we just need to see if the string has OU=AE in it, then we need to use the AE Canvas
-        canvas = connectCanvas(configsae)
-      else:
-        canvas = connectCanvas(configs)
       try:
         user = canvas.get_user(str(dataframe['email'][d]),'sis_login_id')
         try:  
@@ -117,7 +101,7 @@ def DisableGoogle(dataframe):
 def main():
   global msgbody,thelogger
   configs = getConfigs()
-  configsAE = getConfigsAE()
+#  configsAE = getConfigsAE()
   thelogger = logging.getLogger('MyLogger')
   thelogger.setLevel(logging.DEBUG)
   handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
@@ -172,7 +156,7 @@ def main():
   else:
     modifyADUsers(df,configs)
     DisableGoogle(df)
-    DisableCanvasLogins(df,configs,configsAE)
+    DisableCanvasLogins(df,configs)
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look for expired accounts script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   msg['From'] = configs['SMTPAddressFrom']

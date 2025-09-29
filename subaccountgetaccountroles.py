@@ -15,6 +15,26 @@ Python Script to get all Account Roles
 
 2025 by Eric Dannewitz
 """
+def get_role_id_by_label(canvas_account, role_label):
+    """
+    Finds the ID of a role given its label within a Canvas account.
+
+    Args:
+        canvas_account (canvasapi.account.Account): The Canvas account object.
+        role_label (str): The label of the role to find.
+
+    Returns:
+        int: The ID of the role, or None if not found.
+    """
+    try:
+        # get_roles() returns a paginated list of Role objects
+        roles = canvas_account.get_roles()
+        for role in roles:
+            if role.label == role_label:
+                return role.id
+    except Exception as e:
+        print(f"Error fetching roles: {e}")
+    return None
 
 def main():
     start_of_timer = timer()
@@ -51,5 +71,16 @@ def main():
         print(f"An error occurred: {e}")
     try:
         roles = subaccount.get_roles()
+        print(f"These are the roles found in subaccount")
+        for role in roles:
+            print(f"{role.id},{role.label},{role.is_account_role},{role.base_role_type},{role.role}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    role_id = get_role_id_by_label(subaccount,'Academy Teachers')
+    users = subaccount.get_users(role_id=role_id)
+    for user in users:
+        print(f"{user.name} - {user.id}")
 if __name__ == '__main__':
     main()
