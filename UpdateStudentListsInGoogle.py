@@ -39,6 +39,7 @@ def main():
                          students@auhsdschools.org (all in district)
     """
     # site abbr, grade level, site number
+    campusabbr = ['ahs','chs','llhs','mhs']
     campuses = [ ('ahs',8,2),
                  ('ahs',9,2),
                  ('ahs',10,2),
@@ -77,12 +78,16 @@ def main():
     WHERE
         STU.DEL=0
         AND STU.TG = ''
+        AND (SC < 8 OR SC = 30)
     """
     students = pd.read_sql_query(the_query,engine)
     # Read ALL the students in and then replace School codes with the campus abbreviations
     students['SC'] = students['SC'].replace({1:'llhs',2:'ahs',3: 'mhs',4: 'chs'})
     students['GR'] = students['GR'].astype(str)
     # Group Dataframe by campus and dump csv files to temp space
+    # First dump ALL students to the all CSV
+    header = ["SEM"]
+    students.to_csv('students.csv', index=False, header=False, columns=header)
     grouped_by_sc = students.groupby('SC')
     for group_name, group_sem in grouped_by_sc:
         print(group_sem)
@@ -100,88 +105,136 @@ def main():
         filename = f"{filenamepart}students.csv"
         header = ["SEM"]
         group_sem.to_csv(filename, index=False, header=False, columns=header)
-    exit(0)  
 
     gam.initializeLogging()
-    # Now call gam
+    """
+    Now call gam
+    
+    name of the lists is ahsgrade10students@auhsdschools.org (all at site by grade level)
+                         ahsstudents@auhsdschools.org (all at site)
+                         students@auhsdschools.org (all in district)
+    """
+    # Sync ALL students first
+    gamliststring = 'students'
+    filenamestring = 'students.csv'
+    thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+    if stat1 != 0:
+        WasThereAnError = True
+        thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
+    if not DontDeleteFiles:
+        try:
+            os.remove(filenamestring)
+        except:
+            msgbody += f"Error removing {campus[0]} ALL grades list.\n" 
+            thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} ALL Grades list csv")
+    msgbody += f"Synced Students-> All list. Gam Status->{stat1}\n" 
+    """
+    name of the lists is ahsgrade10students@auhsdschools.org (all at site by grade level)
+                         ahsstudents@auhsdschools.org (all at site)
+                         students@auhsdschools.org (all in district)
+    Sync Lists for Students by Grade
+    site abbr, grade level, site number
 
+    """
+    for campus in campusabbr:
+        print(campus)
 
-
-    for campus in campuses:
-        # Sync Lists for All Students for counselor
-        gamliststring = counselor[0] + counselor[2] + 'counselinglist'
-        filenamestring = counselor[0] + counselor[1] + 'ALL.csv'
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+    
+    for campus in campusabbr:
+        gamliststring = campus + 'students'
+        filenamestring = campus + 'students.csv'
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+            thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
         if not DontDeleteFiles:
             try:
                 os.remove(filenamestring)
             except:
-                msgbody += f"Error removing {counselor[1]} ALL grades list.\n" 
-                thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} ALL Grades list csv")
-        msgbody += f"Synced {counselor[1]} All list. Gam Status->{stat1}\n" 
-        # Sync Lists for Grade 9 for counselor
-        gamliststring = counselor[0] + counselor[2] + 'grade9counselinglist'
-        filenamestring = counselor[0] + "9" + counselor[1] + ".csv"
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+                msgbody += f"Error removing {campus} ALL grades list.\n" 
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {campus} ALL Grades list csv")
+        msgbody += f"Synced {campus} All list. Gam Status->{stat1}\n"     
+    exit(0)
+
+
+    
+    #sys.exit()
+    for campus in campuses:
+        gamliststring = campus[0] + 'grade' + campus[1] + 'students'
+        filenamestring = campus[0] + 'grade' + campus[1] + 'students.csv'
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+            thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
+        if not DontDeleteFiles:
+            try:
+                os.remove(filenamestring)
+            except:
+                msgbody += f"Error removing {campus[0]} ALL grades list.\n" 
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} ALL Grades list csv")
+        msgbody += f"Synced {campus[1]} All list. Gam Status->{stat1}\n" 
+        # Sync Lists for Grade 9 for counselor
+        gamliststring = counselor[0] + counselor[2] + 'grade9counselinglist'
+        filenamestring = counselor[0] + "9" + counselor[1] + ".csv"
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        if stat1 != 0:
+            WasThereAnError = True
+            thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
         if not DontDeleteFiles:
             try:
                 os.remove(filenamestring)
             except:
                 msgbody += f"Error removing {counselor[1]}  9th grade list.\n" 
-                thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 9th grade list csv")
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} 9th grade list csv")
         msgbody += f"Synced {counselor[1]} 9th grade list. Gam Status-> {stat1}\n" 
         # Sync Lists for Grade 10 for counselor
         gamliststring = counselor[0] + counselor[2] + "grade10counselinglist"
         filenamestring = counselor[0] + "10" + counselor[1] + ".csv"
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
-            thelogger.critical(f"UpdateCounselingListsInGoogle->GAM returned an error for the last command")
+            thelogger.critical(f"UpdateStudentListsInGoogle->GAM returned an error for the last command")
         if not DontDeleteFiles:
             try:
                 os.remove(filenamestring)
             except:
                 msgbody += f"Error removing {counselor[1]} 10th grade list.\n"
-                thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 10th grade list csv")
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} 10th grade list csv")
         msgbody += f"Synced {counselor[1]} 10th grade list. Gam Status->{stat1}\n"
         # Sync Lists for Grade 11 for counselor
         gamliststring = counselor[0] + counselor[2] + 'grade11counselinglist'
         filenamestring = counselor[0] + "11" + counselor[1] + ".csv"
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+            thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
         if not DontDeleteFiles:
             try:
                 os.remove(filenamestring)
             except:
                 msgbody += f"Error removing {counselor[1]} 11th grade list.\n" 
-                thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 11th grade list csv")
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} 11th grade list csv")
         msgbody += f"Synced {counselor[1]} 11th grade list. Gam Status->{stat1}\n" 
         # Sync Lists for Grade 12 for counselor
         gamliststring = counselor[0] + counselor[2] + 'grade12counselinglist'
         filenamestring = counselor[0] + "12" + counselor[1] + ".csv"
-        thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
+        thelogger.info(f"UpdateStudentListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
-            thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
+            thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
         if not DontDeleteFiles:
             try:
                 os.remove(filenamestring)
             except:
                 msgbody += f"Error removing {counselor[1]} 12th grade list.\n" 
-                thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 12th grade list csv")
+                thelogger.critical(f"UpdateStudentListsInGoogle->Error trying to remove file {counselor[1]} 12th grade list csv")
         msgbody += f"Synced {counselor[1]} 12th grade list. Gam Status->{stat1}\n" 
     if WasThereAnError:
         msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -192,8 +245,8 @@ def main():
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    thelogger.info('UpdateCounselingListsInGoogle->Sent status message')
-    thelogger.info('UpdateCounselingListsInGoogle->DONE! - took ' + str(end_of_timer - start_of_timer))
+    thelogger.info('UpdateStudentListsInGoogle->Sent status message')
+    thelogger.info('UpdateStudentListsInGoogle->DONE! - took ' + str(end_of_timer - start_of_timer))
     print('Done!!!')
 
 if __name__ == '__main__':

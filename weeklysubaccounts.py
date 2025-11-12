@@ -39,9 +39,9 @@ def main():
     
     campuses = [('mhs','bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
                 ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org'),
-                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,tcatanesi@auhsdschools.org'),
+                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,kharvin@auhsdschools.org'),
                 ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,tvu@auhsdschools.org'),
-                ('dv','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
+                ('dv','sfrance@auhsdschools.org,mhernandez@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
     
     docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org'
     docontacts2 = 'edannewitz@auhsdschools.org'
