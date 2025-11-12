@@ -7,7 +7,7 @@ Python scripts/programs to do things with AERIES SIS, Canvas LMS, and Google (us
 
 <b>AERIES Canvas Course Renamer and Crosslister</b> - One of the issues we have with the current AERIES to Canvas sync is that the naming of the classes suck. And a lot of classes need to be hand cross-listed. This script solves that issue, and will rename a class with the School year (24-25) Course Name - LastName Period format.
 
-<b>CanvasGroups_ACISCounselingToCanvas.py - Takes an AERIES database query of what students the Independent Study Counselor has and updates the Canvas Group
+<b>CanvasGroups_ACISCounselingToCanvas.py</b> - Takes an AERIES database query of what students the Independent Study Counselor has and updates the Canvas Group
 
 <b>CanvasGroups_CounselorsToCanvasGroup.py - Takes an AERIES database query of multiple Counselors and updates their Canvas Group
 *Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. This script now
@@ -17,7 +17,7 @@ does the same thing but for a "Class" for each counselor, and each grade is a Se
 *Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. Dumb. 
 This script hasn't been updated cause no one was using it. Probably needs to be redone to be like the Counselor one.
 
-CreateNewStudents2025.ps1 - Powershell script to create Students in the correct OU, with the correct groups, and create the correct H:\ drive path for the account
+<b>CreateNewStudents2025.ps1</b> - Powershell script to create Students in the correct OU, with the correct groups, and create the correct H:\ drive path for the account
 
 <b>DisableStudentVacationResponder.py</b> - Weekly run thing to turn off students who think it's funny to put on the vacation responder
 
