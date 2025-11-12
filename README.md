@@ -9,9 +9,9 @@ Python scripts/programs to do things with AERIES SIS, Canvas LMS, and Google (us
 
 <b>CanvasGroups_ACISCounselingToCanvas.py</b> - Takes an AERIES database query of what students the Independent Study Counselor has and updates the Canvas Group
 
-<b>CanvasGroups_CounselorsToCanvasGroup.py - Takes an AERIES database query of multiple Counselors and updates their Canvas Group
-*Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. This script now
-does the same thing but for a "Class" for each counselor, and each grade is a Section of the main course.
+<b>CanvasGroups_CounselorsToCanvasGroup.py</b> - Takes an AERIES database query of multiple Counselors and updates their Canvas Group
+<i>*Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. This script now
+does the same thing but for a "Class" for each counselor, and each grade is a Section of the main course.</i>
 
 <b>CanvasGroups_GoogleSheetToGroup.py</b> - Takes a master list of a teacher email, Google Sheet ID, Canvas Group ID and updates a Canvas Group based on Emails contained in the Google Sheet ID. Used for making Groups in Canvas for like Librarians who want to message in Canvas to students who might have fines, etc.
 *Note* this does work, but the functionality of Canvas groups changed in 2023, and you can no longer email EVERYONE in the group. Dumb. 
