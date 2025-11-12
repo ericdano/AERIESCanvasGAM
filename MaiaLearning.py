@@ -71,7 +71,7 @@ if __name__ == '__main__':
     engine = create_engine(connection_url)
 
     #sql_query = pd.read_sql_query("""SELECT ALTSCN.ALTSC AS School_ID, STU.ID AS StudentID, STU.SEM AS Email, STU.FN AS FirstName, STU.MN AS MiddleName, STU.LN AS LastName, STU.FNA AS NickName, LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth, STU.SX AS Gender, STU.GR AS Grade, TECH.GYR AS Classof, STU.AD AS Address1, '' AS Address2, STU.CY AS City, STU.ST AS State, STU.ZC AS Zipcode, '' AS Country, '' AS Citizenship, '' AS EnrollmentEndDate, '' AS Telephone, '' AS FAFSA, '' AS Race, '' AS Ethnicity, TCH.EM AS AssignedCounselor FROM STU INNER JOIN TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN INNER JOIN ALTSCN ON STU.SC = ALTSCN.SCID INNER JOIN TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN WHERE (STU.SC < 8) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')""",engine)
-    the_query = f"""
+    OLDthe_query = f"""
     SELECT
         ALTSCN.ALTSC AS School_ID,
         STU.ID AS StudentID,
@@ -113,6 +113,50 @@ if __name__ == '__main__':
         AND (STU.TG = '')
         AND (STU.SP <> '2')
 
+    """
+    the_query = f"""
+    SELECT
+        ALTSCN.ALTSC AS School_ID,
+        STU.ID AS StudentID,
+        STU.SEM AS Email,
+        STU.FN AS FirstName,
+        STU.MN AS MiddleName,
+        STU.LN AS LastName,
+        STU.FNA AS NickName,
+        LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth,
+        STU.SX AS Gender,
+        STU.GR AS Grade,
+        TECH.GYR AS Classof,
+        STU.AD AS Address1,
+        '' AS Address2,
+        STU.CY AS City,
+        STU.ST AS State,
+        STU.ZC AS Zipcode,
+        '' AS Country,
+        '' AS Citizenship,
+        '' AS EnrollmentEndDate,
+        '' AS Telephone,
+        '' AS FAFSA,
+        CASE
+            WHEN RC1 = 'RCB' THEN 9
+            ELSE ((CAST(RC1 AS INT) / 100) * 10 + (CAST(RC1 AS INT) % 10))
+        END AS Race,
+        CASE
+            WHEN ETH = 'B' THEN 2
+            WHEN ETH = 'N' THEN 0
+            WHEN ETH = 'Y' THEN 1
+        END AS Ethnicity,
+        TCH.EM AS AssignedCounselor
+    FROM
+        STU
+    INNER JOIN
+        TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN
+    INNER JOIN
+        ALTSCN ON STU.SC = ALTSCN.SCID
+    INNER JOIN
+        TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
+    WHERE
+    (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')
     """
     sql_query = pd.read_sql_query(the_query,engine)
     thelogger.info('Update Maia Learning->Got AERIES data for students')
