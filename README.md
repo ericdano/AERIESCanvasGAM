@@ -19,6 +19,8 @@ This script hasn't been updated cause no one was using it. Probably needs to be 
 
 <b>CreateNewStudents2025.ps1</b> - Powershell script to create Students in the correct OU, with the correct groups, and create the correct H:\ drive path for the account
 
+<b>Demographics.py</b> - Script to pull student data from AERIES and to send it Care/Solace
+
 <b>DisableStudentVacationResponder.py</b> - Weekly run thing to turn off students who think it's funny to put on the vacation responder
 
 <b>DisableADAccountsinAD.ps1</b> - goes through a CSV and disables accounts.
@@ -32,9 +34,13 @@ AD Server that a new user was created. This will SHOULD be run right after Creat
 
 <b>SuspendUsers.py</b> - A linux run script that goes through all the suspended users, puts them in a "Former Staff" OU and takes them out of Google Groups
 
-StudentAddPagerFromlogonname.ps1</b> - Powershell Script to go through active directory, and put student's SIS ID into the Pager field. Used by Papercut
+<b>StudentAddPagerFromlogonname.ps1</b> - Powershell Script to go through active directory, and put student's SIS ID into the Pager field. Used by Papercut
 
 <b>UpdateGoogleStaffInfo.ps1</b> - We use Active Directory, so all the staff info is in there. This powershell script makes a csv of staff data, and the GAM is used to update the stuff in Google
 
 <b>UpddateGoogleStudentGroupsFromAERIES.py</b> - Looks in AERIES SIS, gets all the students from 5 sites, makes CSV files by Site and Grade, and then updates Google Groups with GAM that are based off the CSV file name
 So, ahsgrade9students list is updated from the ahsgrade9students.csv file.
+
+<b>weeklysubaccounts.py</b> - Takes 5 users at 5 sites (total of 25 accounts) and generates new passwords randomly for them, update the passwords in Google and Active Directory, and emails out the new passwords to the appropriate people.
+
+<b>WorkingApp1.py</b> - A prototype app that authenticates with Active Directory and allows the authenticated user to reset AERIES 2FA for users.
