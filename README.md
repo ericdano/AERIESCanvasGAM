@@ -21,9 +21,9 @@ This script hasn't been updated cause no one was using it. Probably needs to be 
 
 <b>DisableStudentVacationResponder.py</b> - Weekly run thing to turn off students who think it's funny to put on the vacation responder
 
-<b>DisableADAccountsinAD.ps1 - goes through a CSV and disables accounts.
+<b>DisableADAccountsinAD.ps1</b> - goes through a CSV and disables accounts.
 
-<b>ExpireADAccounts.py - Set an expiration date in AD, and this script will then, when it finds accounts with that date, disable AD/Google/Canvas accounts for the users/
+<b>ExpireADAccounts.py</b> - Set an expiration date in AD, and this script will then, when it finds accounts with that date, disable AD/Google/Canvas accounts for the users/
 
 <b>fixstudentdirectoryownership.ps1</b> - To fix an issue with CreateNewStudents2025 being so fast, permissions we not being correctly set because the NAS did not have enough time to receive the information from the
 AD Server that a new user was created. This will SHOULD be run right after CreateNewStudents2025
