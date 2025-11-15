@@ -5,6 +5,10 @@ Python scripts/programs to do things with AERIES SIS, Canvas LMS, and Google (us
 
 <b>AllCampusStudentInformationCourses.py</b> - Is a script that takes data from AERIES and then puts students in an informational course, and a corresponding section of that course for their grade. It is used for campus wide announcements and stuff.
 
+<b>ABSWorks.py</b> Pulls data from AERIES and sends it to ASB Works.
+
+<b>Aeries2FAResetManual.py</b> Script to manually reset 2FA for AERIES users
+
 <b>AERIES Canvas Course Renamer and Crosslister</b> - One of the issues we have with the current AERIES to Canvas sync is that the naming of the classes suck. And a lot of classes need to be hand cross-listed. This script solves that issue, and will rename a class with the School year (24-25) Course Name - LastName Period format.
 
 <b>CanvasGroups_ACISCounselingToCanvas.py</b> - Takes an AERIES database query of what students the Independent Study Counselor has and updates the Canvas Group
@@ -43,4 +47,4 @@ So, ahsgrade9students list is updated from the ahsgrade9students.csv file.
 
 <b>weeklysubaccounts.py</b> - Takes 5 users at 5 sites (total of 25 accounts) and generates new passwords randomly for them, update the passwords in Google and Active Directory, and emails out the new passwords to the appropriate people.
 
-<b>WorkingApp1.py</b> - A prototype app that authenticates with Active Directory and allows the authenticated user to reset AERIES 2FA for users.
+<b>WorkingApp1.py</b> - A prototype app that authenticates with Active Directory and allows the authenticated user to reset AERIES 2FA for users (replaced Aeries2FAResetManual.py).
