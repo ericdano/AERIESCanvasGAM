@@ -156,7 +156,7 @@ def main():
   else:
     modifyADUsers(df,configs)
     DisableGoogle(df)
-    DisableCanvasLogins(df,configs)
+    #DisableCanvasLogins(df,configs)
   msg = EmailMessage()
   msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look for expired accounts script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   msg['From'] = configs['SMTPAddressFrom']
