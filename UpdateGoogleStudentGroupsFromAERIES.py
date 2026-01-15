@@ -112,7 +112,8 @@ for row in file_list.itertuples(index=False):
     thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
     # Call GAM from Python
-    stat1 = gam.CallGAMCommand(['gam','update', 'group', 'f"{row.group_name}"', 'sync', 'members', 'file', 'f"{row.file_name}"'])
+    #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'f"{row.group_name}"', 'sync', 'members', 'file', 'f"{row.file_name}"'])
+    """"
     if stat1 != 0:
         WasThereAnError = True
         thelogger.info('Student Google Group Updater->GAM returned an error from last command')
@@ -120,6 +121,7 @@ for row in file_list.itertuples(index=False):
     if not DontDeleteFiles:
         # Delete CSV when done
         os.remove(f"{row.filename}")
+    """
 msgbody+='Done!\n'
 thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
 # Now email status report
