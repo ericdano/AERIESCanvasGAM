@@ -15,7 +15,6 @@ from collections.abc import Iterable
 """
 Docstring for FlaskApps.aeriesstudentchange.aeriesstuchange
 
-DECLARE @NEW_LAST_ID INT = (SELECT ID FROM LOC WHERE CD = @SITE) + 1
 """
 
 def change_student_id(old_student_id, site_code):
@@ -31,9 +30,9 @@ def change_student_id(old_student_id, site_code):
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = "edannewitz@auhsdschools.org"
-    msgbody = f"Using Database->{configs['AERIESDatabase']}\n"
+    msgbody = f"Using Database->{configs['AERIESDatabaseSB']}\n"
     # 1. Create database engine
-    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServerSandbox'] + ";DATABASE=" + configs['AERIESDatabaseSB'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     query = text("SELECT ID FROM LOC WHERE CD = :site_code")
@@ -166,6 +165,7 @@ def change_student_id(old_student_id, site_code):
     except Exception as e:
         print(f"Failed to send email: {e}")
         exit(1)
+
 if __name__ == '__main__':
     old_student_id = sys.argv[1]
     site_code = sys.argv[2]
