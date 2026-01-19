@@ -5,8 +5,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from pathlib import Path
 from timeit import default_timer as timer
-from canvasapi import Canvas
-from canvasapi.exceptions import CanvasException
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -17,13 +15,11 @@ from collections.abc import Iterable
 """
 Docstring for FlaskApps.aeriesstudentchange.aeriesstuchange
 
-
-
 DECLARE @NEW_LAST_ID INT = (SELECT ID FROM LOC WHERE CD = @SITE) + 1
 """
 
-
-def change_student_id(old_student_id, site):
+def change_student_id(old_student_id, site_code):
+    # Load configurations
     CONFIG_PATH = os.environ.get('CONFIG_PATH', '/app/config/Acalanes.json')
     try:
         with open(CONFIG_PATH) as f:
@@ -31,21 +27,19 @@ def change_student_id(old_student_id, site):
     except Exception as e:
         print(f"CRITICAL: Could not load config file at {CONFIG_PATH}: {e}")
         configs = {}
-
+    # Prepare email message with log details
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = "edannewitz@auhsdschools.org"
-    msgbody = ''
-    msgbody = 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-    msgbody += f"Using Database->{configs['AERIESDatabase']}\n"
-
+    msgbody = f"Using Database->{configs['AERIESDatabase']}\n"
+    # 1. Create database engine
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
-    query = text("SELECT ID FROM LOC WHERE CD = :site")
+    query = text("SELECT ID FROM LOC WHERE CD = :site_code")
     try:
-        # 2. Execute the query
-        df = pd.read_sql_query(query, engine, params={"site": site_code})
+        # 2. Select the current last id from LOC table
+        df = pd.read_sql_query(query, engine, params={"site_code": site_code})
         # 3. Check for "No Rows Returned"
         if df.empty:
             print(f"Warning: No rows found for site code: {site_code}")
@@ -53,31 +47,127 @@ def change_student_id(old_student_id, site):
         # 4. Check for Nulls in specific columns
         if df['ID'].isnull().all():
             print("Notice: Rows found, but all ID values are NULL.")
-        return df
+            msgbody += "Notice: Rows found, but all ID values are NULL.\n"
+            exit(1)
+        new_last_id = df['ID'].iloc[0] + 1
+        msgbody += f"{df.to_html()}\n"
+        msgbody += f"New Last ID calculated as: {new_last_id}\n"
     except SQLAlchemyError as e:
         # 5. Catch SQL-specific errors (Syntax, Connection, etc.)
         print(f"Database Error: {e}")
-        return None
+        msgbody += f"Database Error: {e}\n"
+        exit(1)
     except Exception as e:
         # Catch unexpected Python errors
         print(f"An unexpected error occurred: {e}")
-        return None
-
-
-
-    get_last_id_query = """SELECT ID FROM LOC WHERE CD = {site}"""
-    aeriesSQLData = pd.read_sql_query(get_last_id_query, engine)
-    last_id = aeriesSQLData.iloc[0]['ID']
-    new_last_id = last_id + 1
-    query1 = """UPDATE LOC SET ID = {new_last_id} WHERE CD = {site}"""
-    query2 = """UPDATE IDN SET ID = {new_last_id} WHERE ID = {old_student_id}"""
-    query3 = """UPDATE PWA SET PID = {new_last_id} WHERE PID = {old_student_id}"""
-    query4 = """UPDATE PWS SET ID = {new_last_id} WHERE ID = {old_student_id}"""
-    query5 = """UPDATE TECH SET BID = {new_last_id} WHERE BID = {old_student_id}"""
-    queryresult1 = pd.read_sql_query(query1, engine)
-    queryresult2 = pd.read_sql_query(query2, engine)
-    queryresult3 = pd.read_sql_query(query3, engine)
-    queryresult4 = pd.read_sql_query(query4, engine)
-    queryresult5 = pd.read_sql_query(query5, engine)
-
-    return new_last_id
+        msgbody += f"An unexpected error occurred: {e}\n"
+        exit(1)
+    query2 = text("UPDATE IDN SET ID = :new_last_id WHERE ID = :old_student_id")
+    try:
+        # Change student ID in IDN table
+        df = pd.read_sql_query(query2, engine, params={"new_last_id": new_last_id, "old_student_id": old_student_id})
+        # 3. Check for "No Rows Returned"
+        if df.empty:
+            print(f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE IDN SET ID = :new_last_id WHERE ID = :old_student_id")
+            exit(1)  
+        # 4. Check for Nulls in specific columns
+        if df['ID'].isnull().all():
+            print("Notice: Rows found, but all ID values are NULL.")
+        msgbody += f"{df.to_html()}\n"
+    except SQLAlchemyError as e:
+        # 5. Catch SQL-specific errors (Syntax, Connection, etc.)
+        print(f"Database Error: {e}")
+        msgbody += f"Database Error: {e}\n"
+        exit(1)
+    except Exception as e:
+        # Catch unexpected Python errors
+        print(f"An unexpected error occurred: {e}")
+        exit(1)       
+    query3 = text("UPDATE PWA SET PID = :new_last_id WHERE PID = :old_student_id")
+    try:
+        # 2. Change student ID in PWA table
+        df = pd.read_sql_query(query3, engine, params={"new_last_id": new_last_id, "old_student_id": old_student_id})
+        # 3. Check for "No Rows Returned"
+        if df.empty:
+            print(f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE PWA SET PID = :new_last_id WHERE PID = :old_student_id")
+            msgbody += f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE PWA SET PID = :new_last_id WHERE PID = :old_student_id\n"
+            exit(1)
+        # 4. Check for Nulls in specific columns
+        if df['ID'].isnull().all():
+            print("Notice: Rows found, but all ID values are NULL.")
+            msgbody += "Notice: Rows found, but all ID values are NULL.\n"
+            exit(1)
+        msgbody += f"{df.to_html()}\n"
+    except SQLAlchemyError as e:
+        # 5. Catch SQL-specific errors (Syntax, Connection, etc.)
+        print(f"Database Error: {e}")
+        msgbody += f"Database Error: {e}\n"
+        exit(1)
+    except Exception as e:
+        # Catch unexpected Python errors
+        print(f"An unexpected error occurred: {e}")
+        msgbody += f"An unexpected error occurred: {e}\n"
+        exit(1)  
+    query4 = text("UPDATE PWS SET ID = :new_last_id WHERE ID = :old_student_id")
+    try:
+        # 2. Change student ID in PWS table
+        df = pd.read_sql_query(query4, engine, params={"new_last_id": new_last_id, "old_student_id": old_student_id})
+        # 3. Check for "No Rows Returned"
+        if df.empty:
+            print(f"Warning: No rows found for old student ID: {old_student_id} with command UUPDATE PWS SET ID = :new_last_id WHERE ID = :old_student_id")
+            msgbody += f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE PWS SET ID = :new_last_id WHERE ID = :old_student_id\n"
+            exit(1)   
+        # 4. Check for Nulls in specific columns
+        if df['ID'].isnull().all():
+            print("Notice: Rows found, but all ID values are NULL.")
+            msgbody += "Notice: Rows found, but all ID values are NULL.\n"
+            exit(1)
+        msgbody += f"{df.to_html()}\n"
+    except SQLAlchemyError as e:
+        # 5. Catch SQL-specific errors (Syntax, Connection, etc.)
+        print(f"Database Error: {e}")
+        msgbody += f"Database Error: {e}\n"
+        exit(1)
+    except Exception as e:
+        # Catch unexpected Python errors
+        print(f"An unexpected error occurred: {e}")
+        msgbody += f"An unexpected error occurred: {e}\n"
+        exit(1)   
+    query5 = text("UPDATE TECH SET BID = :new_last_id WHERE BID = :old_student_id")
+    try:
+        # 2. Change student ID in TECH table
+        df = pd.read_sql_query(query5, engine, params={"new_last_id": new_last_id, "old_student_id": old_student_id})
+        # 3. Check for "No Rows Returned"
+        if df.empty:
+            print(f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE TECH SET BID = :new_last_id WHERE BID = :old_student_id")
+            msgbody += f"Warning: No rows found for old student ID: {old_student_id} with command UPDATE TECH SET BID = :new_last_id WHERE BID = :old_student_id\n"
+            exit(1)  
+        # 4. Check for Nulls in specific columns
+        if df['ID'].isnull().all():
+            print("Notice: Rows found, but all ID values are NULL.")
+            msgbody += "Notice: Rows found, but all ID values are NULL.\n"
+            exit(1)
+        msgbody += f"{df.to_html()}\n"
+    except SQLAlchemyError as e:
+        # 5. Catch SQL-specific errors (Syntax, Connection, etc.)
+        print(f"Database Error: {e}")
+        msgbody += f"Database Error: {e}\n"
+        exit(1)
+    except Exception as e:
+        # Catch unexpected Python errors
+        print(f"An unexpected error occurred: {e}")
+        msgbody += f"An unexpected error occurred: {e}\n"
+        exit(1)    
+    msg['Subject'] = f"AERIES Student ID Change Log for Old Student ID:{old_student_id} to New Student ID:{new_last_id} in Site Code:{site_code}"
+    msg.set_content(msgbody)
+    try:
+        with smtplib.SMTP(configs['SMTPServerAddress']) as server:
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        exit(1)
+if __name__ == '__main__':
+    old_student_id = sys.argv[1]
+    site_code = sys.argv[2]
+    change_student_id(old_student_id, site_code)
+    print('Done')
