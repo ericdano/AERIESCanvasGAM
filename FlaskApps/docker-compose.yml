@@ -1,0 +1,25 @@
+services:
+  # First Flask App
+  aeries2fa:
+    build: ./aeries2fa
+    container_name: aeries2fa
+    restart: always
+    # We don't map ports to the host here because Nginx will handle it
+
+  # Second Flask App
+  flask_b:
+    build: ./aeriesstudentchange
+    container_name: aeriesstudentchange
+    restart: always
+
+  # The Reverse Proxy (Nginx)
+  gateway:
+    image: nginx:latest
+    container_name: nginx_proxy
+    ports:
+      - "80:80"  # Opens your computer's port 80 to the world
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - aeries2fa
+      - aeriesstudentchange

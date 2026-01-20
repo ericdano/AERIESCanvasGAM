@@ -23,7 +23,7 @@ app = Flask(__name__)
 # Use a long, random string. You can generate one using:
 # python -c 'import os; print(os.urandom(24))'
 app.secret_key = os.environ.get('x1a_x01ox97xa8x86x9cxa8xc7x0bxa8Oxafx0bxf3bCfIBx9c', 'x96Tx14xe5xa2x02DRvx11-xe6xf8x86xef^PJxd1rBxda')
-
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=60)
 
 # --- Active Directory Configuration ---
 # IMPORTANT: Replace these values with your actual AD environment details.
@@ -45,6 +45,20 @@ AD_SEARCH_BASE2 = "DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us"
 # "CN=GroupName,OU=Security Groups,DC=your-domain,DC=com"
 AD_REQUIRED_GROUP_DN = "CN=Aeries2FA,CN=Users,DC=acalanes,DC=k12,DC=ca,DC=us"
 
+CONFIG_PATH = os.environ.get('CONFIG_PATH', '/app/config/Acalanes.json')
+
+try:
+    with open(CONFIG_PATH) as f:
+        configs = json.load(f)
+except Exception as e:
+    print(f"CRITICAL: Could not load config file at {CONFIG_PATH}: {e}")
+    configs = {}
+
+msg = EmailMessage()
+msg['From'] = configs['SMTPAddressFrom']
+msg['To'] = "serveradmins@auhsdschools.org"
+msgbody = ''
+msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
 # --- HTML Templates ---
 # For simplicity, templates are included as strings. In a larger app,
@@ -274,7 +288,7 @@ def logout():
     flash('You have been successfully logged out.', 'info')
     return redirect(url_for('login'))
 
-@app.route('/resetaeries2fa', methods=['GET', 'POST'])
+@app.route('/resetaeries2fa', methods=['POST'])
 def resetaeries2fa():
     flashmsg = ""
     msg = EmailMessage()
@@ -367,23 +381,13 @@ def resetaeries2fa():
     #return redirect(url_for('home'))
 # --- Main Execution ---
 if __name__ == '__main__':
+    # This block only runs during local development (python main.py)
     # To run this on your server, you would typically use a production WSGI server
     # like Gunicorn instead of Flask's built-in development server.
     # Example: gunicorn --bind 0.0.0.0:8000 app:app
     #
     # The command below is for development and testing purposes.
     # '0.0.0.0' makes the server accessible from other devices on the network.
-    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-    with open(confighome) as f:
-        configs = json.load(f)
-    msg = EmailMessage()
-    msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = "serveradmins@auhsdschools.org"
-    msgbody = ''
-    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     print("Starting Flask development server...")
     print(f"Access the application at http://<your_server_ip>:{5000}")
-    app == Flask(__name__)
-    
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=60)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+  
