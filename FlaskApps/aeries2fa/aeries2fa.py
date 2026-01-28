@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, render_template_string, session, redirect, url_for, flash
 from ldap3 import Server, Connection, SIMPLE, ALL, SUBTREE
 from ldap3.core.exceptions import LDAPBindError
+from datetime import timedelta
 import ftplib, ssl, sys, os, datetime, json, smtplib, logging
 import sqlalchemy
 from io import StringIO
@@ -22,7 +23,7 @@ app = Flask(__name__)
 # Use a long, random string. You can generate one using:
 # python -c 'import os; print(os.urandom(24))'
 app.secret_key = os.environ.get('x1a_x01ox97xa8x86x9cxa8xc7x0bxa8Oxafx0bxf3bCfIBx9c', 'x96Tx14xe5xa2x02DRvx11-xe6xf8x86xef^PJxd1rBxda')
-
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=60)
 
 # --- Active Directory Configuration ---
 # IMPORTANT: Replace these values with your actual AD environment details.
@@ -37,12 +38,27 @@ AD_DOMAIN_NAME = "acalanes.k12.ca.us" # The UPN suffix (e.g., user@your-domain.c
 
 # Base DN for searching users. This is typically the root of your domain.
 AD_SEARCH_BASE = "DC=acalanes,DC=k12,DC=ca,DC=us"
+AD_SEARCH_BASE2 = "DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us" 
 
 # The full Distinguished Name (DN) of the required security group.
 # You MUST find this value in your AD. A common format is:
 # "CN=GroupName,OU=Security Groups,DC=your-domain,DC=com"
 AD_REQUIRED_GROUP_DN = "CN=Aeries2FA,CN=Users,DC=acalanes,DC=k12,DC=ca,DC=us"
 
+CONFIG_PATH = os.environ.get('CONFIG_PATH', '/app/config/Acalanes.json')
+
+try:
+    with open(CONFIG_PATH) as f:
+        configs = json.load(f)
+except Exception as e:
+    print(f"CRITICAL: Could not load config file at {CONFIG_PATH}: {e}")
+    configs = {}
+
+msg = EmailMessage()
+msg['From'] = configs['SMTPAddressFrom']
+msg['To'] = "serveradmins@auhsdschools.org"
+msgbody = ''
+msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
 # --- HTML Templates ---
 # For simplicity, templates are included as strings. In a larger app,
@@ -72,13 +88,19 @@ LOGIN_TEMPLATE = """
                 {% endfor %}
               {% endif %}
             {% endwith %}
-
             <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="domain">
+                    Domain
+                </label>
+                <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="username" name="domain" type="text" placeholder="domain" required>
+            </div>
+            <div class="mb-5">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
                     Username
                 </label>
                 <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="username" name="username" type="text" placeholder="username" required>
             </div>
+
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
                     Password
@@ -131,6 +153,8 @@ HOME_TEMPLATE = """
                     <h2 class="text-3xl font-bold text-gray-800">Authentication Successful</h2>
                     <p class="mt-4 text-gray-600">Please enter the domain of the user, and the users login</p>
                     <p class="mt-4 text-gray-600">Example-> Domain -> staff Login -> jdoe</p>
+                    <p class="mt-4 text-gray-600">YOUR SESSION WILL EXPIRE IN 60 SECONDS or Upon SUBMITTING the form</p>
+
             <!-- Flash messages section -->
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
@@ -154,7 +178,8 @@ HOME_TEMPLATE = """
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="login">
                             Login
                         </label>
-                        <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="login" name="login" type="login" placeholder="******************" required>
+                        <input class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="login" name="login" type="login" required>
+                        <input type="hidden" name="tech" value={{ session['username'] }}>
                     </div>
                     <div class="flex items-center justify-between">
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full" type="submit">
@@ -172,6 +197,11 @@ HOME_TEMPLATE = """
 
 
 # --- Routes ---
+
+@app.before_request
+def before_request():
+    session.permanent = True
+    session.modified = True
 
 @app.route('/')
 def home():
@@ -191,16 +221,16 @@ def login():
     POST: Attempts to authenticate the user and check for group membership.
     """
     if request.method == 'POST':
+        domain = request.form.get('domain')
         username = request.form.get('username')
         password = request.form.get('password')
 
-        if not username or not password:
-            flash('Username and password are required.', 'error')
+        if not username or not password or not domain:
+            flash('Domain, Username and password are required.', 'error')
             return redirect(url_for('login'))
 
         user_dn = f"{username}@{AD_DOMAIN_NAME}"
         server = Server(AD_SERVER, port=AD_PORT, use_ssl=AD_USE_SSL, get_info=ALL)
-
         try:
             # Use a 'with' statement for the connection to ensure it's always closed.
             with Connection(server, user=user_dn, password=password, authentication=SIMPLE, auto_bind=True) as conn:
@@ -222,6 +252,7 @@ def login():
                     if AD_REQUIRED_GROUP_DN in user_entry.memberOf.values:
                         print(f"User {username} is a member of {AD_REQUIRED_GROUP_DN}. Access granted.")
                         session['username'] = username
+                        session.permanent = True
                         return redirect(url_for('home'))
                     else:
                         print(f"User {username} is NOT a member of the required group. Access denied.")
@@ -257,21 +288,29 @@ def logout():
     flash('You have been successfully logged out.', 'info')
     return redirect(url_for('login'))
 
-@app.route('/resetaeries2fa', methods=['GET', 'POST'])
+@app.route('/resetaeries2fa', methods=['POST'])
 def resetaeries2fa():
     flashmsg = ""
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = configs['SendInfoEmailAddr']
+    #msg['To'] = configs['SendInfoEmailAddr']
+    msg['To'] = 'serveradmins@auhsdschools.org'
     msgsubjectstr = ""
     msgbody=""
     if request.method == 'POST':
         domain = request.form.get('domain')
         login = request.form.get('login')
-
+        tech = request.form.get('tech')
         if not domain or not login:
-           # flash('A Domain and passLoginword are required.', 'error')
+            flash('A Domain and User Login are required.', 'error')
             return redirect(url_for('login'))
+        if "*" in domain or "?" in domain:
+            flash('NO WILDCARDS ARE ALLOWED in the DOMAIN field', 'error')
+            return redirect(url_for('login'))
+        if "*" in login or "?" in login:
+            flash('NO WILDCARDS ARE ALLOWED in the LOGIN field', 'error')
+            return redirect(url_for('login'))
+
         server =configs['AERIESSQLServer']
         database = configs['AERIESDatabase']
         username = configs['AERIESTechDept']
@@ -293,22 +332,23 @@ def resetaeries2fa():
             cursor = connection.cursor()
             # --- Execute a Query ---
             # You can execute any SQL query here.
-            # We'll run a simple query to get the SQL Server version.
             print("\nExecuting query: " + resetstring)
             cursor.execute(resetstring)
             connection.commit()
             print(f"Update successful. {cursor.rowcount} row(s) affected.")
             # Fetch the result
             row = cursor.rowcount
-            if row <> 0:
+            if row != 0:
                 print("\nQuery Result:")
                 print(row)
-                msgbody += str(row) + "\n"
-                flash('MFA reset on ' + login + ' in the ' + domain + ' domain was successful!')
+                msgbody += "Reset of 2FA for user " + domain + "\\" + login + " by " + tech + " was successful!\n"
+                flash('MFA reset on ' + login + ' in the ' + domain + ' was successful!')
             else:
                 print("Query did not return any results.")
-                msgbody += "Query did not return any results.\n"
+                flash('Was not successful in resetting MFA for ' + login + ' in the ' + domain + ' domain. Check for typo?','error')
+                msgbody += "Query on " + domain + "\\" + login + " by " + tech + " did not return any results.\nNo 2FA was reset for any users."
 
+                
         except pyodbc.Error as ex:
             # Handle potential errors
             sqlstate = ex.args[0]
@@ -333,28 +373,21 @@ def resetaeries2fa():
                 print("\nClosing the database connection.")
                 connection.close()
             print("Connection closed.")
-            msg['Subject'] = str(configs['SMTPStatusMessage'] + msgsubjectstr)
+            msg['Subject'] = "AERIES 2FA Reset Tool Results"
             msg.set_content(msgbody)
             s = smtplib.SMTP(configs['SMTPServerAddress'])
             s.send_message(msg)            
-
-    return redirect(url_for('home'))
+    return redirect(url_for('logout'))
+    #return redirect(url_for('home'))
 # --- Main Execution ---
 if __name__ == '__main__':
+    # This block only runs during local development (python main.py)
     # To run this on your server, you would typically use a production WSGI server
     # like Gunicorn instead of Flask's built-in development server.
     # Example: gunicorn --bind 0.0.0.0:8000 app:app
     #
     # The command below is for development and testing purposes.
     # '0.0.0.0' makes the server accessible from other devices on the network.
-    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-    with open(confighome) as f:
-        configs = json.load(f)
-    msg = EmailMessage()
-    msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = "edannewitz@auhsdschools.org"
-    msgbody = ''
-    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
     print("Starting Flask development server...")
     print(f"Access the application at http://<your_server_ip>:{5000}")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+  
