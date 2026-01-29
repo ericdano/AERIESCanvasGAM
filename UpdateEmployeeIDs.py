@@ -232,4 +232,4 @@ if __name__ == '__main__':
     else:
         print("No matches found. Check that Aeries emails match AD exactly.")
     update_ad_employee_ids(df_final_matches, BIND_USER, BIND_PASSWORD)
-    send_success_report(df_final_matches, 'edannewitz@auhsdschools.org',configs)
+    send_success_report(df_final_matches,configs)
