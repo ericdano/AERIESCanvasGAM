@@ -1,7 +1,7 @@
 import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
-from ldap3 import Server, Connection, ALL
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
 from io import StringIO
 from pathlib import Path
 from timeit import default_timer as timer
@@ -12,9 +12,86 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
+
 """
  Python 3.9+
 """
+
+
+def send_success_report(df_final, recipient_email):
+    # 1. Create the Email Content
+    msg = EmailMessage()
+    msg['Subject'] = 'AD EmployeeID Update: Success Report'
+    msg['From'] = 'donotreply@auhsdschools.org' # Your email
+    msg['To'] = recipient_email
+
+    # 2. Format the Summary
+    total_matches = len(df_final)
+    summary_table = df_final[['Name', 'Email', 'ID']].to_string(index=False)
+    
+    email_body = f"""
+    The Active Directory EmployeeID update process has completed successfully.
+
+    Total Records Updated: {total_matches}
+
+    Summary of Matched Records:
+    ------------------------------------------------------------
+    {summary_table}
+    ------------------------------------------------------------
+
+    This report was generated automatically via Python.
+    """
+    msg.set_content(email_body)
+
+    # 3. Send the Email via SMTP
+    # Replace with your organization's SMTP server (e.g., smtp.gmail.com)
+    try:
+        with smtplib.SMTP('10.99.0.202') as server:
+            # For Gmail, you may need an App Password or OAuth2
+            # server.login('your_user', 'your_password') 
+            server.send_message(msg)
+        print("Success report emailed successfully.")
+    except Exception as e:
+        print(f"Failed to send email report: {e}")
+
+# Usage:
+# send_success_report(df_final_matches, 'admin@acalanes.k12.ca.us')
+
+def update_ad_employee_ids(dataframe, bind_user, bind_password):
+    updated_count = 0
+    error_count = 0
+
+    # Grouping by server ensures we only connect once per domain
+    for server_url in dataframe['Server'].unique():
+        server_df = dataframe[dataframe['Server'] == server_url]
+        
+        print(f"\nConnecting to {server_url} to perform updates...")
+        server = Server(server_url, get_info=ALL)
+        
+        with Connection(server, user=bind_user, password=bind_password, auto_bind=True) as conn:
+            for index, row in server_df.iterrows():
+                target_dn = row['DN']
+                new_id = str(row['ID']).strip() # Ensure it's a string for AD
+                
+                # Perform the modification
+                success = conn.modify(
+                    target_dn, 
+                    {'employeeID': [(MODIFY_REPLACE, [new_id])]}
+                )
+                
+                if success:
+                    print(f" [SUCCESS] Updated {row['Username']} to ID {new_id}")
+                    updated_count += 1
+                else:
+                    print(f" [FAILED]  Could not update {row['Username']}. Error: {conn.result['description']}")
+                    error_count += 1
+
+    print(f"\n--- Update Summary ---")
+    print(f"Total Successful: {updated_count}")
+    print(f"Total Failed:     {error_count}")
+
+# Execute the update
+# CAUTION: This will write changes to your Active Directory.
 
 if __name__ == '__main__':
     start_of_timer = timer()
@@ -51,54 +128,70 @@ if __name__ == '__main__':
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     AllEmployeeIDs = f"""
-    SELECT em, LN, HRID FROM STF
+    SELECT em, LN, ID FROM STF
     """
-    sql_query = pd.read_sql_query(AllEmployeeIDs, engine)
-    print(sql_query)
+    AeriesEmployees = pd.read_sql_query(AllEmployeeIDs, engine)
+    print(AeriesEmployees)
     # Find AD entries with no employeeID
     # The filter you requested: Missing ID AND Not Disabled
-    SEARCH_FILTER = '(&(objectCategory=person)(objectClass=user)(!(employeeID=*))(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
+    # 1. Configuration - Explicitly using Port 389 for full attribute access
 
-    server = Server(GC_SERVER, get_info=ALL)
 
-    with Connection(server, user=BIND_USER, password=BIND_PASSWORD, auto_bind=True) as conn:
-        print(f"Starting targeted search for active users missing employeeIDs...\n")
-        
-        all_found_users = []
+    # 1. Active Directory Configuration
+    DOMAINS = [
+        {'server': 'ldap://acalanes.k12.ca.us:389', 'base': 'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us'},
+        {'server': 'ldap://staff.acalanes.k12.ca.us:389', 'base': 'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'}
+    ]
+    BIND_USER = 'tech@acalanes.k12.ca.us'
+    BIND_PASSWORD = configs['ADPassword']
+    SEARCH_FILTER = '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
 
-        for ou_path in TARGET_OUS:
-            print(f"Checking OU: {ou_path}...")
-            
-            conn.search(
-                search_base=ou_path,
-                search_filter=SEARCH_FILTER,
-                attributes=['cn', 'sAMAccountName', 'distinguishedName'],
-                search_scope='SUBTREE' # This looks inside the OU and any sub-OUs
-            )
-            
-            all_found_users.extend(conn.entries)
+    # --- STEP 1: Extract AD Users Missing employeeID ---
+    user_data = []
+    for domain in DOMAINS:
+        server = Server(domain['server'], get_info=ALL)
+        with Connection(server, user=BIND_USER, password=BIND_PASSWORD, auto_bind=True) as conn:
+            conn.search(domain['base'], SEARCH_FILTER, attributes=['cn', 'sAMAccountName', 'employeeID', 'mail', 'distinguishedName'])
+            for entry in conn.entries:
+                # Check for missing/blank ID
+                eid = str(entry.employeeID.value).strip() if 'employeeID' in entry and entry.employeeID.value else ""
+                email = str(entry.mail.value).strip() if 'mail' in entry and entry.mail.value else None
+                
+                user_data.append({
+                    'Name': entry.cn.value, 
+                    'Username': entry.sAMAccountName.value, 
+                    'Email': email, 
+                    'EmployeeID_AD': eid, 
+                    'DN': entry.distinguishedName.value,
+                    'Server': domain['server'] # Track which server to write back to
+                })
 
-        # 2. Output Results
-        print(f"\nSearch Complete. Found {len(all_found_users)} users.")
-        print("-" * 60)
-        print(f"{'Username':<20} | {'Common Name':<30}")
-        print("-" * 60)
+    df_ad = pd.DataFrame(user_data)
+    df_missing_id = df_ad[(df_ad['EmployeeID_AD'] == "") & (df_ad['Email'].notna())].copy()
 
-        for entry in all_found_users:
-            print(f"{entry.sAMAccountName.value:<20} | {entry.cn.value:<30}")
-    exit(1)
-    #sql_query.to_csv(dest_filename, index = False)
-    thelogger.info('Update ASB Works->Wrote temp CSV to disk')
-    msgbody += "Got AERIES data, connecting to FTPS\n"
-    thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
-    #exit(1)
+    # --- STEP 2: Match with Aeries using 'ID' ---
+    # Normalize columns for a robust match
+    df_missing_id['Email_Match'] = df_missing_id['Email'].str.lower().str.strip()
+    AeriesEmployees['EM_Match'] = AeriesEmployees['em'].astype(str).str.lower().str.strip()
 
-    if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    # Merge: Keeping only matches and carrying over the 'ID' column
+    df_final_matches = pd.merge(
+        df_missing_id, 
+        AeriesEmployees[['EM_Match', 'ID']], 
+        left_on='Email_Match', 
+        right_on='EM_Match', 
+        how='inner'
+    )
+
+    # Clean up temporary merge columns
+    df_final_matches = df_final_matches.drop(columns=['Email_Match', 'EM_Match'])
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    # --- STEP 3: Output Results ---
+    if not df_final_matches.empty:
+        print(f"Success! Found {len(df_final_matches)} users to update.")
+        print(df_final_matches[['Name', 'Email', 'ID']])
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-    end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
-    msg.set_content(msgbody)
-    s = smtplib.SMTP(configs['SMTPServerAddress'])
-    s.send_message(msg)
+        print("No matches found. Check that Aeries emails match AD exactly.")
+    update_ad_employee_ids(df_final_matches, BIND_USER, BIND_PASSWORD)
+    send_success_report(df_final_matches, 'edannewitz@acalanes.k12.ca.us')
