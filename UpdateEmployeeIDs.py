@@ -132,35 +132,7 @@ def update_ad_employee_ids(dataframe, bind_user, bind_password):
 
 # Execute the update
 # CAUTION: This will write changes to your Active Directory.
-def GetAERIESData():
-    
-
-
-if __name__ == '__main__':
-    start_of_timer = timer()
-    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-    with open(confighome) as f:
-        configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
-    #prep status (msg) email
-    WasThereAnError = False
-    GC_SERVER = 'ldap://acalanes.k12.ca.us:3268' 
-    SEARCH_BASE = 'DC=acalanes,DC=k12,DC=ca,DC=us'
-    BIND_USER = 'tech@acalanes.k12.ca.us'
-    BIND_PASSWORD = configs['ADPassword']
-    # Define your specific target OUs across the two domains
-    TARGET_OUS = [
-        'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us',
-        'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'
-    ]
-    dest_filename = "asbworks_acalanes.csv"
-    thelogger.info('Update Employee ID->Starting AERIES cript')
-
-    # Get AERIES Data
-    thelogger.info('Update Employee ID->Connecting To AERIES to get ALL students Data')
+def GetAERIESData(configs):
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -169,12 +141,21 @@ if __name__ == '__main__':
     """
     AeriesEmployees = pd.read_sql_query(AllEmployeeIDs, engine)
     print(AeriesEmployees)
+    return AeriesEmployees
+
+def GetADUsersMissingEmployeeID(configs,BIND_USER,BIND_PASSWORD):
     # Find AD entries with no employeeID
     # The filter you requested: Missing ID AND Not Disabled
-    # 1. Configuration - Explicitly using Port 389 for full attribute access
+    # Configuration - Explicitly using Port 389 for full attribute access
+    GC_SERVER = 'ldap://acalanes.k12.ca.us:3268' 
+    SEARCH_BASE = 'DC=acalanes,DC=k12,DC=ca,DC=us'
 
-
-    # 1. Active Directory Configuration
+    # Define your specific target OUs across the two domains
+    TARGET_OUS = [
+        'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us',
+        'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'
+    ]
+    # Active Directory Configuration
     DOMAINS = [
         {'server': 'ldap://acalanes.k12.ca.us:389', 'base': 'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us'},
         {'server': 'ldap://staff.acalanes.k12.ca.us:389', 'base': 'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'}
@@ -182,7 +163,6 @@ if __name__ == '__main__':
     BIND_USER = 'tech@acalanes.k12.ca.us'
     BIND_PASSWORD = configs['ADPassword']
     SEARCH_FILTER = '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
-
     # --- STEP 1: Extract AD Users Missing employeeID ---
     user_data = []
     for domain in DOMAINS:
@@ -209,8 +189,29 @@ if __name__ == '__main__':
     # --- STEP 2: Match with Aeries using 'ID' ---
     # Normalize columns for a robust match
     df_missing_id['Email_Match'] = df_missing_id['Email'].str.lower().str.strip()
-    AeriesEmployees['EM_Match'] = AeriesEmployees['em'].astype(str).str.lower().str.strip()
+    return df_missing_id
 
+if __name__ == '__main__':
+    start_of_timer = timer()
+    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+    with open(confighome) as f:
+        configs = json.load(f)
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+    thelogger.info('Update Employee ID->Starting AERIES cript')
+    WasThereAnError = False
+    BIND_USER = 'tech@acalanes.k12.ca.us'
+    BIND_PASSWORD = configs['ADPassword']
+    # Get AERIES Data
+    thelogger.info('Update Employee ID->Connecting To AERIES to get ALL students Data')
+    AeriesEmployees = GetAERIESData(configs)
+    thelogger.info('Update Employee ID->Successfully got AERIES Data')
+    AeriesEmployees['EM_Match'] = AeriesEmployees['em'].astype(str).str.lower().str.strip()
+    # Get AD Users Missing EmployeeID
+    thelogger.info('Update Employee ID->Connecting To AD to get users missing Employee IDs')    
+    df_missing_id = GetADUsersMissingEmployeeID(configs,BIND_USER,BIND_PASSWORD)
     # Merge: Keeping only matches and carrying over the 'ID' column
     df_final_matches = pd.merge(
         df_missing_id, 
@@ -231,4 +232,4 @@ if __name__ == '__main__':
     else:
         print("No matches found. Check that Aeries emails match AD exactly.")
     update_ad_employee_ids(df_final_matches, BIND_USER, BIND_PASSWORD)
-    send_success_report(df_final_matches, 'edannewitz@acalanes.k12.ca.us',configs)
+    send_success_report(df_final_matches, 'edannewitz@auhsdschools.org',configs)
