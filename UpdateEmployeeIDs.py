@@ -14,48 +14,88 @@ from logging.handlers import SysLogHandler
 
 
 """
- Python 3.9+
+2026 - Script to update Active Directory EmployeeID attributes from Aeries data if the EmployeeID is missing in AD but present in Aeries.
+
+Python 3.9+
+
 """
 
 
-def send_success_report(df_final, recipient_email):
-    # 1. Create the Email Content
-    msg = EmailMessage()
-    msg['Subject'] = 'AD EmployeeID Update: Success Report'
-    msg['From'] = 'donotreply@auhsdschools.org' # Your email
-    msg['To'] = recipient_email
-
-    # 2. Format the Summary
+def send_success_report(df_final, configs):
     total_matches = len(df_final)
-    summary_table = df_final[['Name', 'Email', 'ID']].to_string(index=False)
+    summary_table = df_final[['Name', 'Email', 'ID']].to_html(index=False, justify='left', classes='red-table')
     
-    email_body = f"""
-    The Active Directory EmployeeID update process has completed successfully.
-
-    Total Records Updated: {total_matches}
-
-    Summary of Matched Records:
-    ------------------------------------------------------------
-    {summary_table}
-    ------------------------------------------------------------
-
-    This report was generated automatically via Python.
+    html_body = f"""
+    <html>
+        <head>
+        <style>
+            table {{ 
+                border-collapse: collapse; 
+                width: 100%; 
+                font-family: sans-serif; 
+                margin-bottom: 20px;
+            }}
+            th {{ 
+                background-color: #f2f2f2; 
+                font-weight: bold; 
+                padding: 8px; 
+                border: 1px solid #ddd; 
+                color: black;
+            }}
+            td {{ 
+                padding: 8px; 
+                border: 1px solid #ddd; 
+            }}
+            
+            /* Target only the table with the 'red-table' class */
+            .red-table td {{ 
+                color: #FF0000; 
+            }}
+            
+            /* Target only the table with the 'black-table' class */
+            .black-table td {{ 
+                color: #000000; 
+            }}
+        </style>
+        </head>
+        <body>
+            <p>The Active Directory EmployeeID update process has completed successfully.</p>
+            <p>Total Records Updated: {total_matches}</p>
+            <p>Summary of Matched Records:</p>
+            <p>------------------------------------------------------------</p>
+            {summary_table}
+            <p><p>
+            <p>------------------------------------------------------------</p>
+            <p>This report was generated automatically via Python.</p>
+        </body>
+    </html>
     """
-    msg.set_content(email_body)
+    msg = MIMEMultipart()
+    timestamp = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+    msg['Subject'] = f"AD EmployeeID Update: Success Report {timestamp}"
+    msg['From'] = configs['SMTPAddressFrom']
+    msg['To'] = 'edannewitz@auhsdschools.org'
+    msg.attach(MIMEText(html_body, 'html'))
 
-    # 3. Send the Email via SMTP
-    # Replace with your organization's SMTP server (e.g., smtp.gmail.com)
     try:
-        with smtplib.SMTP('10.99.0.202') as server:
-            # For Gmail, you may need an App Password or OAuth2
-            # server.login('your_user', 'your_password') 
-            server.send_message(msg)
-        print("Success report emailed successfully.")
-    except Exception as e:
-        print(f"Failed to send email report: {e}")
+        # Using 'with' automatically handles s.quit() even if an error occurs
+        with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
+            # Uncomment if your server requires authentication:
+            # s.starttls()
+            # s.login(configs['user'], configs['pass'])
+                
+            s.send_message(msg)
+            print(f"Email sent successfully")
+            return True
 
-# Usage:
-# send_success_report(df_final_matches, 'admin@acalanes.k12.ca.us')
+    except smtplib.SMTPConnectError:
+        print("Error: Could not connect to the SMTP server. Check the address/port.")
+    except smtplib.SMTPAuthenticationError:
+        print("Error: SMTP Authentication failed. Check your credentials.")
+    except Exception as e:
+        print(f"An unexpected error occurred while sending email: {e}")
+        
+    return False
 
 def update_ad_employee_ids(dataframe, bind_user, bind_password):
     updated_count = 0
@@ -92,6 +132,9 @@ def update_ad_employee_ids(dataframe, bind_user, bind_password):
 
 # Execute the update
 # CAUTION: This will write changes to your Active Directory.
+def GetAERIESData():
+    
+
 
 if __name__ == '__main__':
     start_of_timer = timer()
@@ -103,10 +146,6 @@ if __name__ == '__main__':
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
     #prep status (msg) email
-    msg = EmailMessage()
-    msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = 'edannewitz@auhsdschools.org'
-    msgbody = ''
     WasThereAnError = False
     GC_SERVER = 'ldap://acalanes.k12.ca.us:3268' 
     SEARCH_BASE = 'DC=acalanes,DC=k12,DC=ca,DC=us'
@@ -118,12 +157,10 @@ if __name__ == '__main__':
         'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'
     ]
     dest_filename = "asbworks_acalanes.csv"
-    thelogger.info('Update ASB Works->Starting ASB Works Script')
-    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+    thelogger.info('Update Employee ID->Starting AERIES cript')
 
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
-    thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
+    thelogger.info('Update Employee ID->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -194,4 +231,4 @@ if __name__ == '__main__':
     else:
         print("No matches found. Check that Aeries emails match AD exactly.")
     update_ad_employee_ids(df_final_matches, BIND_USER, BIND_PASSWORD)
-    send_success_report(df_final_matches, 'edannewitz@acalanes.k12.ca.us')
+    send_success_report(df_final_matches, 'edannewitz@acalanes.k12.ca.us',configs)
