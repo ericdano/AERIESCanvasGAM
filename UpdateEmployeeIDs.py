@@ -1,91 +1,197 @@
-from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
-import pandas as pd
-import os, sys, shlex, subprocess, json, logging, smtplib, datetime
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
+from io import StringIO
 from pathlib import Path
+from timeit import default_timer as timer
+import pandas as pd
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 from logging.handlers import SysLogHandler
-import arrow
 
 
-def getConfigs():
-  # Function to get passwords and API keys for Acalanes Canvas and stuff
-  confighome = Path.home() / ".Acalanes" / "Acalanes.json"
-  with open(confighome) as f:
-    configs = json.load(f)
-  return configs
+"""
+ Python 3.9+
+"""
 
-def getADSearch(domainserver,baseou,configs):
-  serverName = 'LDAP://' + domainserver
-  domainName = 'AUHSD'
-  userName = 'tech'
-  password = configs['ADPassword']
-  base = 'OU=' + baseou +',DC=acalanes,DC=k12,DC=ca,DC=us'
-  with Connection(Server(serverName),
-                  user='{0}\\{1}'.format(domainName, userName), 
-                  password=password, 
-                  auto_bind=True,
-                  return_empty_attributes=False) as conn:
 
-    results = conn.extend.standard.paged_search(search_base= base, 
-                                             search_filter = '(objectclass=user)', 
-                                             search_scope=SUBTREE,
-                                             attributes=['displayName', 'mail', 'userAccountControl','sAMAccountName','employeeID'],
-                                             get_operational_attributes=False,paged_size=15)
-  return results.entries
+def send_success_report(df_final, recipient_email):
+    # 1. Create the Email Content
+    msg = EmailMessage()
+    msg['Subject'] = 'AD EmployeeID Update: Success Report'
+    msg['From'] = 'donotreply@auhsdschools.org' # Your email
+    msg['To'] = recipient_email
 
-def main():
-  global msgbody,thelogger
-  configs = getConfigs()
-  thelogger = logging.getLogger('MyLogger')
-  thelogger.setLevel(logging.DEBUG)
-  handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-  thelogger.addHandler(handler)
-  #connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
-  msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
-  connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
-  connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-  engine = create_engine(connection_url)      
-  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF WHERE EM =  \'bzaragoza@auhsdschools.org\' ORDER BY LN',engine)
-  print(dataframe1)
-  
-  """
-  
-  dataframe1 = pd.read_sql_query('SELECT ID, HRID, FN, LN, EM FROM STF ORDER BY LN',engine)
+    # 2. Format the Summary
+    total_matches = len(df_final)
+    summary_table = df_final[['Name', 'Email', 'ID']].to_string(index=False)
+    
+    email_body = f"""
+    The Active Directory EmployeeID update process has completed successfully.
 
-  print(dataframe1)
-  #dataframe1.to_csv('e:\PythonTemp\AllEmp.csv')
-  msgbody += 'Checking domain server Zeus....\n'
-  users = getADSearch('zeus','AUHSD Staff',configs)
-  users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
-  for entry in users.response:
-    print(entry['attributes'])
-    if "auhsdschools.org" in str(user['attributes']['mail']):
-      print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['mail']) + ' ' + str(user['attributes']['employeeID']))
-      if user['attributes']['employeeID'] is None:
-        print('Found one') 
-      print(type(user['attributes']['employeeID']))
-  for user in users2:
-    if "auhsdschools.org" in str(user['attributes']['mail']):
-      print(str(user['attributes']['displayName']) + ' ' + str(user['attributes']['mail']) + ' ' + str(user['attributes']['employeeID']))
-      if len(str(user['attributes']['employeeID'])) == 0:
-        print('Found another')
-      print(type(user['attributes']['employeeID']))
+    Total Records Updated: {total_matches}
 
-  """
+    Summary of Matched Records:
+    ------------------------------------------------------------
+    {summary_table}
+    ------------------------------------------------------------
 
-  msg = EmailMessage()
-  msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look Employee ID Updates script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-  msg['From'] = configs['SMTPAddressFrom']
-  msg['To'] = configs['SendInfoEmailAddr']
-  msg.set_content(msgbody)
-  s = smtplib.SMTP(configs['SMTPServerAddress'])
-  s.send_message(msg)
+    This report was generated automatically via Python.
+    """
+    msg.set_content(email_body)
+
+    # 3. Send the Email via SMTP
+    # Replace with your organization's SMTP server (e.g., smtp.gmail.com)
+    try:
+        with smtplib.SMTP('10.99.0.202') as server:
+            # For Gmail, you may need an App Password or OAuth2
+            # server.login('your_user', 'your_password') 
+            server.send_message(msg)
+        print("Success report emailed successfully.")
+    except Exception as e:
+        print(f"Failed to send email report: {e}")
+
+# Usage:
+# send_success_report(df_final_matches, 'admin@acalanes.k12.ca.us')
+
+def update_ad_employee_ids(dataframe, bind_user, bind_password):
+    updated_count = 0
+    error_count = 0
+
+    # Grouping by server ensures we only connect once per domain
+    for server_url in dataframe['Server'].unique():
+        server_df = dataframe[dataframe['Server'] == server_url]
+        
+        print(f"\nConnecting to {server_url} to perform updates...")
+        server = Server(server_url, get_info=ALL)
+        
+        with Connection(server, user=bind_user, password=bind_password, auto_bind=True) as conn:
+            for index, row in server_df.iterrows():
+                target_dn = row['DN']
+                new_id = str(row['ID']).strip() # Ensure it's a string for AD
+                
+                # Perform the modification
+                success = conn.modify(
+                    target_dn, 
+                    {'employeeID': [(MODIFY_REPLACE, [new_id])]}
+                )
+                
+                if success:
+                    print(f" [SUCCESS] Updated {row['Username']} to ID {new_id}")
+                    updated_count += 1
+                else:
+                    print(f" [FAILED]  Could not update {row['Username']}. Error: {conn.result['description']}")
+                    error_count += 1
+
+    print(f"\n--- Update Summary ---")
+    print(f"Total Successful: {updated_count}")
+    print(f"Total Failed:     {error_count}")
+
+# Execute the update
+# CAUTION: This will write changes to your Active Directory.
+
 if __name__ == '__main__':
-  msgbody = ''
-  main()
+    start_of_timer = timer()
+    confighome = Path.home() / ".Acalanes" / "Acalanes.json"
+    with open(confighome) as f:
+        configs = json.load(f)
+    thelogger = logging.getLogger('MyLogger')
+    thelogger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    thelogger.addHandler(handler)
+    #prep status (msg) email
+    msg = EmailMessage()
+    msg['From'] = configs['SMTPAddressFrom']
+    msg['To'] = 'edannewitz@auhsdschools.org'
+    msgbody = ''
+    WasThereAnError = False
+    GC_SERVER = 'ldap://acalanes.k12.ca.us:3268' 
+    SEARCH_BASE = 'DC=acalanes,DC=k12,DC=ca,DC=us'
+    BIND_USER = 'tech@acalanes.k12.ca.us'
+    BIND_PASSWORD = configs['ADPassword']
+    # Define your specific target OUs across the two domains
+    TARGET_OUS = [
+        'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us',
+        'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'
+    ]
+    dest_filename = "asbworks_acalanes.csv"
+    thelogger.info('Update ASB Works->Starting ASB Works Script')
+    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+
+    # Get AERIES Data
+    os.chdir('E:\\PythonTemp')
+    thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    engine = create_engine(connection_url)
+    AllEmployeeIDs = f"""
+    SELECT em, LN, ID FROM STF
+    """
+    AeriesEmployees = pd.read_sql_query(AllEmployeeIDs, engine)
+    print(AeriesEmployees)
+    # Find AD entries with no employeeID
+    # The filter you requested: Missing ID AND Not Disabled
+    # 1. Configuration - Explicitly using Port 389 for full attribute access
+
+
+    # 1. Active Directory Configuration
+    DOMAINS = [
+        {'server': 'ldap://acalanes.k12.ca.us:389', 'base': 'OU=AUHSD Staff,DC=acalanes,DC=k12,DC=ca,DC=us'},
+        {'server': 'ldap://staff.acalanes.k12.ca.us:389', 'base': 'OU=Acad Staff,DC=staff,DC=acalanes,DC=k12,DC=ca,DC=us'}
+    ]
+    BIND_USER = 'tech@acalanes.k12.ca.us'
+    BIND_PASSWORD = configs['ADPassword']
+    SEARCH_FILTER = '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
+
+    # --- STEP 1: Extract AD Users Missing employeeID ---
+    user_data = []
+    for domain in DOMAINS:
+        server = Server(domain['server'], get_info=ALL)
+        with Connection(server, user=BIND_USER, password=BIND_PASSWORD, auto_bind=True) as conn:
+            conn.search(domain['base'], SEARCH_FILTER, attributes=['cn', 'sAMAccountName', 'employeeID', 'mail', 'distinguishedName'])
+            for entry in conn.entries:
+                # Check for missing/blank ID
+                eid = str(entry.employeeID.value).strip() if 'employeeID' in entry and entry.employeeID.value else ""
+                email = str(entry.mail.value).strip() if 'mail' in entry and entry.mail.value else None
+                
+                user_data.append({
+                    'Name': entry.cn.value, 
+                    'Username': entry.sAMAccountName.value, 
+                    'Email': email, 
+                    'EmployeeID_AD': eid, 
+                    'DN': entry.distinguishedName.value,
+                    'Server': domain['server'] # Track which server to write back to
+                })
+
+    df_ad = pd.DataFrame(user_data)
+    df_missing_id = df_ad[(df_ad['EmployeeID_AD'] == "") & (df_ad['Email'].notna())].copy()
+
+    # --- STEP 2: Match with Aeries using 'ID' ---
+    # Normalize columns for a robust match
+    df_missing_id['Email_Match'] = df_missing_id['Email'].str.lower().str.strip()
+    AeriesEmployees['EM_Match'] = AeriesEmployees['em'].astype(str).str.lower().str.strip()
+
+    # Merge: Keeping only matches and carrying over the 'ID' column
+    df_final_matches = pd.merge(
+        df_missing_id, 
+        AeriesEmployees[['EM_Match', 'ID']], 
+        left_on='Email_Match', 
+        right_on='EM_Match', 
+        how='inner'
+    )
+
+    # Clean up temporary merge columns
+    df_final_matches = df_final_matches.drop(columns=['Email_Match', 'EM_Match'])
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    # --- STEP 3: Output Results ---
+    if not df_final_matches.empty:
+        print(f"Success! Found {len(df_final_matches)} users to update.")
+        print(df_final_matches[['Name', 'Email', 'ID']])
+    else:
+        print("No matches found. Check that Aeries emails match AD exactly.")
+    update_ad_employee_ids(df_final_matches, BIND_USER, BIND_PASSWORD)
+    send_success_report(df_final_matches, 'edannewitz@acalanes.k12.ca.us')
