@@ -1,4 +1,7 @@
 from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from xkcdpass import xkcd_password as xp
 import smtplib, datetime, shlex, subprocess, sys, os
 import pandas as pd
@@ -45,6 +48,7 @@ def main():
     
     docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org,bkearney@auhsdschools.org'
     docontacts2 = 'edannewitz@auhsdschools.org'
+    # flip comments to test email without sending to everyone
     '''
     campuses = [('mhs','edannewitz@auhsdschools.org'),
                 ('chs','edannewitz@auhsdschools.org'),
@@ -64,12 +68,16 @@ def main():
     wordfile = xp.locate_wordfile('E:\PythonScripts\GuestPasswords.txt')
     mywords = xp.generate_wordlist(wordfile=wordfile,min_length=6,max_length=6)
     for x in df.index:
-        msgbody = ''
-        msg = EmailMessage()
-        msgbody += "Passwords for Substitute Teacher accounts this week are:\n\n"
+        msgbodysummary = f"""
+        <html>
+          <head></head>
+          <body>
+            <p>Passwords for Substitute Teacher accounts this week are:</p>
+            <p><p>
+        """
         gam.initializeLogging()
         for i in range(5):
-            msgindv = EmailMessage()
+            
             password = xp.generate_xkcdpassword(mywords, delimiter="",numwords=1)
             num1 = random.randint(10,99)
             password = random.choice(string.ascii_uppercase) + password + str(num1)
@@ -77,39 +85,69 @@ def main():
             adusername = str(df['campusname'][x]) + "substitute" + str(i+1)
             print(theuser)
             print(password)
-            msgbody+="Substitute Account -> " + theuser + "     Password -> " + password + "\n"
+            msgbodysummary += f"""
+            <p>Substitute Account -> {theuser} Password -> {password}</p>
+            <p></p>
+            """
             stat = gam.CallGAMCommand(['gam','update','user',theuser,'password',password])
-            #gamstring = "E:\\GAMADV-XTD3\\gam.exe update user " + df['campusname'][x] + "-guest" + str(i+1) + "@auhsdschools.org password " + password
+            #Call powershell script to update the password in AD as well
             p = subprocess.Popen(["powershell.exe","E:\\PowerShellScripts\\UpdatePassword.ps1",adusername,password],stdout=sys.stdout)
             p_out, p_err = p.communicate()
-            msgbody+= "GAM error status->" + str(stat) + " AD errors->" + str(p_err) + "\n"
+            #msgbodysummary+= f"""<p>GAM error status->{stat} AD errors->{p_err}</p>"""
             print(stat)
             print(p_out)
             print(p_err)
-            s = smtplib.SMTP('10.99.0.202')
-            msgindv['Subject'] = "Password for " + theuser + " " + theweekof
+            msgbodyindv = f"""
+            <html>
+              <head></head>
+              <body>
+                  <p><b>Login for Windows</b></p>
+                  STAFF\{adusername}</p>
+                  Password: {password}</p>
+                  <p><p>
+                  <p><b>Login for Mac</b></p>
+                  <p>username:{adusername}</p>
+                  <p>{password}<p>
+                  <p><p>
+                  <p><b>Google</b></p>
+                  <p>login: {theuser}</p>
+                  <p>password: {password}</p>
+              </body>
+            </html>
+            """
+            msgindv = MIMEMultipart()
+            msgindv['Subject'] = f"""Password for {theuser} {theweekof}"""
             msgindv['From'] = 'dontreply@auhsdschools.org'
             msgindv['To'] = str(df['contacts'][x] + "," + docontacts2)
-            msgbody2 = "Login for Windows\n"
-            msgbody2 += "STAFF\\" + adusername + "\n"
-            msgbody2 += password + "\n"
-            msgbody2 += "\n"
-            msgbody2 += "\n"
-            msgbody2 += "Login for Mac\n"
-            msgbody2 += adusername + "\n"
-            msgbody2 += password + "\n"
-            msgbody2 += "\n"
-            msgbody2 += "\n"
-            msgbody2 += "Google login and password: " + theuser + "   " + password + "\n"
-            msgindv.set_content(msgbody2)
-            s.send_message(msgindv)
+            msgindv.attach(MIMEText(msgbodyindv,'html'))
+            try:
+              # Using 'with' automatically handles s.quit() even if an error occurs
+              with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
+                  s.send_message(msgindv)
+                  print(f"Email sent successfully {msg['Subject']}")
+            except smtplib.SMTPConnectError:
+                print("Error: Could not connect to the SMTP server. Check the address/port.")
+            except smtplib.SMTPAuthenticationError:
+                print("Error: SMTP Authentication failed. Check your credentials.")
+            except Exception as e:
+                print(f"An unexpected error occurred while sending email: {e}")
+
         # Send summary of all campus subaccount passwords here
-        s = smtplib.SMTP('10.99.0.202')
+        msg = MIMEMultipart()
         msg['Subject'] = "Sub Account Passwords for " + df['campusname'][x].upper() + " " + theweekof
         msg['From'] = 'donotreply@auhsdschools.org'
         msg['To'] = str(df['contacts'][x] + "," + docontacts)
-        msg.set_content(msgbody)
-        s.send_message(msg)
-
+        msg.attach(MIMEText(msgbodysummary,'html'))
+        try:
+          # Using 'with' automatically handles s.quit() even if an error occurs
+          with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
+              s.send_message(msg)
+              print(f"Email sent successfully {msg['Subject']}")
+        except smtplib.SMTPConnectError:
+            print("Error: Could not connect to the SMTP server. Check the address/port.")
+        except smtplib.SMTPAuthenticationError:
+            print("Error: SMTP Authentication failed. Check your credentials.")
+        except Exception as e:
+            print(f"An unexpected error occurred while sending email: {e}")
 if __name__ == '__main__':
   main()
