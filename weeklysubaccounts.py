@@ -29,8 +29,6 @@ def getConfigs():
     configs = json.load(f)
   return configs
 
-
-
 def main():
     global msgbody,thelogger
     configs = getConfigs()
@@ -39,17 +37,17 @@ def main():
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
     thelogger.info('Subaccounts->Connecting to Zeus...')
-    
+    # array for sending out emails
     campuses = [('mhs','kharvin@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
                 ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,kharvin@auhsdschools.org'),
                 ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,lfinn@auhsdschools.org'),
                 ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,mhall@auhsdschools.org'),
-                ('dv','sfrance@auhsdschools.org,mhernandez@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
+                ('dv','mhernandez@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
     
     docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org,bkearney@auhsdschools.org'
-    docontacts2 = 'edannewitz@auhsdschools.org'
+
     # flip comments to test email without sending to everyone
-    '''
+    """
     campuses = [('mhs','edannewitz@auhsdschools.org'),
                 ('chs','edannewitz@auhsdschools.org'),
                 ('ahs','edannewitz@auhsdschools.org'),
@@ -57,7 +55,7 @@ def main():
                 ('dv','edannewitz@auhsdschools.org')]
     
     docontacts = 'edannewitz@auhsdschools.org'
-    '''
+    """
     pendulum.week_starts_at(pendulum.MONDAY)
     pendulum.week_ends_at(pendulum.FRIDAY)
     today = pendulum.now().add(days=3)
@@ -86,7 +84,9 @@ def main():
             print(theuser)
             print(password)
             msgbodysummary += f"""
-            <p>Substitute Account -> {theuser} Password -> {password}</p>
+            <p>{theuser}<br>
+            Password: {password}</p>
+            ---------------------<br>
             <p></p>
             """
             stat = gam.CallGAMCommand(['gam','update','user',theuser,'password',password])
@@ -102,29 +102,33 @@ def main():
               <head></head>
               <body>
                   <p><b>Login for Windows</b></p>
-                  STAFF\{adusername}</p>
+                  <p>STAFF\{adusername}<br>
                   Password: {password}</p>
-                  <p><p>
+                  <p></p>
+                  <p>-----------------------------</p>
+                  <p></p>
                   <p><b>Login for Mac</b></p>
-                  <p>username:{adusername}</p>
-                  <p>{password}<p>
-                  <p><p>
-                  <p><b>Google</b></p>
-                  <p>login: {theuser}</p>
-                  <p>password: {password}</p>
+                  <p>Username:{adusername}<br>
+                  Password: {password}</p>
+                  <p></p>
+                  <p>-----------------------------</p>
+                  <p></p>
+                  <p><b>Login for Google</b></p>
+                  <p>Login: {theuser}<br>
+                  Password: {password}</p>
               </body>
             </html>
             """
             msgindv = MIMEMultipart()
             msgindv['Subject'] = f"""Password for {theuser} {theweekof}"""
             msgindv['From'] = 'dontreply@auhsdschools.org'
-            msgindv['To'] = str(df['contacts'][x] + "," + docontacts2)
+            msgindv['To'] = str(df['contacts'][x] + "," + "edannewitz@auhsdschools.org")
             msgindv.attach(MIMEText(msgbodyindv,'html'))
             try:
               # Using 'with' automatically handles s.quit() even if an error occurs
               with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
                   s.send_message(msgindv)
-                  print(f"Email sent successfully {msg['Subject']}")
+                  print(f"Email sent successfully {msgindv['Subject']}")
             except smtplib.SMTPConnectError:
                 print("Error: Could not connect to the SMTP server. Check the address/port.")
             except smtplib.SMTPAuthenticationError:
