@@ -29,7 +29,7 @@ if __name__ == '__main__':
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     msg = MIMEMultipart()
     msg['From'] = configs['SMTPAddressFrom']
-    msg['To'] = 'edannewitz@auhsdschools.org,rkahrer@auhsdschools.org'
+    msg['To'] = 'edannewitz@auhsdschools.org'
     
     WasThereAnError = False
     thelogger.info('AERIES Scan for New Students->Connecting To AERIESa')
@@ -90,8 +90,8 @@ if __name__ == '__main__':
         </html>
     """
     #sql_query.to_csv(dest_filename, index = False)
-    thelogger.info('AERIES Scan for New Students->Wrote temp CSV to disk')
-    thelogger.info('AERIES Scan for New Students->Connecting to ASB Works via FTPS')
+    #thelogger.info('AERIES Scan for New Students->Wrote temp CSV to disk')
+    #thelogger.info('AERIES Scan for New Students->Connecting to ASB Works via FTPS')
     #exit(1)
 
     if WasThereAnError:
