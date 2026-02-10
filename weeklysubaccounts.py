@@ -14,7 +14,7 @@ from pathlib import Path
 campuses = [('ahs','jlarsen@auhsdschools.org,potoole@auhsdschools.org,tcatanesi@auhsdschools.org',''),
              ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org',''),
              ('llhs','tvu@auhsdschools.org,mmcewen@auhsdschools.org',''),
-             ('mhs','bkearney@auhsdschools.org,ssilkitis@auhsdschools.org',''),
+             ('mhs','kharvin,ssilkitis@auhsdschools.org',''),
              ('dv','jdrury@auhsdschools.org,cstanton@auhsdschools.org,sfrance@auhsdschools.org,lheptig@auhsdschools.org',''),
              ('dvtrans','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org','')]
 
@@ -37,13 +37,13 @@ def main():
     thelogger.addHandler(handler)
     thelogger.info('Subaccounts->Connecting to Zeus...')
     
-    campuses = [('mhs','bkearney@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
-                ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org'),
-                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,kharvin@auhsdschools.org'),
-                ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,tvu@auhsdschools.org'),
+    campuses = [('mhs','kharvin@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
+                ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,kharvin@auhsdschools.org'),
+                ('ahs','jlarsen@auhsdschools.org,mmcewen@auhsdschools.org,lfinn@auhsdschools.org'),
+                ('llhs','rramos@auhsdschools.org,lfinn@auhsdschools.org,mhall@auhsdschools.org'),
                 ('dv','sfrance@auhsdschools.org,mhernandez@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org,cstanton@auhsdschools.org')]
     
-    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org'
+    docontacts = 'fbarre@auhsdschools.org,edannewitz@auhsdschools.org,mrodriguez@auhsdschools.org,bkearney@auhsdschools.org'
     docontacts2 = 'edannewitz@auhsdschools.org'
     '''
     campuses = [('mhs','edannewitz@auhsdschools.org'),
@@ -103,6 +103,7 @@ def main():
             msgbody2 += "Google login and password: " + theuser + "   " + password + "\n"
             msgindv.set_content(msgbody2)
             s.send_message(msgindv)
+        # Send summary of all campus subaccount passwords here
         s = smtplib.SMTP('10.99.0.202')
         msg['Subject'] = "Sub Account Passwords for " + df['campusname'][x].upper() + " " + theweekof
         msg['From'] = 'donotreply@auhsdschools.org'
