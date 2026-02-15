@@ -2,6 +2,10 @@
 # Usage
 # H:\CreateStudentAccounts2025.ps1 thisfile.csv
 # Requires the Active Directory module for PowerShell
+# This might need to be run twice as domain controllers are a little laggy and do not set the home directory permissions
+# as they haven't synced the newly created accounts from the primary domain server
+
+
 Import-Module ActiveDirectory
 
 $Users = Import-Csv -Path $args[0]
