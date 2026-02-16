@@ -38,15 +38,18 @@ if __name__ == '__main__':
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     eighthgraders = f"""
-    select * from stu where gr = 8 and sem = '' and sc < 8
+    SELECT SEM,* FROM STU WHERE GR = 8 AND SEM = '' AND SC < 8
     """
     sql_query = pd.read_sql_query(eighthgraders, engine)
     print(sql_query)
     os.chdir('E:\\PythonTemp')
     sql_query.to_csv(filenamestring,index=False)
     sheetid = "1LS6y12eGNHJ9uG2i6Sswjr7Bata0ZmwZXPWyGZ-xYJ4"
+    TabName = "Test Tab 3"
+    UserEmail = "edannewitz@auhsdschools.org"
     gam.initializeLogging()
-    stat1 = gam.CallGAMCommand(['gam','csv', 'csvtosheet.csv', 'gam', 'user', 'edannewitz@auhsdschools.org', 'add', 'sheet', '1LS6y12eGNHJ9uG2i6Sswjr7Bata0ZmwZXPWyGZ-xYJ4','csvdata','*'])
+    stat1 = gam.CallGAMCommand(['gam', 'user', UserEmail, 'update', 'drivefile', 'id', sheetid,'localfile',filenamestring,'addsheet',TabName])
+    exit(1)
     if stat1 != 0:
         WasThereAnError = True
         thelogger.critical('UpdateStudentListsInGoogle->GAM returned an error for the last command')
