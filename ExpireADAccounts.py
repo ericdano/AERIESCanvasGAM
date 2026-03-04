@@ -97,6 +97,15 @@ def DisableGoogle(dataframe):
       else:
         msgbody += 'Suspended Google Account->' + str(dataframe['email'][d]) + '\n'
         thelogger.info('ExpireADAccounts->Suspended Google Account->' + str(dataframe['email'][d]))
+      # Also at this point, delete them from any google groups they are in
+      stat = gam.CallGAMCommand(['gam','user', str(dataframe['email'][d]), 'delete', 'groups'])
+      if stat != 0:
+        msgbody += 'Error with Google removing groups from ' + str(dataframe['email'][d]) + '\n'
+        thelogger.info('ExpireADAccounts->Error with Google removing groups from ' + str(dataframe['email'][d]))
+      else:
+        msgbody += 'Removed Google groups from account->' + str(dataframe['email'][d]) + '\n'
+        thelogger.info('ExpireADAccounts->Removed Google groups from account->' + str(dataframe['email'][d]))
+      
         
 def main():
   global msgbody,thelogger

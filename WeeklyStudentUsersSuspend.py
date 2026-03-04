@@ -8,8 +8,8 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
 """
-Python Script to suspend all users in a certain OU
-In this case, it suspends all the users in OU Z-Former Students
+Python Script to suspend and archive all users in a certain OU
+In this case, it suspends and archives all the users in OU Z-Former Students and Former Staff
 and any users in any sub OUs
 """
 
@@ -27,12 +27,21 @@ def main():
   msg['From'] = configs['SMTPAddressFrom']
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
-  thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension')
-  stat = gam.CallGAMCommand(['gam','ou_and_children','/Z-Former Students','update','user','suspended','true'])
+  # Check Z-Former Students
+  thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension Check for Z-Former student OU')
+  stat = gam.CallGAMCommand(['gam','ou_and_children','/Z-Former Students','update','user','archive','on','suspended','on'])
   if stat != 0:
-    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Weekly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Monthly Student and Staff Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   else:
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Weekly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " monthly Student Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension Check for Former Staff student OU')
+  # Check Former Staff now
+  stat = gam.CallGAMCommand(['gam','ou_and_children','/Former Staff','update','user','archive','on','suspended','on'])
+  if stat != 0:
+    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Monthly Student and Staff Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  else:
+    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Monthly Student and Staff Suspension Script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+
   end_of_timer = timer()
   msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
   msg.set_content(msgbody)

@@ -16,8 +16,7 @@ except it is Python, does some logging, and emails what happens (crontab was doi
 # alias gam="/usr/local/gamadv-xtd3/gam"
 # /usr/local/gamadv-xtd3/gam print users query isSuspended=true | /usr/local/gamadv-xtd3/gam csv - gam user ~primaryEmail delete groups
 
-Also added GAM stuff to remove Google EDU licenses from Suspended users. 
-
+Weekly Script to remove suspended users from google groups
 
 """
 if __name__ == '__main__':
@@ -41,21 +40,28 @@ if __name__ == '__main__':
   if sys.platform == 'darwin':
     multiprocessing.set_start_method('fork')
   gam.initializeLogging()
- 
+  
   thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
   rc2 = gam.CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=true'])
+
   if rc2 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
     msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(rc2) + '\n'  
   thelogger.info('RemoveSuspendedUsers->Running GAM to remove suspended users from groups')
   stat1 = gam.CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'groups'])
+
   if stat1 != 0:
     WasThereAnError = True
     thelogger.critical('RemoveSuspendedUsers->GAM returned an error for the last command')
     msgbody += 'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
   msgbody += 'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->' + str(stat1) + '\n' 
   thelogger.info('RemoveSuspendedUsers->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups.')
+
+  """
+  This stuff is not needed as Archiving a user will remove licenses
+  Kept for Historic reasons
+
   #Remove Google Licenses from Suspended Users
   # Delete License 1010310008
   thelogger.info('Remove Google License->Removing Student Licenses of Suspended Accounts')
@@ -76,8 +82,10 @@ if __name__ == '__main__':
     msgbody += 'ERROR! gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
   msgbody += 'RAN gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
   thelogger.info('Remove Google Licenses->Success! Ran gam query isSuspended=True del license 1010310009.')
-  os.remove(filetempname)
+
+"""
   msgbody += 'Done!'
+  os.remove(filetempname)
   if WasThereAnError:
     msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Remove Google License and Groups from Users " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
   else:
