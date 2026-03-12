@@ -14,6 +14,10 @@ Basically, a Windows version of this crontab job
 except it is Python, does some logging, and emails what happens (crontab was doing that though.....)
 gam redirect csv auhsdusersenabled.csv print users query "orgUnitPath='/AUHSD/AUHSD Staff' isSuspended=False" fields primaryemail,isenrolledin2sv,ou
 
+This is something we are not running anymore. The current script suspends users and archives them. This supposedly is enough
+for EDU.
+
+
 """
 if __name__ == '__main__':
 # One time initialization
