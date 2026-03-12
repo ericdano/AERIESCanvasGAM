@@ -13,7 +13,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.9+
+ Python 3.12+
 """
 
 if __name__ == '__main__':
