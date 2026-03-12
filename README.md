@@ -47,4 +47,5 @@ So, ahsgrade9students list is updated from the ahsgrade9students.csv file.
 
 <b>weeklysubaccounts.py</b> - Takes 5 users at 5 sites (total of 25 accounts) and generates new passwords randomly for them, update the passwords in Google and Active Directory, and emails out the new passwords to the appropriate people.
 
-<b>WorkingApp1.py</b> - A prototype app that authenticates with Active Directory and allows the authenticated user to reset AERIES 2FA for users (replaced Aeries2FAResetManual.py).
+Flask/Docker Apps
+<b>Aeries2FA</b> is a Flask app that has been Docker-ized. It allows a defined set of users in Active Directory to be able to reset AERIES 2FA for staff members. Uses Python 3.12.
