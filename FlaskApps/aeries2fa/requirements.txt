@@ -1,0 +1,6 @@
+Flask
+ldap3
+SQLAlchemy
+pandas
+pyodbc
+gunicorn

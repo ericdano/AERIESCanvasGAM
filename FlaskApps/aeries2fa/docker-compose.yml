@@ -1,0 +1,20 @@
+services:
+  aeries-2fa-app:
+    build: .
+    container_name: aeries_2fa_flask_app
+    # We use 'expose' instead of 'ports' so it's only accessible
+    # to NPM on the internal Docker network, keeping it secure from the outside.
+    expose:
+      - "5000"
+    volumes:
+      - ./config/Acalanes.json:/root/.Acalanes/Acalanes.json:ro
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    external: true
