@@ -13,8 +13,9 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.9+ script to pull data from AERIES and to send it to ASB Works.
+ Python 3.12 script to pull data from AERIES and to send it to ASB Works.
  Built in support for this is busted in AERIES as of 5/2022
+ Is it working now? No clue. This however works.
  Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
 """
 
@@ -43,7 +44,8 @@ if __name__ == '__main__':
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
-    #prep status (msg) email
+    # prep status (msg) email
+    # info in the JSON file it loads
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['ASBInfoEmailAddr']
@@ -82,6 +84,7 @@ if __name__ == '__main__':
         AND STU.TG = ''
         AND STU.SP <> '2'
     """
+
     sql_query = pd.read_sql_query(TheASBQuery, engine)
     sql_query['School'].mask(sql_query['School'] == 1,'LLHS1', inplace=True)
     sql_query['School'].mask(sql_query['School'] == 2,'AHS1', inplace=True)
@@ -92,8 +95,7 @@ if __name__ == '__main__':
     thelogger.info('Update ASB Works->Wrote temp CSV to disk')
     msgbody += "Got AERIES data, connecting to FTPS\n"
     thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
-    #exit(1)
-
+    # Create the FTP Connection
     ftp = MyFTP_TLS()
     ftp.ssl_version = ssl.PROTOCOL_TLSv1_2
     ftp.connect(server, 21)
@@ -118,7 +120,9 @@ if __name__ == '__main__':
             WasThereAnError = True
             thelogger.error('Update ASB Works->Error Uploading to FTPS')
     ftp.quit()
+    # Close ftp connection
     os.remove(dest_filename)
+    # Remove temp file
     msgbody += str(len(sql_query.index)) + ' students in file uploaded.\n'
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
@@ -130,3 +134,6 @@ if __name__ == '__main__':
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
+    # Send email message to people monitoring this script
+    # Done
+    print('Done!')
