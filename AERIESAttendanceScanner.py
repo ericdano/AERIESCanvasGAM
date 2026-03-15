@@ -27,9 +27,9 @@ ADMIN_TABLE = {
     3: "edannewitz@auhsdschools.org",
     4: "edannewitz@auhsdschools.org"
 }
-}
 
-DEFAULT_ADMIN_EMAIL = "district_attendance_clerk@district.edu"
+
+DEFAULT_ADMIN_EMAIL = "edannewitz@auhsdschools.org"
 
 HEADERS = {
     "Aeries-Cert": API_CERTIFICATE,
