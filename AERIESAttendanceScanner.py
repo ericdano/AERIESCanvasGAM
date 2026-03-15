@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 AERIES_BASE_URL = ""
 API_CERTIFICATE = ""
 ACADEMIC_YEAR = "2025-2026"   
-ABSENCE_THRESHOLD = 5         
+ABSENCE_THRESHOLD = 1         
 SENDER_EMAIL = "auhsdabscencereporter@auhsdschools.org  "
 # List of all school codes you want to scan
 SCHOOL_CODES = [1, 2, 3, 4]
