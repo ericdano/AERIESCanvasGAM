@@ -24,12 +24,13 @@ SMTP_PORT = 25
 
 
 # --- Admin Lookup Table ---
-# Map EVERY school code in your list to the appropriate Administrator's email.
+# Map EVERY school code in your list to the Attendance Tech Group
+
 ADMIN_TABLE = {
-    1: "edannewitz@auhsdschools.org",
-    2: "edannewitz@auhsdschools.org",
-    3: "edannewitz@auhsdschools.org",
-    4: "edannewitz@auhsdschools.org"
+    1: "llhsattendancetechs@auhsdschools.org",
+    2: "ahsattendancetechs@auhsdschools.org",
+    3: "mhsattendancetechs@auhsdschools.org",
+    4: "chsattendancetechs@auhsdschools.org"
 }
 
 
