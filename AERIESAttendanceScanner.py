@@ -62,6 +62,9 @@ def send_email(subject, html_content, recipient_email, cc_email=None):
     if cc_email:
         msg['Cc'] = cc_email
     """
+    # Replace this if in production, but for testing we want to see all emails in one inbox.
+    html_content += f"<p><em>Note: This email was intended for {recipient_email}.</em></p> and cc'd to {cc_email}."
+    #
     msg.set_content("Please enable HTML to view this message.")
     msg.add_alternative(html_content, subtype='html')
 
