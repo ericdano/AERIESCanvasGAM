@@ -82,6 +82,7 @@ def main():
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
+    # Grab the configs we need and put them in the global variables
     SMTP_SERVER = configs['SMTPServerAddress']
     AERIES_BASE_URL = configs['AERIES_API_URL']
     API_CERTIFICATE = configs['AERIES_API']
@@ -118,7 +119,7 @@ def main():
             
             # Look up this specific school's admin
             site_admin_email = ADMIN_TABLE.get(school, DEFAULT_ADMIN_EMAIL)
-            subject = f"Attendance Report: No Issues Found Today (School {school})"
+            subject = f"Attendance Report: No Issues Found Today at {SCHOOL_NAMES[school]}"
             html_body = f"""
             <html>
                 <body style="font-family: Arial, sans-serif;">
