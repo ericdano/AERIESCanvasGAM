@@ -46,13 +46,12 @@ def fetch_aeries_data(endpoint_url):
              print(f"  -> Error connecting to API at {endpoint_url}: {e}")
         return None
 
-# UPDATED: We've made the subject line dynamic and the CC email optional
 def send_email(subject, html_content, recipient_email, cc_email=None):
     """Sends an HTML email."""
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = SENDER_EMAIL
-    msg['To'] = 'edannewitz@auhsdschools.org'
+    msg['To'] = 'edannewitz@auhsdschools.org'  # For testing, we send all emails to the default admin. Change this to recipient_email in production.
     """
     msg['To'] = recipient_email
     
@@ -65,7 +64,6 @@ def send_email(subject, html_content, recipient_email, cc_email=None):
     print(f"  -> Sending email to {recipient_email}...")
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            #server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
     except Exception as e:
         print(f"  -> Error sending email to {recipient_email}: {e}")
@@ -90,8 +88,11 @@ def main():
 
     # 1. Loop Through All Schools to Collect Data
     for school in SCHOOL_CODES:
-        print(f"\nFetching data for School Code: {school}...")
+        print(f"\nScanning School Code: {school}...")
         
+        school_has_issues = False
+        
+        # Check Attendance First
         att_url = f"{AERIES_BASE_URL}/schools/{school}/AttendanceHistory/summary/year/{ACADEMIC_YEAR}"
         raw_att = fetch_aeries_data(att_url)
         
@@ -101,10 +102,35 @@ def main():
                 temp_att['TotalDaysAbsent'] = pd.to_numeric(temp_att['TotalDaysAbsent'])
                 flagged_temp = temp_att[temp_att['TotalDaysAbsent'] >= ABSENCE_THRESHOLD].copy()
                 
+                # If we found students over the threshold, flag it and save the data
                 if not flagged_temp.empty:
+                    school_has_issues = True
                     flagged_temp['SchoolCode'] = school 
                     all_attendance_dfs.append(flagged_temp)
+
+        # 2. Per-School "All Clear" Routing
+        if not school_has_issues:
+            print(f"  -> No issues found for School {school}. Sending 'All Clear' to site admin.")
+            
+            # Look up this specific school's admin
+            site_admin_email = ADMIN_TABLE.get(school, DEFAULT_ADMIN_EMAIL)
+            subject = f"Attendance Report: No Issues Found Today (School {school})"
+            html_body = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif;">
+                    <h2>System Update: Attendance Check</h2>
+                    <p>Great news! A scan of the Aeries database found <strong>zero</strong> students exceeding the {ABSENCE_THRESHOLD}-absence threshold at School {school} today.</p>
+                    <p>No further action is required.</p>
+                </body>
+            </html>
+            """
+            send_email(subject, html_body, site_admin_email)
+            
+            # Skip fetching students/staff for this school, move to the next one
+            continue 
         
+        # 3. Fetch Students & Staff (ONLY if the school had issues)
+        print("  -> Issues found. Fetching student and staff data...")
         stu_url = f"{AERIES_BASE_URL}/schools/{school}/students"
         raw_stu = fetch_aeries_data(stu_url)
         if raw_stu:
@@ -115,24 +141,12 @@ def main():
         if raw_staff:
             all_staff_dfs.append(pd.DataFrame(raw_staff))
 
-    # 2. Check for "All Clear" Status
+    # 4. Process Action Alerts for Schools With Issues
     if not all_attendance_dfs:
-        print("\nNo students exceeded the attendance threshold. Sending 'All Clear' email.")
+        print("\nFinished! All sites were clear today.")
+        return # The loop already sent the clear emails, so we just end the script here.
         
-        subject = f"Attendance Report: No Issues Found Today ({ABSENCE_THRESHOLD}+ Absences)"
-        html_body = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif;">
-                <h2>System Update: Attendance Check</h2>
-                <p>Great news! A scan of the Aeries database found <strong>zero</strong> students exceeding the {ABSENCE_THRESHOLD}-absence threshold across all configured schools today.</p>
-                <p>No further action is required.</p>
-            </body>
-        </html>
-        """
-        # Sends to the default admin with no CC required
-        send_email(subject, html_body, DEFAULT_ADMIN_EMAIL)
-        return
-        
+    print("\nProcessing Action Alerts for affected schools...")
     flagged_df = pd.concat(all_attendance_dfs, ignore_index=True)
     df_students = pd.concat(all_students_dfs, ignore_index=True)
     
@@ -142,19 +156,16 @@ def main():
         df_staff = df_staff.rename(columns={'ID': 'CounselorNumber', 'FirstName': 'StaffFirst', 'LastName': 'StaffLast'})
         df_staff = df_staff.drop_duplicates(subset=['CounselorNumber'])
     else:
-        print("Critical Error: Could not load staff data from any school. Exiting.")
+        print("Critical Error: Could not load staff data. Exiting.")
         return
 
-    # 3. Merge Data 
-    print("\nMerging district data...")
+    # Merge Data 
     merged_df = pd.merge(flagged_df, df_students, on=['StudentID', 'SchoolCode'], how='left')
-
     merged_df['CounselorNumber'] = pd.to_numeric(merged_df.get('CounselorNumber', 0), errors='coerce')
     df_staff['CounselorNumber'] = pd.to_numeric(df_staff['CounselorNumber'], errors='coerce')
-
     final_df = pd.merge(merged_df, df_staff, on='CounselorNumber', how='left')
 
-    # 4. Map the Admin Email 
+    # Map the Admin Email 
     final_df['SchoolCode'] = pd.to_numeric(final_df['SchoolCode'], errors='coerce')
     final_df['AdminEmail'] = final_df['SchoolCode'].map(ADMIN_TABLE)
 
@@ -165,9 +176,7 @@ def main():
     columns_to_keep = ['SchoolCode', 'StudentID', 'FirstName', 'LastName', 'Grade', 'TotalDaysAbsent']
     report_columns = [col for col in columns_to_keep if col in final_df.columns]
     
-    # 5. Group and Send Action Alert Emails
-    print("Processing counselor/admin groups and sending emails...")
-    
+    # Group and Send Action Alert Emails
     for (counselor_email, admin_email), counselor_df in final_df.groupby(['EmailAddress', 'AdminEmail']):
         
         counselor_name = counselor_df['StaffLast'].iloc[0] 
@@ -191,8 +200,6 @@ def main():
             </body>
         </html>
         """
-        
-        # We now pass the specific subject line and the CC email to our updated function
         send_email(subject, html_table, counselor_email, admin_email)
         
     print("\nAll dynamic targeted emails sent successfully!")
