@@ -52,18 +52,20 @@ def send_email(subject, html_content, recipient_email, cc_email=None):
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = SENDER_EMAIL
+    msg['To'] = 'edannewitz@auhsdschools.org'
+    """
     msg['To'] = recipient_email
     
     if cc_email:
         msg['Cc'] = cc_email
-    
+    """
     msg.set_content("Please enable HTML to view this message.")
     msg.add_alternative(html_content, subtype='html')
 
     print(f"  -> Sending email to {recipient_email}...")
     try:
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            #server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
     except Exception as e:
         print(f"  -> Error sending email to {recipient_email}: {e}")
