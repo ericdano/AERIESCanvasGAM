@@ -64,7 +64,7 @@ def send_email(subject, html_content, recipient_email, cc_email=None):
 
     print(f"  -> Sending email to {recipient_email}...")
     try:
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             #server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
     except Exception as e:
