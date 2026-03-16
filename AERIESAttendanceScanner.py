@@ -115,7 +115,7 @@ def main():
 
         # 2. Per-School "All Clear" Routing
         if not school_has_issues:
-            print(f"  -> No issues found for School {school}. Sending 'All Clear' to site admin.")
+            print(f"  -> No issues found for {SCHOOL_NAMES[school]}. Sending 'All Clear' to site admin.")
             
             # Look up this specific school's admin
             site_admin_email = ADMIN_TABLE.get(school, DEFAULT_ADMIN_EMAIL)
