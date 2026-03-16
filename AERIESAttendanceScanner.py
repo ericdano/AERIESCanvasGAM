@@ -13,6 +13,10 @@ ABSENCE_THRESHOLD = 1
 SENDER_EMAIL = "auhsdabscencereporter@auhsdschools.org  "
 # List of all school codes you want to scan
 SCHOOL_CODES = [1, 2, 3, 4]
+SCHOOL_NAMES = {1: "Las Lomas High School",
+                2: "Acalanes High School",
+                3: "Miramonte High School",
+                4: "Campolindo High School"}
 
 # --- Email Configuration ---
 SMTP_SERVER = "" 
@@ -119,7 +123,7 @@ def main():
             <html>
                 <body style="font-family: Arial, sans-serif;">
                     <h2>System Update: Attendance Check</h2>
-                    <p>Great news! A scan of the Aeries database found <strong>zero</strong> students exceeding the {ABSENCE_THRESHOLD}-absence threshold at School {school} today.</p>
+                    <p>Great news! A scan of the Aeries database found <strong>zero</strong> students exceeding the {ABSENCE_THRESHOLD}-absence threshold at {SCHOOL_NAMES[school]} today.</p>
                     <p>No further action is required.</p>
                 </body>
             </html>
