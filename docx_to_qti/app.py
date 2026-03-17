@@ -8,7 +8,7 @@ import docx_to_qti  # Ensure docx_to_qti.py is in the same folder
 
 app = Flask(__name__)
 
-# Ultimate UI Template with Tailwind CSS, JS File Management, and Loading States
+# Ultimate UI Template with Footer and Modern Components
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +33,8 @@ HTML_TEMPLATE = '''
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 md:p-10 font-sans">
-    <div class="max-w-4xl mx-auto space-y-8">
+<body class="bg-gray-100 min-h-screen p-4 md:p-10 font-sans flex flex-col">
+    <div class="max-w-4xl mx-auto space-y-8 flex-grow">
         
         <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-gray-100">
             <div class="flex flex-col md:flex-row justify-between items-start mb-10">
@@ -69,25 +69,29 @@ HTML_TEMPLATE = '''
 
         <div class="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
             <h2 class="text-2xl font-black text-gray-800 mb-6 flex items-center uppercase tracking-wide">
-                <span class="w-8 h-8 bg-yellow-400 text-white rounded-lg flex items-center justify-center mr-3 text-sm">?</span>
-                Formatting Guide
+                <span class="w-8 h-8 bg-yellow-400 text-white rounded-lg flex items-center justify-center mr-3 text-sm font-bold">!</span>
+                Quick Formatting Guide
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
                 <div class="p-4 bg-gray-50 rounded-xl">
-                    <h3 class="font-black text-blue-600 mb-2">Multiple Choice</h3>
-                    <p class="text-gray-600 leading-relaxed">Use <strong>Question X</strong> as a header. Mark correct answers with <strong>Yellow Highlight</strong> in Word.</p>
+                    <h3 class="font-black text-blue-600 mb-2">Structure</h3>
+                    <p class="text-gray-600">Use <code class="bg-blue-100 px-1 rounded text-blue-800 font-bold">Question X</code> as your header before every question prompt.</p>
                 </div>
                 <div class="p-4 bg-gray-50 rounded-xl">
-                    <h3 class="font-black text-blue-600 mb-2">Matching</h3>
-                    <p class="text-gray-600 leading-relaxed">Place pairs on their own lines using the <code class="bg-blue-100 px-1 text-blue-800">-></code> separator. Example: <i>France -> Paris</i></p>
+                    <h3 class="font-black text-blue-600 mb-2">Answers</h3>
+                    <p class="text-gray-600">Mark correct choices by applying a <span class="bg-yellow-200 px-1 font-bold">Yellow Highlight</span> to the text in Word.</p>
                 </div>
                 <div class="p-4 bg-gray-50 rounded-xl">
-                    <h3 class="font-black text-blue-600 mb-2">Fill in Blank</h3>
-                    <p class="text-gray-600 leading-relaxed">Use brackets <code class="bg-blue-100 px-1 text-blue-800">[ ]</code> in your sentence and list the answers below it.</p>
+                    <h3 class="font-black text-blue-600 mb-2">Special Types</h3>
+                    <p class="text-gray-600">Use <code class="bg-blue-100 px-1 rounded text-blue-800 font-bold">-></code> for Matching and <code class="bg-blue-100 px-1 rounded text-blue-800 font-bold">[ ]</code> for Fill in the Blank.</p>
                 </div>
             </div>
         </div>
     </div>
+
+    <footer class="max-w-4xl mx-auto w-full py-8 text-center text-gray-400 text-sm font-medium">
+        <p>Copyright 2026 by Eric Dannewitz and Gemini</p>
+    </footer>
 
     <script>
         const dropZone = document.getElementById('drop-zone');
@@ -144,9 +148,9 @@ HTML_TEMPLATE = '''
 
         form.onsubmit = (e) => {
             submitBtn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span>Processing Conversions...';
+            btnText.innerHTML = '<span class="spinner"></span>Finalizing Packages...';
             statusArea.classList.remove('hidden');
-            statusArea.textContent = 'Packaging QTI XML and Media files...';
+            statusArea.textContent = 'Analyzing document structures...';
 
             const dataTransfer = new DataTransfer();
             selectedFiles.forEach(file => dataTransfer.items.add(file));
@@ -170,22 +174,19 @@ def upload_file():
 
             for file in uploaded_files:
                 if file.filename.endswith('.docx'):
-                    # Strip .docx to create a clean individual zip name
                     clean_name = Path(file.filename).stem
                     input_docx = tmp_path / file.filename
                     file.save(str(input_docx))
                     
-                    # Create the individual zip package
                     indiv_zip = tmp_path / f"{clean_name}_qti.zip"
                     
-                    # Process via updated docx_to_qti.py engine
+                    # Process via the docx_to_qti.py logic
                     if docx_to_qti.convert_docx_to_qti_zip(input_docx, indiv_zip):
                         output_zips.append(indiv_zip)
 
             if not output_zips:
-                return "Conversion failed for all files. Check docx_to_qti.log for details.", 400
+                return "Conversion failed. Please ensure the DOCX follows the Question/Highlight format.", 400
 
-            # Wrap individual quiz packages into a single batch zip
             master_zip_buffer = BytesIO()
             with zipfile.ZipFile(master_zip_buffer, 'w', zipfile.ZIP_DEFLATED) as master:
                 for z in output_zips:
@@ -196,48 +197,33 @@ def upload_file():
                 master_zip_buffer, 
                 mimetype='application/zip', 
                 as_attachment=True, 
-                download_name='batch_qti_export.zip'
+                download_name='qti_conversions_batch.zip'
             )
 
     return render_template_string(HTML_TEMPLATE)
 
 @app.route('/download-template')
 def download_template():
-    """Generates a comprehensive template covering all question types."""
     from docx import Document
     from docx.enum.text import WD_COLOR_INDEX
-
     doc = Document()
-    doc.add_heading('Ultimate QTI Template', 0)
+    doc.add_heading('QTI Ultimate Template', 0)
+    
+    doc.add_paragraph('Question 1') #
+    doc.add_paragraph('Multiple Choice: What color is the sun?')
+    ans = doc.add_paragraph('Yellow')
+    ans.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW #
+    doc.add_paragraph('Purple')
 
-    # 1. Multiple Choice
-    doc.add_paragraph('Question 1')
-    doc.add_paragraph('What is the capital of Italy?')
-    ans1 = doc.add_paragraph('Rome')
-    ans1.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW
-    doc.add_paragraph('Milan')
-
-    # 2. Fill in the Blank
     doc.add_paragraph('\nQuestion 2')
-    doc.add_paragraph('The process of plants making food is [photosynthesis].')
-    ans2 = doc.add_paragraph('Photosynthesis')
-    ans2.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW
+    doc.add_paragraph('Matching: France -> Paris') #
+    doc.add_paragraph('Germany -> Berlin')
 
-    # 3. Matching
     doc.add_paragraph('\nQuestion 3')
-    doc.add_paragraph('Match the inventor to the invention:')
-    doc.add_paragraph('Thomas Edison -> Light Bulb')
-    doc.add_paragraph('Alexander Bell -> Telephone')
+    doc.add_paragraph('Fill-in-the-blank: Water is made of [hydrogen] and oxygen.')
 
-    # 4. Essay
-    doc.add_paragraph('\nQuestion 4')
-    doc.add_paragraph('Discuss the ethics of artificial intelligence in education.')
-
-    f = BytesIO()
-    doc.save(f)
-    f.seek(0)
-    return send_file(f, as_attachment=True, download_name="QTI_Master_Template.docx")
+    f = BytesIO(); doc.save(f); f.seek(0)
+    return send_file(f, as_attachment=True, download_name="QTI_Template_Collaborative.docx")
 
 if __name__ == '__main__':
-    # Listen on all IPs for Docker compatibility
     app.run(host='0.0.0.0', port=5000)
