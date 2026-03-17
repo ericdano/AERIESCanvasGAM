@@ -14,7 +14,7 @@ HTML_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QTI Converter Pro</title>
+    <title>AUHSD QTI Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .drop-zone--over { border-color: #3b82f6; background-color: #eff6ff; }
@@ -38,7 +38,7 @@ HTML_TEMPLATE = '''
         <div class="bg-white rounded-2xl shadow-xl p-10 border border-gray-200">
             <div class="flex justify-between items-start mb-8">
                 <div>
-                    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">QTI Converter</h1>
+                    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">AUHSD QTI Converter</h1>
                     <p class="text-gray-500 mt-2">Convert Word (.docx) quizzes into LMS-ready QTI packages.</p>
                 </div>
                 <a href="/download-template" class="text-sm font-semibold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition flex items-center">
