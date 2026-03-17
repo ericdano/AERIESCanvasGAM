@@ -1,20 +1,21 @@
-from flask import Flask, request, send_file, render_template_string, jsonify
+from flask import Flask, request, send_file, render_template_string
 import os
 import zipfile
 import tempfile
 from pathlib import Path
 from io import BytesIO
-import docx_to_qti #
+import docx_to_qti  # Ensure docx_to_qti.py is in the same folder
 
 app = Flask(__name__)
 
+# Ultimate UI Template with Tailwind CSS, JS File Management, and Loading States
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AUHSD QTI Converter</title>
+    <title>AUHSD QTI Converter Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .drop-zone--over { border-color: #3b82f6; background-color: #eff6ff; }
@@ -32,64 +33,63 @@ HTML_TEMPLATE = '''
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-6 font-sans">
-    <div class="max-w-3xl mx-auto space-y-6">
+<body class="bg-gray-100 min-h-screen p-4 md:p-10 font-sans">
+    <div class="max-w-4xl mx-auto space-y-8">
         
-        <div class="bg-white rounded-2xl shadow-xl p-10 border border-gray-200">
-            <div class="flex justify-between items-start mb-8">
-                <div>
-                    <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">AUHSD QTI Converter</h1>
-                    <p class="text-gray-500 mt-2">Convert Word (.docx) quizzes into LMS-ready QTI packages.</p>
+        <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-gray-100">
+            <div class="flex flex-col md:flex-row justify-between items-start mb-10">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-4xl font-black text-gray-900 tracking-tight">AUHSD QTI Converter</h1>
+                    <p class="text-gray-500 mt-2 text-lg">Batch convert Word documents to LMS-ready QTI packages.</p>
                 </div>
-                <a href="/download-template" class="text-sm font-semibold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Template
+                <a href="/download-template" class="inline-flex items-center px-5 py-3 bg-blue-50 text-blue-700 font-bold rounded-xl hover:bg-blue-100 transition duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Template
                 </a>
             </div>
 
             <form id="upload-form" action="/" method="post" enctype="multipart/form-data">
-                <div id="drop-zone" class="group border-2 border-dashed border-gray-300 rounded-xl p-12 text-center cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50 mb-8">
-                    <p class="text-gray-600 text-lg">Drag & drop files here or <span class="text-blue-600 font-semibold">browse</span></p>
+                <div id="drop-zone" class="group border-3 border-dashed border-gray-200 rounded-2xl p-16 text-center cursor-pointer transition-all hover:border-blue-400 hover:bg-blue-50/50 mb-8">
+                    <div class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                        <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    </div>
+                    <p class="text-xl text-gray-600">Drag & drop quiz files here or <span class="text-blue-600 font-bold underline">browse files</span></p>
                     <input type="file" name="files" id="file-input" multiple class="hidden" accept=".docx">
                 </div>
 
-                <div id="file-list" class="space-y-3 mb-8"></div>
+                <div id="file-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"></div>
 
-                <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition shadow-lg hidden flex items-center justify-center">
-                    <span id="btn-text">Convert & Download All</span>
+                <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-black py-5 rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 hidden transform hover:-translate-y-1">
+                    <span id="btn-text" class="text-lg uppercase tracking-widest">Convert & Download All</span>
                 </button>
             </form>
-            <div id="status-area" class="mt-4 text-center text-sm font-medium text-blue-600 hidden"></div>
+            
+            <div id="status-area" class="mt-6 text-center text-blue-600 font-bold hidden"></div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-md p-8 border border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
-                Formatting Requirements
+        <div class="bg-white rounded-3xl shadow-lg p-8 border border-gray-100">
+            <h2 class="text-2xl font-black text-gray-800 mb-6 flex items-center uppercase tracking-wide">
+                <span class="w-8 h-8 bg-yellow-400 text-white rounded-lg flex items-center justify-center mr-3 text-sm">?</span>
+                Formatting Guide
             </h2>
-            <div class="grid md:grid-cols-2 gap-6 text-sm">
-                <div class="space-y-2">
-                    <h3 class="font-bold text-gray-700 uppercase tracking-wider">1. Question Headers</h3>
-                    <p class="text-gray-600">Every question must start with the word <code class="bg-gray-100 px-1 rounded text-red-600">Question</code> followed by a number.</p>
-                    <div class="bg-gray-50 p-3 rounded border font-mono text-xs">
-                        Question 1<br>
-                        What is 2+2?
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+                <div class="p-4 bg-gray-50 rounded-xl">
+                    <h3 class="font-black text-blue-600 mb-2">Multiple Choice</h3>
+                    <p class="text-gray-600 leading-relaxed">Use <strong>Question X</strong> as a header. Mark correct answers with <strong>Yellow Highlight</strong> in Word.</p>
                 </div>
-                <div class="space-y-2">
-                    <h3 class="font-bold text-gray-700 uppercase tracking-wider">2. Correct Answers</h3>
-                    <p class="text-gray-600">Mark correct choices by using the <strong>Highlight tool</strong> (Yellow) in Word.</p>
-                    <div class="bg-gray-50 p-3 rounded border font-mono text-xs">
-                        A. 3<br>
-                        <span class="bg-yellow-200 px-1">B. 4</span>
-                    </div>
+                <div class="p-4 bg-gray-50 rounded-xl">
+                    <h3 class="font-black text-blue-600 mb-2">Matching</h3>
+                    <p class="text-gray-600 leading-relaxed">Place pairs on their own lines using the <code class="bg-blue-100 px-1 text-blue-800">-></code> separator. Example: <i>France -> Paris</i></p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-xl">
+                    <h3 class="font-black text-blue-600 mb-2">Fill in Blank</h3>
+                    <p class="text-gray-600 leading-relaxed">Use brackets <code class="bg-blue-100 px-1 text-blue-800">[ ]</code> in your sentence and list the answers below it.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ... (Same JavaScript as previous response) ...
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const fileList = document.getElementById('file-list');
@@ -122,8 +122,16 @@ HTML_TEMPLATE = '''
             fileList.innerHTML = '';
             selectedFiles.forEach((file, index) => {
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between bg-gray-50 border border-gray-200 p-4 rounded-lg';
-                item.innerHTML = `<span>${file.name}</span><button type="button" onclick="removeFile(${index})" class="text-red-500">✕</button>`;
+                item.className = 'flex items-center justify-between bg-white border border-gray-200 p-4 rounded-xl shadow-sm';
+                item.innerHTML = `
+                    <div class="flex items-center overflow-hidden">
+                        <div class="p-2 bg-blue-50 rounded-lg mr-3">
+                           <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 012-2h4.586A1 1 0 0111 2.414l4.293 4.293V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path></svg>
+                        </div>
+                        <span class="text-gray-700 font-bold truncate">${file.name}</span>
+                    </div>
+                    <button type="button" onclick="removeFile(${index})" class="text-gray-300 hover:text-red-500 transition-colors px-2 text-xl font-black">✕</button>
+                `;
                 fileList.appendChild(item);
             });
             submitBtn.classList.toggle('hidden', selectedFiles.length === 0);
@@ -136,9 +144,9 @@ HTML_TEMPLATE = '''
 
         form.onsubmit = (e) => {
             submitBtn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span>Processing...';
+            btnText.innerHTML = '<span class="spinner"></span>Processing Conversions...';
             statusArea.classList.remove('hidden');
-            statusArea.textContent = 'Generating individual QTI packages...';
+            statusArea.textContent = 'Packaging QTI XML and Media files...';
 
             const dataTransfer = new DataTransfer();
             selectedFiles.forEach(file => dataTransfer.items.add(file));
@@ -149,49 +157,87 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# ... (Rest of upload_file and download_template routes remain the same) ...
-
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         uploaded_files = request.files.getlist('files')
-        output_zips = []
+        if not uploaded_files or uploaded_files[0].filename == '':
+            return "No files selected", 400
+
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
+            output_zips = []
+
             for file in uploaded_files:
                 if file.filename.endswith('.docx'):
-                    safe_name = Path(file.filename).stem
+                    # Strip .docx to create a clean individual zip name
+                    clean_name = Path(file.filename).stem
                     input_docx = tmp_path / file.filename
                     file.save(str(input_docx))
-                    indiv_zip_path = tmp_path / f"{safe_name}_qti.zip"
-                    success = docx_to_qti.convert_docx_to_qti_zip(input_docx, indiv_zip_path)
-                    if success:
-                        output_zips.append(indiv_zip_path)
+                    
+                    # Create the individual zip package
+                    indiv_zip = tmp_path / f"{clean_name}_qti.zip"
+                    
+                    # Process via updated docx_to_qti.py engine
+                    if docx_to_qti.convert_docx_to_qti_zip(input_docx, indiv_zip):
+                        output_zips.append(indiv_zip)
 
             if not output_zips:
-                return "Conversion failed. Ensure your DOCX follows the Question/Highlight format.", 400
+                return "Conversion failed for all files. Check docx_to_qti.log for details.", 400
 
+            # Wrap individual quiz packages into a single batch zip
             master_zip_buffer = BytesIO()
             with zipfile.ZipFile(master_zip_buffer, 'w', zipfile.ZIP_DEFLATED) as master:
                 for z in output_zips:
                     master.write(z, arcname=z.name)
+            
             master_zip_buffer.seek(0)
-            return send_file(master_zip_buffer, mimetype='application/zip', as_attachment=True, download_name='qti_conversions.zip')
+            return send_file(
+                master_zip_buffer, 
+                mimetype='application/zip', 
+                as_attachment=True, 
+                download_name='batch_qti_export.zip'
+            )
+
     return render_template_string(HTML_TEMPLATE)
 
 @app.route('/download-template')
 def download_template():
+    """Generates a comprehensive template covering all question types."""
     from docx import Document
     from docx.enum.text import WD_COLOR_INDEX
+
     doc = Document()
-    doc.add_heading('QTI Formatting Example', 0)
-    doc.add_paragraph('Question 1') #
-    doc.add_paragraph('What color is the sky?')
-    doc.add_paragraph('A. Green')
-    ans = doc.add_paragraph('B. Blue')
-    ans.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW #
-    f = BytesIO(); doc.save(f); f.seek(0)
-    return send_file(f, as_attachment=True, download_name="QTI_Template.docx")
+    doc.add_heading('Ultimate QTI Template', 0)
+
+    # 1. Multiple Choice
+    doc.add_paragraph('Question 1')
+    doc.add_paragraph('What is the capital of Italy?')
+    ans1 = doc.add_paragraph('Rome')
+    ans1.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW
+    doc.add_paragraph('Milan')
+
+    # 2. Fill in the Blank
+    doc.add_paragraph('\nQuestion 2')
+    doc.add_paragraph('The process of plants making food is [photosynthesis].')
+    ans2 = doc.add_paragraph('Photosynthesis')
+    ans2.runs[0].font.highlight_color = WD_COLOR_INDEX.YELLOW
+
+    # 3. Matching
+    doc.add_paragraph('\nQuestion 3')
+    doc.add_paragraph('Match the inventor to the invention:')
+    doc.add_paragraph('Thomas Edison -> Light Bulb')
+    doc.add_paragraph('Alexander Bell -> Telephone')
+
+    # 4. Essay
+    doc.add_paragraph('\nQuestion 4')
+    doc.add_paragraph('Discuss the ethics of artificial intelligence in education.')
+
+    f = BytesIO()
+    doc.save(f)
+    f.seek(0)
+    return send_file(f, as_attachment=True, download_name="QTI_Master_Template.docx")
 
 if __name__ == '__main__':
+    # Listen on all IPs for Docker compatibility
     app.run(host='0.0.0.0', port=5000)
