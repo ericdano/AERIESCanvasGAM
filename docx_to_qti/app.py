@@ -15,7 +15,7 @@ HTML_TEMPLATE = '''
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QTI Converter Pro</title>
+    <title>QTI Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .drop-zone--over { border-color: #3b82f6; background-color: #eff6ff; }
@@ -23,7 +23,7 @@ HTML_TEMPLATE = '''
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-6">
     <div class="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">DOCX to QTI Converter</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">AUHSD DOCX to QTI Converter</h1>
         <p class="text-gray-600 mb-8">Convert your Word documents into QTI packages for Canvas, Moodle, or Blackboard.</p>
 
         <form id="upload-form" action="/" method="post" enctype="multipart/form-data">
