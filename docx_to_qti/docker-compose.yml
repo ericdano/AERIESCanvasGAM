@@ -1,0 +1,20 @@
+services:
+  qti-converter:
+    build: .
+    container_name: docx_qti_app
+    expose:
+      - "5000"
+    volumes:
+      # Map ONLY the log file, not the whole folder
+      # This ensures app.py and docx_to_qti.py remain visible in /app
+      - ./logs/docx_to_qti.log:/app/docx_to_qti.log
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - proxy-network # Ensure this matches your NPM network name
+
+networks:
+  proxy-network:
+    external: true
