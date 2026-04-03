@@ -126,9 +126,9 @@ if __name__ == '__main__':
     msgbody += f"{len(sql_query.index)} students in file uploaded.\n"
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = f"ERROR! {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     else:
-        msg['Subject'] = f"{configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     end_of_timer = timer()
     msgbody += f"\n\n Elapsed Time={end_of_timer - start_of_timer}\n"
     print("Prepared Subject Line:", msg['Subject'])
