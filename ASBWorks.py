@@ -135,6 +135,7 @@ if __name__ == '__main__':
     try:
         with smtplib.SMTP(configs['SMTPServerAddress'], timeout=15) as s:
             s.send_message(msg)
+            print(f"🟢 Message sent successfully.")
     except smtplib.SMTPRecipientsRefused as e:
         print(f"🔴 Error: All recipients were refused. Details: {e}")
         
