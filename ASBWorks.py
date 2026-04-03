@@ -126,9 +126,9 @@ if __name__ == '__main__':
     msgbody += str(len(sql_query.index)) + ' students in file uploaded.\n'
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = "🔴 ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = "🟢 " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
     end_of_timer = timer()
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)
