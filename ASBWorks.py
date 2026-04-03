@@ -93,7 +93,7 @@ if __name__ == '__main__':
     print(sql_query)
     sql_query.to_csv(dest_filename, index = False)
     thelogger.info('Update ASB Works->Wrote temp CSV to disk')
-    msgbody += "Got AERIES data, connecting to FTPS\n"
+    msgbody += f"Got AERIES data, connecting to FTPS\n"
     thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
     # Create the FTP Connection
     ftp = MyFTP_TLS()
@@ -111,26 +111,26 @@ if __name__ == '__main__':
     with open(dest_filename,"rb") as file:
         try:
             ftp.storbinary(f"STOR {dest_filename}", file)
-            msgbody += "Successfully uploaded CSV to ASB Works\n"
+            msgbody += f"Successfully uploaded CSV to ASB Works\n"
             thelogger.info('Update ASB Works->Uploaded CSV to FTPS')
         except:
             ftp.quit()
             os.remove(dest_filename)
-            msgbody += "Error uploading to ASB Works\n"
+            msgbody += f"Error uploading to ASB Works\n"
             WasThereAnError = True
             thelogger.error('Update ASB Works->Error Uploading to FTPS')
     ftp.quit()
     # Close ftp connection
     os.remove(dest_filename)
     # Remove temp file
-    msgbody += str(len(sql_query.index)) + ' students in file uploaded.\n'
+    msgbody += f"{len(sql_query.index)} students in file uploaded.\n"
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = "🔴 ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     else:
-        msg['Subject'] = "🟢 " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f"\n\n Elapsed Time={end_of_timer - start_of_timer}\n"
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
