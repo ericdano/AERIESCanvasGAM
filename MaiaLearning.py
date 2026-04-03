@@ -169,7 +169,7 @@ if __name__ == '__main__':
     sql_query.insert(0,'SchoolID',first_column)
     sql_query.to_csv(dest_filename,index=False)
     thelogger.info('Update Maia Learning->Wrote student temp CSV to disk')
-    msgbody += "Got AERIES data for Students\n"
+    msgbody += f"Got AERIES data for Students\n"
     # Now do the staff
     staff_query = f"""
         SELECT
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     sql_query_parents[["RemoveConnection"]]  = ""
     sql_query_parents.to_csv(dest_filename_parents,index=False)
     thelogger.info('Update Maia Learning->Wrote Parents temp CSV to disk')
-    msgbody += "Got AERIES data for Parents\n"
+    msgbody += f"Got AERIES data for Parents\n"
     # Now do the GPA
     old_gpa_query = f"""
         SELECT
@@ -425,17 +425,17 @@ if __name__ == '__main__':
         os.remove(dest_filename_gpa)
         os.remove(dest_filename_parents)
 
-    msgbody += str(len(sql_query.index)) + ' Student records in file uploaded.\n'
-    msgbody += str(len(sql_query_gpa.index)) + ' GPA records in file uploaded.\n'
-    msgbody += str(len(sql_query_staff.index)) + ' Staff records in file uploaded.\n'
-    msgbody += str(len(sql_query_parents.index)) + ' Parent records in file uploaded.\n'
-    #msgbody += str(len(sql_query_studentcounselors.index)) + ' Student-Counselor records in file uploaded.\n'
+    msgbody += f"{len(sql_query.index)} Student records in file uploaded.\n"
+    msgbody += f"{len(sql_query_gpa.index)} GPA records in file uploaded.\n"
+    msgbody += f"{len(sql_query_staff.index)} Staff records in file uploaded.\n"
+    msgbody += f"{len(sql_query_parents.index)} Parent records in file uploaded.\n"
+    #msgbody += f"{len(sql_query_studentcounselors.index)} Student-Counselor records in file uploaded.\n"
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Maia Learning Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Maia Learning Upload {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " Maia Learning Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} Maia Learning Upload {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f'\n\n Elapsed Time={end_of_timer - start_of_timer}\n'
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
