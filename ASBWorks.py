@@ -1,4 +1,4 @@
-import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging, socket
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from io import StringIO
