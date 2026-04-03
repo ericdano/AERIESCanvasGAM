@@ -1,4 +1,4 @@
-import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging, socket
 import fnmatch
 import paramiko
 from sqlalchemy.engine import URL
