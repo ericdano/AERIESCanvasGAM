@@ -61,7 +61,7 @@ def main():
     today = pendulum.now().add(days=3)
     start = today.start_of('week')
     end = today.end_of('week')
-    theweekof = "for the week of " + start.strftime('%B %d') + " to " + end.strftime('%B %d')
+    theweekof = f"for the week of {start.strftime('%B %d')} to {end.strftime('%B %d')}"
     df = pd.DataFrame(campuses, columns = ['campusname','contacts'])
     wordfile = xp.locate_wordfile('E:\PythonScripts\GuestPasswords.txt')
     mywords = xp.generate_wordlist(wordfile=wordfile,min_length=6,max_length=6)
