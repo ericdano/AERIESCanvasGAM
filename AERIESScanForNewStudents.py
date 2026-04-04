@@ -1,4 +1,4 @@
-import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging, requests, socket
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging, request, socket
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from ldap3 import Server, Connection, ALL
@@ -56,7 +56,6 @@ class GraylogGELFHTTPHandler(logging.Handler):
         except Exception:
             # Standard logging fallback to prevent log failures from crashing your app
             self.handleError(record)
-
 if __name__ == '__main__':
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
@@ -64,7 +63,7 @@ if __name__ == '__main__':
         configs = json.load(f)
     thelogger = logging.getLogger('MyLogger')
     thelogger.setLevel(logging.DEBUG)
-    handler = GraylogGELFHTTPHandler(configs['logserveraddress'])
+    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
     #prep status (msg) email
     s = smtplib.SMTP(configs['SMTPServerAddress'])
@@ -132,10 +131,10 @@ if __name__ == '__main__':
     """
 
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES New Student Scan " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " AERIES New Student Scan " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     msg.attach(MIMEText(html_body,'html'))
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    thelogger.info('AERIES Scan for New Students->Sent email with results')
+    thelogger.info('AERIES Scan for New Students->Sent Email with Results')
