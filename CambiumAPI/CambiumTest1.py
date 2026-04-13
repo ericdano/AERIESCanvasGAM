@@ -6,6 +6,14 @@ import pandas as pd
 from timeit import default_timer as timer
 from logging.handlers import SysLogHandler
 from datetime import datetime
+import urllib
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+
+"""
+Test of the API to grab all the current users in Onboarding, including their passphrases and expiration dates. This is a read-only operation, so we use GET and not POST or PUT.
+
+"""
 
 
 def get_access_token(base_url, client_id, client_secret):
@@ -83,6 +91,21 @@ def get_all_paginated_users(base_url, client_id, client_secret, api_server_url, 
         time.sleep(1.0) 
         
     return all_users
+
+def store_users_in_db(df, db_connection_string):
+    # Make sure dates are actual dates so SQL sees them correctly
+    if 'expiration' in df.columns:
+       df['expiration'] = pd.to_datetime(df['expiration'], errors='coerce')
+
+    # We use create_engine here; we don't need the 'engine' module import
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": db_connection_string})
+    sql_engine = create_engine(connection_url)
+    try:
+       df.to_sql('Current_Passwords', con=sql_engine, if_exists='replace', index=False, method='multi')
+       print("\n✅ Users stored in the database successfully!")
+    except Exception as e:
+       print(f"\n❌ Error occurred while storing users in the database: {e}")
+
 if __name__ == '__main__':
     # --- Configuration ---
     start_of_timer = timer()
@@ -98,8 +121,11 @@ if __name__ == '__main__':
     CLIENT_SECRET = configs['CambiumAPI_ClientSecret']
     PORTAL_NAME = configs['CambiumAPI_PortalName']
     BASE_URL = configs['CambiumAPI_URL']
-
+    print(confighome)
+    # Build the connection string using SQL Server Authentication
+    aeries_local_conn_str = "DRIVER={SQL Server};SERVER=aerieslink.acalanes.k12.ca.us\LOCAL_AUHSD;DATABASE=" + configs['LocalAERIES_Cambium_DB'] + ";UID=" + configs['LocalAERIES_Username'] + ";PWD=" + configs['LocalAERIES_Password'] + ";"
     print("Starting batch download...", flush=True)
+    thelogger.info('Cambium-User-Download ->Started')
 
     try:
         print("Authenticating...", flush=True)
@@ -120,10 +146,12 @@ if __name__ == '__main__':
         print(df.head())
         
         # Save it to a CSV so you don't have to download it again!
-        df.to_csv("acalanes_students.csv", index=False)
-        print("\n💾 Saved all users to 'acalanes_students.csv' in your current directory.")
-        
+        #df.to_csv("acalanes_students.csv", index=False)
+        #print("\n💾 Saved all users to 'acalanes_students.csv' in your current directory.")
+        store_users_in_db(df, aeries_local_conn_str)
+
     except Exception as err:
         print(f"\nAn error occurred: {err}", file=sys.stderr)
-
+    end_of_timer = timer()
+    thelogger.info('Cambium-User-Download ->Done!' + str(end_of_timer - start_of_timer))
     print("\nScript finished.", flush=True)
