@@ -7,6 +7,7 @@ services:
       MYSQL_DATABASE: canvas_data
       MYSQL_USER: canvas_user
       MYSQL_PASSWORD: canvas_password
+      TZ: America/Los_Angeles
     ports:
       - "3306:3306"
     volumes:
@@ -14,15 +15,30 @@ services:
 
   web:
     build: .
+    restart: always
     ports:
       - "8501:8501"
     environment:
       - DATABASE_URL=mysql+pymysql://canvas_user:canvas_password@db:3306/canvas_data
+      - TZ=America/Los_Angeles
     depends_on:
       - db
     volumes:
-      # Maps your Mac's local ~/.Acalanes folder to the container's home folder
       - ~/.Acalanes:/root/.Acalanes:ro 
+
+  # NEW: The Background Worker
+  scheduler:
+    build: .
+    restart: always
+    # Tells Docker to run our new sync script instead of launching a second web UI
+    command: python sync.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://canvas_user:canvas_password@db:3306/canvas_data
+      - TZ=America/Los_Angeles
+    depends_on:
+      - db
+    volumes:
+      - ~/.Acalanes:/root/.Acalanes:ro
 
 volumes:
   mysql_data:
