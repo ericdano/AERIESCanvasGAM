@@ -70,8 +70,6 @@ existing_syncs = get_sync_dates()
 
 # --- Authentication Logic ---
 def authenticate_user(username, password):
-    # Configure TLS to accept the encrypted connection without strictly
-    # validating the internal domain certificate against public authorities.
     tls_config = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
     server = Server(AD_SERVER, 
                     port=AD_PORT,
@@ -79,14 +77,10 @@ def authenticate_user(username, password):
                     tls=tls_config,
                     get_info=ALL
                 )
-    # Format the username for AD binding (e.g., DOMAIN\username)
     user_principal = f"{AD_DOMAIN}\\{username}"
     
     try:
-        # Attempt to bind to AD using the user's provided credentials
         conn = Connection(server, user=user_principal, password=password, auto_bind=True)
-        
-        # If bind is successful, search to see if they are in the required group
         search_filter = f"(&(objectclass=person)(sAMAccountName={username})(memberOf={AD_REQUIRED_GROUP}))"
         
         conn.search(
@@ -123,7 +117,7 @@ if not st.session_state.authenticated:
                 if is_auth:
                     st.session_state.authenticated = True
                     st.session_state.username = username_input
-                    st.rerun() # Refresh the page to load the main app
+                    st.rerun() 
                 else:
                     st.error(message)
             else:
@@ -131,73 +125,113 @@ if not st.session_state.authenticated:
 
 else:
     # --- Show Main Application ---
-    st.sidebar.header("Data Sync Setup")
+    st.sidebar.header("Dashboard Controls")
     st.sidebar.success(f"✅ Logged in as: {st.session_state.username}")
     
-    # --- Log Out Button ---
     if st.sidebar.button("Log Out"):
         st.session_state.authenticated = False
         st.session_state.username = None
         st.rerun()
         
-    st.sidebar.info(f"**Account ID:** {ACCOUNT_ID}\n\n**Term IDs:** {', '.join(map(str, TARGET_TERM_IDS))}")
+    st.sidebar.divider()
 
     if not existing_syncs:
         st.info("The database is currently empty. The automated background sync is scheduled to run at 6:30 AM.")
         st.markdown("Please check back after the sync completes.")
     else:
-        tab1, tab2 = st.tabs(["🗄️ Data Viewer", "📈 Analytics & Trends"])
+        # --- Sidebar Filters ---
+        selected_sync = st.sidebar.selectbox(
+            "Select Data Sync Date:", 
+            options=existing_syncs,
+            index=0 
+        )
+        
+        view_mode = st.sidebar.radio(
+            "Explore Data By:", 
+            options=["Course", "Student"]
+        )
+
+        tab1, tab2 = st.tabs(["🗄️ Interactive Data Explorer", "📈 Analytics & Trends"])
         
         with tab1:
-            st.subheader("Historical Grade Viewer")
-            selected_sync = st.selectbox(
-                "Select a Data Sync Date to View:", 
-                options=existing_syncs,
-                index=0 
-            )
-            
             if selected_sync:
                 query = f"SELECT * FROM student_grades WHERE sync_timestamp = '{selected_sync}'"
                 historical_df = pd.read_sql(query, con=db_url)
                 
-                st.write(f"Showing **{len(historical_df)}** records from the sync on: **{selected_sync}**")
-                st.info("👆 **Click the checkbox on the far-left edge of any row** to automatically pull that Course's Roster and that Student's Report Card.")
-                
-                event = st.dataframe(
-                    historical_df, 
-                    use_container_width=True,
-                    on_select="rerun", 
-                    selection_mode="single-row",
-                    hide_index=False
-                )
-                
-                selected_rows = event.selection.rows
-                
-                if selected_rows:
-                    row_idx = selected_rows[0]
-                    selected_course = historical_df.iloc[row_idx]['course_name']
-                    selected_student = historical_df.iloc[row_idx]['student_name']
+                if view_mode == "Student":
+                    st.subheader("🧑‍🎓 Step 1: Select a Student")
+                    st.info("👆 Click the checkbox next to a student to view their report card.")
                     
-                    st.divider()
-                    st.subheader("🔍 Instant Drill-Down")
+                    # Create a dataframe of unique student names
+                    unique_students = historical_df[['student_name']].drop_duplicates().sort_values('student_name').reset_index(drop=True)
                     
-                    col1, col2 = st.columns(2)
+                    event_top = st.dataframe(
+                        unique_students, 
+                        use_container_width=True,
+                        on_select="rerun", 
+                        selection_mode="single-row",
+                        hide_index=False
+                    )
                     
-                    with col1:
-                        st.markdown(f"**Course Roster: {selected_course}**")
-                        course_df = historical_df[historical_df['course_name'] == selected_course]
-                        st.dataframe(
-                            course_df[['student_name', 'current_score', 'current_grade']].reset_index(drop=True), 
-                            use_container_width=True
-                        )
+                    if event_top.selection.rows:
+                        selected_student = unique_students.iloc[event_top.selection.rows[0]]['student_name']
                         
-                    with col2:
-                        st.markdown(f"**Report Card: {selected_student}**")
+                        st.divider()
+                        st.subheader(f"📊 Step 2: Report Card for {selected_student}")
+                        
+                        # Filter to show only that student's grades
                         student_df = historical_df[historical_df['student_name'] == selected_student]
                         st.dataframe(
                             student_df[['course_name', 'instructors', 'current_score', 'current_grade']].reset_index(drop=True), 
                             use_container_width=True
                         )
+
+                elif view_mode == "Course":
+                    st.subheader("🏫 Step 1: Select a Course")
+                    st.info("👆 Click the checkbox next to a course to view its roster and grades.")
+                    
+                    # Create a dataframe of unique course names
+                    unique_courses = historical_df[['course_name']].drop_duplicates().sort_values('course_name').reset_index(drop=True)
+                    
+                    event_top = st.dataframe(
+                        unique_courses, 
+                        use_container_width=True,
+                        on_select="rerun", 
+                        selection_mode="single-row",
+                        hide_index=False
+                    )
+                    
+                    if event_top.selection.rows:
+                        selected_course = unique_courses.iloc[event_top.selection.rows[0]]['course_name']
+                        
+                        st.divider()
+                        st.subheader(f"📋 Step 2: Roster for {selected_course}")
+                        st.info("👆 Click the checkbox next to any student below to pull up their full cross-course report card.")
+                        
+                        # Filter to show only the students in that course
+                        course_df = historical_df[historical_df['course_name'] == selected_course][['student_name', 'current_score', 'current_grade']].reset_index(drop=True)
+                        
+                        event_bottom = st.dataframe(
+                            course_df, 
+                            use_container_width=True,
+                            on_select="rerun", 
+                            selection_mode="single-row",
+                            hide_index=False
+                        )
+                        
+                        # THE DEEP DIVE WINDOW
+                        if event_bottom.selection.rows:
+                            selected_student_deep = course_df.iloc[event_bottom.selection.rows[0]]['student_name']
+                            
+                            st.divider()
+                            st.subheader(f"🗂️ Step 3: Deep Dive - {selected_student_deep}'s Full Report Card")
+                            
+                            # Filter to show the clicked student's grades across ALL their courses
+                            deep_student_df = historical_df[historical_df['student_name'] == selected_student_deep]
+                            st.dataframe(
+                                deep_student_df[['course_name', 'instructors', 'current_score', 'current_grade']].reset_index(drop=True), 
+                                use_container_width=True
+                            )
 
         with tab2:
             st.subheader("Average Score Trends Over Time")
