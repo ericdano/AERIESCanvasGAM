@@ -1,6 +1,7 @@
+import socket
 from ssl import ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE
 import pandas as pd
-import os, sys, shlex, subprocess, json, logging, gam, smtplib, datetime
+import os, sys, shlex, subprocess, json, logging, gam, smtplib, datetime, socket
 from pathlib import Path
 from logging.handlers import SysLogHandler
 from canvasapi import Canvas
@@ -42,14 +43,14 @@ def DisableCanvasLogins(dataframe,configs):
         user = canvas.get_user(str(dataframe['email'][d]),'sis_login_id')
         try:  
           user.edit(user={'event': 'suspend'})
-          msgbody += 'Disabled Canvas for ->' + str(dataframe['email'][d]) + '\n'  
-          thelogger.info('ExpireADAccounts->Disabled Canvas for ->' + str(dataframe['email'][d]))
+          msgbody += f"Disabled Canvas for ->{dataframe['email'][d]}\n"
+          thelogger.info(f"ExpireADAccounts->Disabled Canvas for ->{dataframe['email'][d]}")
         except CanvasException as g:
-          msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(g) + '\n'  
-          thelogger.info('ExpireADAccounts->Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(g))
+          msgbody += f"Error Disabling with Canvas ->{dataframe['email'][d]} {g}\n"
+          thelogger.info(f"ExpireADAccounts->Error Disabling with Canvas ->{dataframe['email'][d]} {g}")
       except CanvasException as e:
-        msgbody += 'Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e) + '\n'  
-        thelogger.info('ExpireADAccounts->Error Disabling with Canvas ->' + str(dataframe['email'][d]) + ' ' + str(e))
+        msgbody += f"Error Disabling with Canvas ->{dataframe['email'][d]} {e}\n"
+        thelogger.info(f"ExpireADAccounts->Error Disabling with Canvas ->{dataframe['email'][d]} {e}")
 
 def modifyADUsers(dataframe,configs):
   for d in dataframe.index:
@@ -95,19 +96,19 @@ def DisableGoogle(dataframe):
       gam.initializeLogging()
       stat = gam.CallGAMCommand(['gam','update', 'user', str(dataframe['email'][d]), 'suspended', 'on', 'ou', '/Former Staff'])
       if stat != 0:
-        msgbody += 'Error with Google suspending ' + str(dataframe['email'][d]) + '\n'
+        msgbody += f"Error with Google suspending {dataframe['email'][d]}\n"
         thelogger.info('ExpireADAccounts->Error with Google suspending ' + str(dataframe['email'][d]))
       else:
-        msgbody += 'Suspended Google Account->' + str(dataframe['email'][d]) + '\n'
+        msgbody += f"Suspended Google Account->{dataframe['email'][d]}\n"
         thelogger.info('ExpireADAccounts->Suspended Google Account->' + str(dataframe['email'][d]))
       # Also at this point, delete them from any google groups they are in
       stat = gam.CallGAMCommand(['gam','user', str(dataframe['email'][d]), 'delete', 'groups'])
       if stat != 0:
-        msgbody += 'Error with Google removing groups from ' + str(dataframe['email'][d]) + '\n'
-        thelogger.info('ExpireADAccounts->Error with Google removing groups from ' + str(dataframe['email'][d]))
+        msgbody += f"Error with Google removing groups from {dataframe['email'][d]}\n"
+        thelogger.info(f"ExpireADAccounts->Error with Google removing groups from {dataframe['email'][d]}")
       else:
-        msgbody += 'Removed Google groups from account->' + str(dataframe['email'][d]) + '\n'
-        thelogger.info('ExpireADAccounts->Removed Google groups from account->' + str(dataframe['email'][d]))
+        msgbody += f"Removed Google groups from account->{dataframe['email'][d]}\n"
+        thelogger.info(f"ExpireADAccounts->Removed Google groups from account->{dataframe['email'][d]}")
       
         
 def main():
@@ -119,7 +120,7 @@ def main():
   handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
   thelogger.addHandler(handler)
   thelogger.info('ExpireADAccounts->Connecting to Zeus...')
-  msgbody += 'Checking domain server Zeus....\n'
+  msgbody += f'Checking domain server Zeus....\n'
   users = getADSearch('zeus','AUHSD Staff',configs)
  # print(users.entries)
   df = pd.DataFrame(columns = ['DN','email','domain'])
@@ -144,8 +145,8 @@ def main():
                           'domain': 'zeus'}])
         df = pd.concat([df,tempDF], axis=0, ignore_index=True)
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})\n"
-        thelogger.info('ExpireADAccounts->' + f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})")
-  msgbody += 'Checking domain server Paris....\n'
+        thelogger.info(f"ExpireADAccounts->Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Zeus whos account is expired but not disabled ({user['dn']})")
+  msgbody += f'Checking domain server Paris....\n'
   thelogger.info('ExpireADAccounts->Connecting to Paris...')
   users2 = getADSearch('paris','Acad Staff,DC=staff',configs)
 # Now check the staff domain
@@ -163,19 +164,45 @@ def main():
         msgbody += f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})\n"
         thelogger.info('ExpireADAccounts->' + f"Found user->{user['attributes']['sAMAccountName']} {user['attributes']['mail']} on Paris whos account is expired but not disabled ({user['dn']})")
   if df.empty:
-    msgbody += 'No Accounts are expired. Nothing to do. We will try again later....\n'
+    msgbody += f'No Accounts are expired. Nothing to do. We will try again later....\n'
     thelogger.info('ExpireADAccounts->No Accounts found that are expiring')
   else:
     modifyADUsers(df,configs)
     DisableGoogle(df)
     #DisableCanvasLogins(df,configs)
   msg = EmailMessage()
-  msg['Subject'] = str(configs['SMTPStatusMessage'] + " Look for expired accounts script " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+  msg['Subject'] = f"{configs['SMTPStatusMessage']} Look for expired accounts script {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
   msg['From'] = configs['SMTPAddressFrom']
   msg['To'] = configs['SendInfoEmailAddr']
   msg.set_content(msgbody)
-  s = smtplib.SMTP(configs['SMTPServerAddress'])
-  s.send_message(msg)
+  try:
+    with smtplib.SMTP(configs['SMTPServerAddress'], timeout=15) as s:
+      s.send_message(msg)
+      print(f"🟢 Message sent successfully.")
+  except smtplib.SMTPRecipientsRefused as e:
+    print(f"🔴 Error: All recipients were refused. Details: {e}")
+        
+  except smtplib.SMTPSenderRefused as e:
+    print(f"🔴 Error: The sender address was refused. Details: {e}")
+        
+  except smtplib.SMTPDataError as e:
+    print(f"🔴 Error: The server replied with an unexpected error code. Details: {e}")
+
+  except socket.gaierror as e:
+    print(f"🔴 Connection Error: Could not resolve the server address '{configs['SMTPServerAddress']}'. Details: {e}")
+
+  except ConnectionRefusedError as e:
+    print(f"🔴 Connection Error: The server actively refused the connection. Details: {e}")
+        
+  except smtplib.SMTPException as e:
+    # This is the base class for all smtplib errors. It acts as a catch-all 
+    # for any SMTP issues not explicitly caught above.
+    print(f"🔴 General SMTP Error: {e}")
+
+  except Exception as e:
+      # Catch-all for non-SMTP errors (e.g., your internet goes down entirely)
+      print(f"🔴 An unexpected system error occurred: {e}")
+  # Send email message to people monitoring this script
   print('Done')
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ if __name__ == '__main__':
     msg['To'] = 'edannewitz@auhsdschools.org'
     
     WasThereAnError = False
-    thelogger.info('AERIES Scan for New Students->Connecting To AERIESa')
+    thelogger.info(f'AERIES-Scan-for-New-Students ->Connecting To AERIES database {configs["AERIESDatabase"]} ')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -89,15 +89,12 @@ if __name__ == '__main__':
         </body>
         </html>
     """
-    #sql_query.to_csv(dest_filename, index = False)
-    #thelogger.info('AERIES Scan for New Students->Wrote temp CSV to disk')
-    #thelogger.info('AERIES Scan for New Students->Connecting to ASB Works via FTPS')
-    #exit(1)
 
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AERIES New Student Scan " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " AERIES New Student Scan " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     msg.attach(MIMEText(html_body,'html'))
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
+    thelogger.info('AERIES-Scan-for-New-Students ->Sent Email with Results')

@@ -42,14 +42,14 @@ if __name__ == '__main__':
     server = '45.56.111.20'
     user = configs['GuardianUserName']
     passwd = configs['GuardianPassword']
-    dest_filename_students = "students-" + str(datetime.now().strftime('%Y')) + "-" + str(datetime.now().strftime('%m')) + "-" + str(datetime.now().strftime('%d')) + ".csv"
-    dest_filename_employees = "employees-" + str(datetime.now().strftime('%Y')) + "-" + str(datetime.now().strftime('%m')) + "-" + str(datetime.now().strftime('%d')) + ".csv"
-    thelogger.info('Update Guardian ->Starting Guardian  Script')
-    msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+    dest_filename_students = f"students-{datetime.now().strftime('%Y')}-{datetime.now().strftime('%m')}-{datetime.now().strftime('%d')}.csv"
+    dest_filename_employees = f"employees-{datetime.now().strftime('%Y')}-{datetime.now().strftime('%m')}-{datetime.now().strftime('%d')}.csv"
+    thelogger.info('Update-Guardian ->Starting Guardian Script')
+    msgbody += f'Using Database->{str(configs["AERIESDatabase"])}\n'
 
     # Get AERIES Data
     os.chdir('E:\\PythonTemp')
-    thelogger.info('Update Guardian ->Connecting To AERIES to get ALL students Data')
+    thelogger.info('Update-Guardian ->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -185,9 +185,9 @@ if __name__ == '__main__':
     sql_query_student.to_csv(dest_filename_students, index = False)
     sql_query_staff.to_csv(dest_filename_employees, index = False)
 
-    thelogger.info('Guardian ->Wrote temp CSV to disk')
+    thelogger.info('Update-Guardian ->Wrote temp CSV to disk')
     msgbody += "Got AERIES data, connecting to FTPS\n"
-    thelogger.info('Guardian ->Connecting to Guardian s via FTPS')
+    thelogger.info('Update-Guardian ->Connecting to Guardian s via FTPS')
     #print(server)
     #hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     #print(hostkeys)
@@ -197,13 +197,13 @@ if __name__ == '__main__':
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # AUTO add key
     ssh.connect(hostname=server,username=user, password=passwd)
     sftp = ssh.open_sftp()
-    thelogger.info('Update Guardian->Connected to FTPS')
+    thelogger.info('Update-Guardian ->Connected to FTPS')
     sftp.put(dest_filename_students,'files/' + dest_filename_students)
     sftp.put(dest_filename_employees,'files/' + dest_filename_employees)
     # Staff Upload------------------------
     #     fileToUploadstaff = {dest_filename_employees:str("files/")+dest_filename_employees}
-    thelogger.info('Update Guardian Staff->Uploading Staff')
-    thelogger.info('Update Guardian ->Removing CSV files')
+    thelogger.info('Update-Guardian ->Uploading Staff')
+    thelogger.info('Update-Guardian ->Removing CSV files')
     sftp.close()
     ssh.close()
     DontDelete = False
@@ -212,11 +212,11 @@ if __name__ == '__main__':
         os.remove(dest_filename_students)
     msgbody += str(len(sql_query_student.index)) + ' students in file uploaded.\n'
     msgbody += str(len(sql_query_staff.index)) + ' staff in file uploaded.\n'
-    thelogger.info('Update Guardian ->Closed FTP and deleted temp CSV')
+    thelogger.info('Update-Guardian ->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Guardian  " + datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f'🔴 ERROR! {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}'
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " Guardian  " + datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f'🟢 {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}'
     end_of_timer = timer()
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)

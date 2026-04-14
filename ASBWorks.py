@@ -1,4 +1,4 @@
-import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging
+import io, ftplib, ssl, sys, os, datetime, json, smtplib, logging, socket
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from io import StringIO
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     print(sql_query)
     sql_query.to_csv(dest_filename, index = False)
     thelogger.info('Update ASB Works->Wrote temp CSV to disk')
-    msgbody += "Got AERIES data, connecting to FTPS\n"
+    msgbody += f"Got AERIES data, connecting to FTPS\n"
     thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
     # Create the FTP Connection
     ftp = MyFTP_TLS()
@@ -111,29 +111,55 @@ if __name__ == '__main__':
     with open(dest_filename,"rb") as file:
         try:
             ftp.storbinary(f"STOR {dest_filename}", file)
-            msgbody += "Successfully uploaded CSV to ASB Works\n"
+            msgbody += f"Successfully uploaded CSV to ASB Works\n"
             thelogger.info('Update ASB Works->Uploaded CSV to FTPS')
         except:
             ftp.quit()
             os.remove(dest_filename)
-            msgbody += "Error uploading to ASB Works\n"
+            msgbody += f"Error uploading to ASB Works\n"
             WasThereAnError = True
             thelogger.error('Update ASB Works->Error Uploading to FTPS')
     ftp.quit()
     # Close ftp connection
     os.remove(dest_filename)
     # Remove temp file
-    msgbody += str(len(sql_query.index)) + ' students in file uploaded.\n'
+    msgbody += f"{len(sql_query.index)} students in file uploaded.\n"
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " ASB Works Upload " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f"\n\n Elapsed Time={end_of_timer - start_of_timer}\n"
+    print("Prepared Subject Line:", msg['Subject'])
     msg.set_content(msgbody)
-    s = smtplib.SMTP(configs['SMTPServerAddress'])
-    s.send_message(msg)
+    try:
+        with smtplib.SMTP(configs['SMTPServerAddress'], timeout=15) as s:
+            s.send_message(msg)
+            print(f"🟢 Message sent successfully.")
+    except smtplib.SMTPRecipientsRefused as e:
+        print(f"🔴 Error: All recipients were refused. Details: {e}")
+        
+    except smtplib.SMTPSenderRefused as e:
+        print(f"🔴 Error: The sender address was refused. Details: {e}")
+        
+    except smtplib.SMTPDataError as e:
+        print(f"🔴 Error: The server replied with an unexpected error code. Details: {e}")
+        
+    except socket.gaierror as e:
+        print(f"🔴 Connection Error: Could not resolve the server address '{configs['SMTPServerAddress']}'. Details: {e}")
+
+    except ConnectionRefusedError as e:
+        print(f"🔴 Connection Error: The server actively refused the connection. Details: {e}")
+        
+    except smtplib.SMTPException as e:
+        # This is the base class for all smtplib errors. It acts as a catch-all 
+        # for any SMTP issues not explicitly caught above.
+        print(f"🔴 General SMTP Error: {e}")
+
+    except Exception as e:
+        # Catch-all for non-SMTP errors (e.g., your internet goes down entirely)
+        print(f"🔴 An unexpected system error occurred: {e}")
     # Send email message to people monitoring this script
     # Done
     print('Done!')

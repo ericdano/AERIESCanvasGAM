@@ -17,7 +17,6 @@ def main():
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
-    #Logging
     thelogger = logging.getLogger('MyLogger')
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
@@ -26,23 +25,23 @@ def main():
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
-    thelogger.info('DisableStudentVacationResponder->Running GAM')
+    thelogger.info('Disable-Student-Vacation-Responder ->Running GAM')
     stat1 = gam.CallGAMCommand(['gam','ou_and_children','/Students','vacation','off'])
 #    gamstring2 = "E:\\GAMADV-XTD3\\gam.exe ou_and_children '/Students' vacation off"
-    msgbody = 'Turned off vacation responders on STUDENT OU. Gam Status->' + str(stat1) + '\n' 
-    msgbody+='Done!'
-    thelogger.info('DisableStudentVacationResponder->Done Syncing to Google Groups')
+    msgbody = f'Turned off vacation responders on STUDENT OU. Gam Status-> {stat1}\n Done!' 
+
+    thelogger.info('Disable-Student-Vacation-Responder ->Done Syncing to Google Groups')
     if stat1 !=0:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Disable Student Vacation Responder " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Disable Student Vacation Responder {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " Disable Student Vacation Responder " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} Disable Student Vacation Responder {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f'\n\n Elapsed Time={end_of_timer - start_of_timer}\n'
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    thelogger.info('DisableStudentVacationResponder->Sent status message')
-    thelogger.info('DisableStudentVacationResponder->Done - Took ' + str(end_of_timer - start_of_timer))
+    thelogger.info(f'Disable-Student-Vacation-Responder ->Sent status message')
+    thelogger.info(f'Disable-Student-Vacation-Responder ->Done - Took {end_of_timer - start_of_timer}')
 
 if __name__ == '__main__':
   main()

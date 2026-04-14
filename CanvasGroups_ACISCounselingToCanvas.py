@@ -58,8 +58,8 @@ else:
     thelogger.addHandler(handler)
 
 CounselorCSV = Path.home() / ".Acalanes" / "ACISCanvasCounselingGroups.csv"
-thelogger.info('Canvas ACIS Groups for Counselors->Loaded config file and logfile started for AUHSD Counseling Canvas')
-thelogger.info('Canvas ACIS Groups for Counselors->Loading Counseling CSV file')
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Loaded config file and logfile started for AUHSD Counseling Canvas')
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Loading Counseling CSV file')
 #prep status (msg) email
 msg = EmailMessage()
 MessageSub1 = str(configs['SMTPStatusMessage'] + " AUHSD ACIS Counseling To Canvas " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -82,11 +82,11 @@ Canvas_API_URL = configs['CanvasAPIURL']
 #----------------------------------------
 
 Canvas_API_KEY = configs['CanvasAPIKey']
-thelogger.info('Canvas ACIS Groups for Counselors->Connecting to Canvas')
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Connecting to Canvas')
 canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
 account = canvas.get_account(1)
 # Go through the counseling list, then add or remove students from groups
-msgbody += 'Starting Canvas Counselor Groups for AUHSD Script\n'
+msgbody += 'Starting Canvas-ACIS-Groups-for-Counselors ->Script\n'
 
 for i in CounselorCanvasSection.index:
   CounselorEmail = CounselorCanvasSection['email'][i]
@@ -119,7 +119,7 @@ for i in CounselorCanvasSection.index:
     AND GR = '{GradeToGet}'
   """
   aeriesSQLData = pd.read_sql_query(the_query,engine)
-  thelogger.info('Canvas ACIS Groups for Counselors->Making SET of Aeries IDs')
+  thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Making SET of Aeries IDs')
   # Now go get the group off Canvas
   msgbody += f"Getting exisiting users from group id->{CanvasSectionID}\n"
   # Used to DELETE students from course and sections
@@ -143,7 +143,7 @@ for i in CounselorCanvasSection.index:
     if str(e) == "'NoneType' object is not iterable":
       print(f"No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
       msgbody += f"No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways\n"
-      thelogger.info(f"Canvas Groups for Counselors->No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
+      thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->No students in section {section} CanvasSectionID->{CounselorCanvasSection['CanvasSectionID'][i]}, will try to add students anyways")
   
   #----------------
   # End of new Counselor section
@@ -156,7 +156,7 @@ for i in CounselorCanvasSection.index:
   print('Students in Canvas not in AERIES')
   print(studentsincanvasnotinaeries)
   for student in studentsincanvasnotinaeries:
-    thelogger.info(f"Canvas ACIS Groups for Counselors->Looking up student->{student} in Canvas")
+    thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->Looking up student->{student} in Canvas")
     msgbody += f"Looking up student->{student} in Canvas to delete from course\n"
     print(f"Looking up student->{student} in Canvas to delete from course")
     try:
@@ -166,7 +166,7 @@ for i in CounselorCanvasSection.index:
         print(f"Cannot find user sis_id->{student}")
         msgbody += f"<b>Canvas cannot find user sis_id->{student}, might be a new student who is not in Canvas yet</b>\n"
         WasThereAnErr = True
-        thelogger.info('Canvas ACIS Groups for Counselors->Cannot find user sis_id->'+str(student))
+        thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->Cannot find user sis_id->{student}")
     else:
       lookfordelete = False
       try:
@@ -182,10 +182,10 @@ for i in CounselorCanvasSection.index:
         if str(e) == "Not Found":
             print(f"User not in group CanvasID->{user.id} sis_id->{student}")
             msgbody += f"User not in group CanvasID->{user.id} sis_id->{student}\n"
-            thelogger.info(f"Canvas ACIS Groups for Counselors->Some sort of exception happened when removing student->{student} from Group")
+            thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->Some sort of exception happened when removing student->{student} from Group")
       print(f"Removed Student->{student} from Canvas group")
       msgbody += f"Removed Student->{student} from Canvas group\n"
-      thelogger.info(f"Canvas ACIS Groups for Counselors->Removed Student->{student} from Canvas group")
+      thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->Removed Student->{student} from Canvas group")
   # Now add students to group
   # Get the course then loop adding students
   SectionToAddTo = canvas.get_section(CounselorCanvasSection['CanvasSectionID'][i])
@@ -203,18 +203,18 @@ for i in CounselorCanvasSection.index:
                     )
     print(f"Added Student id->{student} to Canvas group->{CanvasSectionID}")
     msgbody += f"Added Student id->{student} to Canvas group->{CanvasSectionID}\n"
-    thelogger.info(f"Canvas ACIS Groups for Counselors->Added Student id->{student} to Canvas group->{CanvasSectionID}")
-thelogger.info('Canvas ACIS Groups for Counselors->Closed AERIES connection')
+    thelogger.info(f"Canvas-ACIS-Groups-for-Counselors ->Added Student id->{student} to Canvas group->{CanvasSectionID}")
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Closed AERIES connection')
 msgbody+='Done!'
 end_of_timer = timer()
 if WasThereAnErr:
-  msg['Subject'] = "Error! - " + MessageSub1
+  msg['Subject'] = f'🔴 Error! - {MessageSub1}'
 else:
-  msg['Subject'] = MessageSub1
+  msg['Subject'] = f'🟢 {MessageSub1}'
 msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
-thelogger.info('Canvas ACIS Groups for Counselors->Sent Status Message')
-thelogger.info('Canvas ACIS Groups for Counselors->Done!' + str(end_of_timer - start_of_timer))
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Sent Status Message')
+thelogger.info('Canvas-ACIS-Groups-for-Counselors ->Done!' + str(end_of_timer - start_of_timer))
 print('Done!!!')

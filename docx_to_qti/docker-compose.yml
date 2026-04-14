@@ -2,20 +2,19 @@ services:
   qti-converter:
     build: .
     container_name: docx_qti_app
-    # We no longer strictly need to expose 5000 to the host 
-    # because NPM will talk to it inside the Docker network.
     expose:
       - "5000"
     volumes:
-      - ./logs:/app
+      # Map ONLY the log file, not the whole folder
+      # This ensures app.py and docx_to_qti.py remain visible in /app
+      - ./logs/docx_to_qti.log:/app/docx_to_qti.log
     environment:
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     networks:
-      - npm-network
+      - proxy-network # Ensure this matches your NPM network name
 
 networks:
-  npm-network:
+  proxy-network:
     external: true
-    name: proxy-network # Replace with your actual NPM network name
