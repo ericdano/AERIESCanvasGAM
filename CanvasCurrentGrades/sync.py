@@ -21,9 +21,9 @@ try:
     TARGET_TERM_IDS = configs.get('TargetTermIDs')
     
     # Email Configs
-    SMTP_SERVER = configs.get('SMTP_Server', 'host.docker.internal')
-    EMAIL_FROM = configs.get('Email_From', 'no-reply@localhost')
-    EMAIL_TO = configs.get('Email_To')
+    SMTP_SERVER = configs.get('SMTPServerAddress', 'host.docker.internal')
+    EMAIL_FROM = 'donotreply@auhsdschools.org'
+    EMAIL_TO = configs.get('SendInfoEmailAddr')
 except Exception as e:
     print(f"Error loading config: {e}")
     exit(1)
