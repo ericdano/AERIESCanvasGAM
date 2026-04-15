@@ -59,5 +59,6 @@ if __name__ == '__main__':
     pwd = configs['LocalAERIES_Password']
 
     # The connection string using the direct port
-    aeries_local_conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};DATABASE={db_name};UID={uid};PWD={pwd};"
+    aeries_local_conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};DATABASE={db_name};UID={uid};PWD={pwd};TrustServerCertificate=yes;"
+ 
     store_users_in_db(df, aeries_local_conn_str)

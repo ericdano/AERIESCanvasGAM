@@ -3,6 +3,7 @@ pandas
 numpy
 streamlit>=1.35.0
 SQLAlchemy>=2.0.36
+pyodbc==5.1.0
 pymysql==1.1.0
 cryptography==42.0.5
 ldap3==2.9.1
