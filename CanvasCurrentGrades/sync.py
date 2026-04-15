@@ -1,3 +1,4 @@
+import urllib.parse
 import os
 import time
 import json
@@ -27,9 +28,22 @@ try:
 except Exception as e:
     print(f"Error loading config: {e}")
     exit(1)
-
 # --- Database Connection ---
-db_url = os.getenv("DATABASE_URL", "mysql+pymysql://canvas_user:canvas_password@db:3306/canvas_data")
+server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
+db_name = configs.get('CanvasGradesDB')
+uid = configs.get('LocalAERIES_Username')
+pwd = configs.get('LocalAERIES_Password')
+
+if not db_name or not uid or not pwd:
+    st.error("Missing Aeries MSSQL Database credentials in Acalanes.json")
+    st.stop()
+
+# Safely encode the connection string for SQLAlchemy
+odbc_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};DATABASE={db_name};UID={uid};PWD={pwd};TrustServerCertificate=yes;"
+params = urllib.parse.quote_plus(odbc_str)
+
+db_url = f"mssql+pyodbc:///?odbc_connect={params}"
+engine = create_engine(db_url)
 
 # --- Email Notification Function ---
 def send_status_email(subject, body):
