@@ -1,4 +1,3 @@
-
 import os
 import time
 import json
@@ -6,9 +5,9 @@ import urllib.parse
 import schedule
 import pandas as pd
 import concurrent.futures
-from datetime import datetime
+from datetime import datetime, timedelta
 from canvasapi import Canvas
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from pathlib import Path
 
 # --- Helper to format Canvas ISO dates ---
@@ -45,8 +44,8 @@ params = urllib.parse.quote_plus(odbc_str)
 db_url = f"mssql+pyodbc:///?odbc_connect={params}"
 engine = create_engine(db_url)
 
-# --- Worker Function for Multithreading ---
-def process_single_course(course, term_id, sync_timestamp):
+# --- Worker Function for Delta Multithreading ---
+def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
     course_data = []
     try:
         teacher_names = [t.get('display_name', 'Unknown') for t in getattr(course, 'teachers', [])]
@@ -56,10 +55,38 @@ def process_single_course(course, term_id, sync_timestamp):
         if not users:
             return course_data
             
-        user_ids = [u.id for u in users]
+        # 1. DELTA FILTER: Only flag students who have had activity since the cutoff
+        delta_users = []
+        for u in users:
+            changed = False
+            for e in getattr(u, 'enrollments', []):
+                updated_at_str = e.get('updated_at')
+                if updated_at_str:
+                    try:
+                        # Canvas uses UTC for all timestamps
+                        updated_dt = datetime.strptime(updated_at_str, "%Y-%m-%dT%H:%M:%SZ")
+                        if updated_dt > cutoff_utc:
+                            changed = True
+                            break
+                    except Exception:
+                        changed = True
+                else:
+                    changed = True # Safety net: if we can't tell, assume they need updating
+                    
+            if changed:
+                delta_users.append(u)
+                
+        if not delta_users:
+            # Huge optimization: No students changed, skip the heavy API calls completely!
+            print(f"[{datetime.now()}]   ⏩ No changes in Course {course.id}. Skipping heavy fetch.")
+            return course_data
+
+        print(f"[{datetime.now()}]   ⏳ Course {course.id}: Fetching {len(delta_users)} updated students...")
+
+        user_ids = [u.id for u in delta_users]
         student_stats = {uid: {'missing': 0, 'zeros': 0, 'latest_sub': None} for uid in user_ids}
         
-        # Chunk logic inside the thread
+        # 2. HEAVY FETCH: Only fetch submissions for the changed students (Chunked by 50 to prevent API crashes)
         chunk_size = 50
         for i in range(0, len(user_ids), chunk_size):
             chunk = user_ids[i:i + chunk_size]
@@ -82,8 +109,8 @@ def process_single_course(course, term_id, sync_timestamp):
                     if not current_latest or sub_at > current_latest:
                         student_stats[uid]['latest_sub'] = sub_at
 
-        # Map back to student records
-        for user in users:
+        # 3. MAP BACK
+        for user in delta_users:
             if hasattr(user, 'enrollments'):
                 for enrollment in user.enrollments:
                     grades = enrollment.get('grades', {})
@@ -91,7 +118,7 @@ def process_single_course(course, term_id, sync_timestamp):
                     stats = student_stats.get(user.id, {})
                     
                     course_data.append({
-                        'sync_timestamp': sync_timestamp,
+                        'sync_timestamp': new_sync_timestamp,
                         'term_id': term_id,
                         'course_id': course.id,
                         'course_name': course.name,
@@ -104,55 +131,101 @@ def process_single_course(course, term_id, sync_timestamp):
                         'zeros': stats.get('zeros', 0),
                         'latest_submission': format_canvas_date(stats.get('latest_sub'))
                     })
-        print(f"[{datetime.now()}]   ✅ Finished Course {course.id}: {getattr(course, 'name', 'Unknown')}")
+        print(f"[{datetime.now()}]   ✅ Finished updates for Course {course.id}")
     except Exception as e:
         print(f"[{datetime.now()}]   ❌ Skipped Course {course.id}: {e}")
         
     return course_data
 
-# --- Main Sync Logic ---
 def run_sync():
-    print(f"[{datetime.now()}] 🚀 Starting scheduled Canvas sync with MULTITHREADING...")
+    print(f"[{datetime.now()}] 🚀 Starting scheduled Sync...")
     canvas = Canvas(API_URL, API_KEY)
-    sync_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    new_sync_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     try:
+        # === PHASE 1: CLONE THE DATABASE ===
+        print(f"[{datetime.now()}] 🗄️ Phase 1: Checking for previous database snapshots...")
+        try:
+            query_latest = "SELECT MAX(sync_timestamp) FROM student_grades"
+            last_sync_df = pd.read_sql(query_latest, con=engine)
+            last_sync = last_sync_df.iloc[0, 0] if not last_sync_df.empty else None
+        except Exception:
+            last_sync = None
+            
+        if last_sync:
+            print(f"[{datetime.now()}] 🗄️ Cloning snapshot from {last_sync} to {new_sync_timestamp}...")
+            # Normal 48-hour lookback for Deltas
+            cutoff_utc = datetime.utcnow() - timedelta(hours=48)
+            
+            clone_sql = text("""
+                INSERT INTO student_grades (sync_timestamp, term_id, course_id, course_name, instructors, student_name, current_score, current_grade, last_access, missing_assignments, zeros, latest_submission)
+                SELECT :new_sync, term_id, course_id, course_name, instructors, student_name, current_score, current_grade, last_access, missing_assignments, zeros, latest_submission
+                FROM student_grades
+                WHERE sync_timestamp = :last_sync
+            """)
+            with engine.begin() as conn:
+                conn.execute(clone_sql, {"new_sync": new_sync_timestamp, "last_sync": last_sync})
+            print(f"[{datetime.now()}] ✅ Clone complete!")
+        else:
+            print(f"[{datetime.now()}] ⚠️ No previous data found. Performing a FULL INITIAL BASELINE SYNC.")
+            # Set cutoff to 10 years ago so it grabs literally every student's history
+            cutoff_utc = datetime.utcnow() - timedelta(days=3650)
+
+        # === PHASE 2: DELTA FETCH ===
+        print(f"[{datetime.now()}] 🌐 Phase 2: Fetching data from Canvas...")
         account = canvas.get_account(ACCOUNT_ID)
-        all_grades_data = []
+        all_delta_data = []
 
         for term_id in TARGET_TERM_IDS:
             print(f"[{datetime.now()}] Fetching course list for Term ID: {term_id}...")
             courses = list(account.get_courses(enrollment_term_id=term_id, state=['available'], include=['teachers']))
             print(f"[{datetime.now()}] Found {len(courses)} courses. Dispatching threads...")
             
-            # Spin up 15 parallel workers to process courses simultaneously
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-                # Map the process_single_course function to our list of courses
-                futures = [executor.submit(process_single_course, course, term_id, sync_timestamp) for course in courses]
-                
-                # Gather the results as each thread finishes
+                futures = [executor.submit(process_single_course, course, term_id, new_sync_timestamp, cutoff_utc) for course in courses]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     if result:
-                        all_grades_data.extend(result)
-                    
-        if all_grades_data:
-            df = pd.DataFrame(all_grades_data)
-            df.to_sql(name='student_grades', con=engine, if_exists='append', index=False)
-            print(f"[{datetime.now()}] 🎉 Successfully synced {len(df)} records!")
+                        all_delta_data.extend(result)
+
+        # === PHASE 3: THE MERGE ===
+        print(f"[{datetime.now()}] 🔄 Phase 3: Merging data...")
+        if all_delta_data:
+            delta_df = pd.DataFrame(all_delta_data)
+            
+            if last_sync:
+                print(f"[{datetime.now()}] Removing stale cloned rows for the {len(delta_df)} updated records...")
+                delete_sql = text("""
+                    DELETE FROM student_grades 
+                    WHERE sync_timestamp = :sync_ts 
+                    AND course_id = :c_id 
+                    AND student_name = :s_name
+                """)
+                delete_params = [
+                    {"sync_ts": new_sync_timestamp, "c_id": row['course_id'], "s_name": row['student_name']}
+                    for _, row in delta_df.iterrows()
+                ]
+                with engine.begin() as conn:
+                    conn.execute(delete_sql, delete_params)
+
+            print(f"[{datetime.now()}] Pushing {len(delta_df)} new updates to the database...")
+            delta_df.to_sql(name='student_grades', con=engine, if_exists='append', index=False)
+            print(f"[{datetime.now()}] 🎉 Sync complete!")
         else:
-            print(f"[{datetime.now()}] ⚠️ No data found for the provided Term IDs.")
+            print(f"[{datetime.now()}] 🤷 No grade changes detected.")
 
     except Exception as e:
-        print(f"[{datetime.now()}] ❌ Canvas API Error: {e}")
+        print(f"[{datetime.now()}] ❌ Fatal Sync Error: {e}")
 
 # --- Scheduler Setup ---
 schedule.every().day.at("06:30").do(run_sync)
 print(f"[{datetime.now()}] 🕰️ Background Scheduler started.")
 
+# Run immediately upon container start
 run_sync()
 
-print(f"[{datetime.now()}] ⏳ Initial sync complete. Waiting for the next scheduled run at 06:30 AM...")
+print(f"[{datetime.now()}] ⏳ Initial sync routine complete. Waiting for the next scheduled run at 06:30 AM...")
 
 while True:
     schedule.run_pending()
