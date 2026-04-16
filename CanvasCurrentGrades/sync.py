@@ -55,7 +55,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
         if not users:
             return course_data
             
-        # 1. DELTA FILTER: Only flag students who have had activity since the cutoff
         delta_users = []
         for u in users:
             changed = False
@@ -63,7 +62,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                 updated_at_str = e.get('updated_at')
                 if updated_at_str:
                     try:
-                        # Canvas uses UTC for all timestamps
                         updated_dt = datetime.strptime(updated_at_str, "%Y-%m-%dT%H:%M:%SZ")
                         if updated_dt > cutoff_utc:
                             changed = True
@@ -71,13 +69,12 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                     except Exception:
                         changed = True
                 else:
-                    changed = True # Safety net: if we can't tell, assume they need updating
+                    changed = True 
                     
             if changed:
                 delta_users.append(u)
                 
         if not delta_users:
-            # Huge optimization: No students changed, skip the heavy API calls completely!
             print(f"[{datetime.now()}]   ⏩ No changes in Course {course.id}. Skipping heavy fetch.")
             return course_data
 
@@ -86,7 +83,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
         user_ids = [u.id for u in delta_users]
         student_stats = {uid: {'missing': 0, 'zeros': 0, 'latest_sub': None} for uid in user_ids}
         
-        # 2. HEAVY FETCH: Only fetch submissions for the changed students (Chunked by 50 to prevent API crashes)
         chunk_size = 50
         for i in range(0, len(user_ids), chunk_size):
             chunk = user_ids[i:i + chunk_size]
@@ -99,7 +95,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                     
                 if getattr(sub, 'missing', False):
                     student_stats[uid]['missing'] += 1
-                
                 if getattr(sub, 'score', None) == 0:
                     student_stats[uid]['zeros'] += 1
                     
@@ -109,7 +104,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                     if not current_latest or sub_at > current_latest:
                         student_stats[uid]['latest_sub'] = sub_at
 
-        # 3. MAP BACK
         for user in delta_users:
             if hasattr(user, 'enrollments'):
                 for enrollment in user.enrollments:
@@ -131,7 +125,6 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                         'zeros': stats.get('zeros', 0),
                         'latest_submission': format_canvas_date(stats.get('latest_sub'))
                     })
-        print(f"[{datetime.now()}]   ✅ Finished updates for Course {course.id}")
     except Exception as e:
         print(f"[{datetime.now()}]   ❌ Skipped Course {course.id}: {e}")
         
@@ -140,22 +133,29 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
 def run_sync():
     print(f"[{datetime.now()}] 🚀 Starting scheduled Sync...")
     canvas = Canvas(API_URL, API_KEY)
-    
     new_sync_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     try:
-        # === PHASE 1: CLONE THE DATABASE ===
-        print(f"[{datetime.now()}] 🗄️ Phase 1: Checking for previous database snapshots...")
+        # === PHASE 1: CHECK SYNC HISTORY & CLONE ===
+        print(f"[{datetime.now()}] 🗄️ Phase 1: Checking database state...")
+        
+        # Safely check if a fully complete historical run exists
         try:
-            query_latest = "SELECT MAX(sync_timestamp) FROM student_grades"
-            last_sync_df = pd.read_sql(query_latest, con=engine)
-            last_sync = last_sync_df.iloc[0, 0] if not last_sync_df.empty else None
-        except Exception:
-            last_sync = None
+            history_df = pd.read_sql("SELECT MAX(sync_timestamp) FROM sync_history WHERE status = 'COMPLETE'", con=engine)
+            last_valid_sync = history_df.iloc[0, 0] if not history_df.empty else None
             
-        if last_sync:
-            print(f"[{datetime.now()}] 🗄️ Cloning snapshot from {last_sync} to {new_sync_timestamp}...")
-            # Normal 48-hour lookback for Deltas
+            # Failsafe: If the user manually truncated the grades table, ignore the history flag
+            if last_valid_sync:
+                check_data = pd.read_sql(f"SELECT TOP 1 1 FROM student_grades WHERE sync_timestamp = '{last_valid_sync}'", con=engine)
+                if check_data.empty:
+                    last_valid_sync = None 
+        except Exception:
+            last_valid_sync = None
+
+        completed_resume_courses = []
+
+        if last_valid_sync:
+            print(f"[{datetime.now()}] 🗄️ Last complete sync found at {last_valid_sync}. Cloning to {new_sync_timestamp}...")
             cutoff_utc = datetime.utcnow() - timedelta(hours=48)
             
             clone_sql = text("""
@@ -165,55 +165,79 @@ def run_sync():
                 WHERE sync_timestamp = :last_sync
             """)
             with engine.begin() as conn:
-                conn.execute(clone_sql, {"new_sync": new_sync_timestamp, "last_sync": last_sync})
+                conn.execute(clone_sql, {"new_sync": new_sync_timestamp, "last_sync": last_valid_sync})
             print(f"[{datetime.now()}] ✅ Clone complete!")
+            
         else:
-            print(f"[{datetime.now()}] ⚠️ No previous data found. Performing a FULL INITIAL BASELINE SYNC.")
-            # Set cutoff to 10 years ago so it grabs literally every student's history
+            print(f"[{datetime.now()}] ⚠️ No valid history found. Operating in INITIAL BASELINE mode.")
             cutoff_utc = datetime.utcnow() - timedelta(days=3650)
+            
+            # Crash Recovery Check
+            try:
+                crashed_df = pd.read_sql("SELECT MAX(sync_timestamp) FROM student_grades", con=engine)
+                crashed_ts = crashed_df.iloc[0, 0] if not crashed_df.empty else None
+            except Exception:
+                crashed_ts = None
+                
+            if crashed_ts:
+                print(f"[{datetime.now()}] 🛠️ Found an interrupted initial sync from {crashed_ts}. Resuming...")
+                new_sync_timestamp = crashed_ts # Override timestamp to group the resumed run together
+                
+                df_completed = pd.read_sql(f"SELECT DISTINCT course_id FROM student_grades WHERE sync_timestamp = '{crashed_ts}'", con=engine)
+                completed_resume_courses = df_completed['course_id'].tolist()
+                print(f"[{datetime.now()}] ⏭️ Skipping {len(completed_resume_courses)} courses that were already securely saved.")
+            else:
+                print(f"[{datetime.now()}] 🌱 Starting fresh initial sync at {new_sync_timestamp}")
 
-        # === PHASE 2: DELTA FETCH ===
-        print(f"[{datetime.now()}] 🌐 Phase 2: Fetching data from Canvas...")
+        # === PHASE 2: DELTA FETCH & CONTINUOUS DB MERGE ===
+        print(f"[{datetime.now()}] 🌐 Phase 2: Fetching & Continuous Saving...")
         account = canvas.get_account(ACCOUNT_ID)
-        all_delta_data = []
 
         for term_id in TARGET_TERM_IDS:
             print(f"[{datetime.now()}] Fetching course list for Term ID: {term_id}...")
             courses = list(account.get_courses(enrollment_term_id=term_id, state=['available'], include=['teachers']))
-            print(f"[{datetime.now()}] Found {len(courses)} courses. Dispatching threads...")
+            
+            # If resuming an interrupted Initial Baseline run, filter out the finished courses
+            if completed_resume_courses:
+                courses = [c for c in courses if c.id not in completed_resume_courses]
+                
+            print(f"[{datetime.now()}] Dispatching {len(courses)} courses to threads...")
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [executor.submit(process_single_course, course, term_id, new_sync_timestamp, cutoff_utc) for course in courses]
+                
+                # As soon as a thread finishes a course, push it directly to MSSQL
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     if result:
-                        all_delta_data.extend(result)
+                        delta_df = pd.DataFrame(result)
+                        course_id_log = delta_df.iloc[0]['course_id']
+                        course_name_log = delta_df.iloc[0]['course_name']
+                        
+                        # If Delta Mode, delete stale cloned rows before inserting fresh ones
+                        if last_valid_sync:
+                            delete_sql = text("""
+                                DELETE FROM student_grades 
+                                WHERE sync_timestamp = :sync_ts 
+                                AND course_id = :c_id 
+                                AND student_name = :s_name
+                            """)
+                            delete_params = [
+                                {"sync_ts": new_sync_timestamp, "c_id": row['course_id'], "s_name": row['student_name']}
+                                for _, row in delta_df.iterrows()
+                            ]
+                            with engine.begin() as conn:
+                                conn.execute(delete_sql, delete_params)
+                                
+                        # CONTINUOUS SAVE TO DATABASE
+                        delta_df.to_sql(name='student_grades', con=engine, if_exists='append', index=False)
+                        print(f"[{datetime.now()}]   💾 Saved updates for Course {course_id_log}: {course_name_log}")
 
-        # === PHASE 3: THE MERGE ===
-        print(f"[{datetime.now()}] 🔄 Phase 3: Merging data...")
-        if all_delta_data:
-            delta_df = pd.DataFrame(all_delta_data)
-            
-            if last_sync:
-                print(f"[{datetime.now()}] Removing stale cloned rows for the {len(delta_df)} updated records...")
-                delete_sql = text("""
-                    DELETE FROM student_grades 
-                    WHERE sync_timestamp = :sync_ts 
-                    AND course_id = :c_id 
-                    AND student_name = :s_name
-                """)
-                delete_params = [
-                    {"sync_ts": new_sync_timestamp, "c_id": row['course_id'], "s_name": row['student_name']}
-                    for _, row in delta_df.iterrows()
-                ]
-                with engine.begin() as conn:
-                    conn.execute(delete_sql, delete_params)
-
-            print(f"[{datetime.now()}] Pushing {len(delta_df)} new updates to the database...")
-            delta_df.to_sql(name='student_grades', con=engine, if_exists='append', index=False)
-            print(f"[{datetime.now()}] 🎉 Sync complete!")
-        else:
-            print(f"[{datetime.now()}] 🤷 No grade changes detected.")
+        # === PHASE 3: MARK AS COMPLETE ===
+        print(f"[{datetime.now()}] 🏁 Marking sync {new_sync_timestamp} as COMPLETE.")
+        # Create/Update the hidden tracking table so the system knows this run fully succeeded
+        pd.DataFrame([{'sync_timestamp': new_sync_timestamp, 'status': 'COMPLETE'}]).to_sql('sync_history', con=engine, if_exists='append', index=False)
+        print(f"[{datetime.now()}] 🎉 Sync complete!")
 
     except Exception as e:
         print(f"[{datetime.now()}] ❌ Fatal Sync Error: {e}")
@@ -221,10 +245,7 @@ def run_sync():
 # --- Scheduler Setup ---
 schedule.every().day.at("06:30").do(run_sync)
 print(f"[{datetime.now()}] 🕰️ Background Scheduler started.")
-
-# Run immediately upon container start
 run_sync()
-
 print(f"[{datetime.now()}] ⏳ Initial sync routine complete. Waiting for the next scheduled run at 06:30 AM...")
 
 while True:

@@ -76,11 +76,20 @@ params = urllib.parse.quote_plus(odbc_str)
 db_url = f"mssql+pyodbc:///?odbc_connect={params}"
 engine = create_engine(db_url)
 
-# --- Helper Function: Check for existing syncs ---
+# --- Helper Function: Check for existing, COMPLETE syncs ---
 def get_sync_dates():
     inspector = inspect(engine)
-    if 'student_grades' in inspector.get_table_names():
-        query = "SELECT DISTINCT sync_timestamp FROM student_grades ORDER BY sync_timestamp DESC"
+    # Check if BOTH tables exist
+    tables = inspector.get_table_names()
+    if 'student_grades' in tables and 'sync_history' in tables:
+        # Only fetch timestamps that are explicitly marked as COMPLETE
+        query = """
+            SELECT DISTINCT g.sync_timestamp 
+            FROM student_grades g
+            INNER JOIN sync_history h ON g.sync_timestamp = h.sync_timestamp
+            WHERE h.status = 'COMPLETE'
+            ORDER BY g.sync_timestamp DESC
+        """
         try:
             df_dates = pd.read_sql(query, con=engine)
             return df_dates['sync_timestamp'].tolist()
