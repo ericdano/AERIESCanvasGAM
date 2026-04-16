@@ -131,8 +131,15 @@ def run_sync():
 
 # --- Scheduler Setup ---
 schedule.every().day.at("06:30").do(run_sync)
-print(f"[{datetime.now()}] 🕰️ Background Scheduler started. Waiting for 06:30 AM...")
 
+print(f"[{datetime.now()}] 🕰️ Background Scheduler started.")
+
+# NEW: Force a sync immediately when the container boots up!
+run_sync()
+
+print(f"[{datetime.now()}] ⏳ Initial sync complete. Waiting for the next scheduled run at 06:30 AM...")
+
+# Keep the script alive and checking the time
 while True:
     schedule.run_pending()
     time.sleep(60)
