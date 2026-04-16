@@ -1,7 +1,7 @@
-import urllib.parse
 import os
 import ssl 
 import json
+import urllib.parse
 import pandas as pd
 import streamlit as st
 from datetime import datetime
@@ -82,7 +82,7 @@ def get_sync_dates():
     if 'student_grades' in inspector.get_table_names():
         query = "SELECT DISTINCT sync_timestamp FROM student_grades ORDER BY sync_timestamp DESC"
         try:
-            df_dates = pd.read_sql(query, con=db_url)
+            df_dates = pd.read_sql(query, con=engine)
             return df_dates['sync_timestamp'].tolist()
         except Exception:
             return []
@@ -121,7 +121,7 @@ def authenticate_user(username, password):
 
 # --- Modal (Pop-Up) Definition ---
 @st.dialog("Data Explorer", width="large")
-def open_course_modal(course_name, sync_date, db_url):
+def open_course_modal(course_name, sync_date):
     
     # View 1: Course Roster
     if st.session_state.modal_view == 'roster':
@@ -129,7 +129,7 @@ def open_course_modal(course_name, sync_date, db_url):
         st.info("👆 **Click the checkbox next to a student** to instantly pull up their full report card.")
         
         query = f"SELECT student_name, current_score, current_grade FROM student_grades WHERE sync_timestamp = '{sync_date}' AND course_name = '{course_name}'"
-        course_df = pd.read_sql(query, con=db_url)
+        course_df = pd.read_sql(query, con=engine)
         
         event = st.dataframe(
             course_df,
@@ -155,12 +155,31 @@ def open_course_modal(course_name, sync_date, db_url):
             
         st.markdown(f"### 🎓 Report Card: {student_name}")
         
-        query = f"SELECT course_name, instructors, current_score, current_grade FROM student_grades WHERE sync_timestamp = '{sync_date}' AND student_name = '{student_name}'"
-        student_df = pd.read_sql(query, con=db_url)
+        # Pull all advanced metrics when viewing from the Modal
+        query = f"""
+            SELECT course_name, instructors, current_score, current_grade, 
+                   last_access, missing_assignments, zeros, latest_submission 
+            FROM student_grades 
+            WHERE sync_timestamp = '{sync_date}' 
+            AND student_name = '{student_name}'
+        """
+        student_df = pd.read_sql(query, con=engine)
+        
+        student_df.rename(columns={
+            'course_name': 'Course',
+            'instructors': 'Teacher',
+            'current_score': 'Score',
+            'current_grade': 'Grade',
+            'last_access': 'Last Access',
+            'missing_assignments': 'Missing',
+            'zeros': 'Zeros',
+            'latest_submission': 'Latest Submission'
+        }, inplace=True)
         
         st.dataframe(
             student_df,
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
 
 # ==========================================
@@ -205,7 +224,6 @@ else:
         st.info("The database is currently empty. The automated background sync is scheduled to run at 6:30 AM.")
         st.markdown("Please check back after the sync completes.")
     else:
-        # Added the new Student Search tab here
         tab1, tab2, tab3 = st.tabs(["🗄️ Course Viewer", "🔍 Student Search", "📈 Analytics & Trends"])
         
         with tab1:
@@ -214,13 +232,12 @@ else:
                 "Select a Data Sync Date to View:", 
                 options=existing_syncs,
                 index=0,
-                key="sync_tab1" # Required to prevent ID collision
+                key="sync_tab1" 
             )
             
             if selected_sync:
-                # Fetch raw data and aggregate it into a clean list of unique courses
                 query = f"SELECT course_name, instructors, student_name, current_score FROM student_grades WHERE sync_timestamp = '{selected_sync}'"
-                raw_df = pd.read_sql(query, con=db_url)
+                raw_df = pd.read_sql(query, con=engine)
                 
                 raw_df['current_score'] = pd.to_numeric(raw_df['current_score'], errors='coerce')
                 courses_df = raw_df.groupby(['course_name', 'instructors']).agg(
@@ -239,7 +256,6 @@ else:
                 st.write(f"Showing **{len(courses_df)}** courses from the sync on: **{selected_sync}**")
                 st.info("👆 **Click the checkbox on the far-left of a course** to open its roster.")
                 
-                # The Main Interactive Table
                 event = st.dataframe(
                     courses_df, 
                     use_container_width=True,
@@ -248,32 +264,29 @@ else:
                     hide_index=False
                 )
                 
-                # Trigger the Modal if a course is clicked
                 if event.selection.rows:
                     row_idx = event.selection.rows[0]
                     selected_course = courses_df.iloc[row_idx]['Course Name']
                     
-                    # Prevent state collision if the user clicks a brand new course
                     if st.session_state.current_modal_course != selected_course:
                         st.session_state.current_modal_course = selected_course
                         st.session_state.modal_view = 'roster'
                         
-                    open_course_modal(selected_course, selected_sync, db_url)
+                    open_course_modal(selected_course, selected_sync)
 
-        # --- NEW TAB: STUDENT SEARCH ---
+        # --- STUDENT SEARCH ---
         with tab2:
             st.subheader("Student Directory Search")
             selected_sync_student = st.selectbox(
                 "Select a Data Sync Date to View:", 
                 options=existing_syncs,
                 index=0,
-                key="sync_tab2" # Required to prevent ID collision
+                key="sync_tab2" 
             )
             
             if selected_sync_student:
-                # Get a unique list of all students for the selected date
                 query_students = f"SELECT DISTINCT student_name FROM student_grades WHERE sync_timestamp = '{selected_sync_student}' ORDER BY student_name"
-                students_df = pd.read_sql(query_students, con=db_url)
+                students_df = pd.read_sql(query_students, con=engine)
                 student_list = ["-- Type or Select a Student --"] + students_df['student_name'].tolist()
                 
                 selected_student_search = st.selectbox(
@@ -286,18 +299,35 @@ else:
                     st.divider()
                     st.markdown(f"### 🎓 Report Card: {selected_student_search}")
                     
-                    query_report = f"SELECT course_name, instructors, current_score, current_grade FROM student_grades WHERE sync_timestamp = '{selected_sync_student}' AND student_name = '{selected_student_search}'"
-                    report_df = pd.read_sql(query_report, con=db_url)
+                    query_report = f"""
+                        SELECT course_name, instructors, current_score, current_grade, 
+                               last_access, missing_assignments, zeros, latest_submission 
+                        FROM student_grades 
+                        WHERE sync_timestamp = '{selected_sync_student}' 
+                        AND student_name = '{selected_student_search}'
+                    """
+                    report_df = pd.read_sql(query_report, con=engine)
+                    
+                    report_df.rename(columns={
+                        'course_name': 'Course',
+                        'instructors': 'Teacher',
+                        'current_score': 'Score',
+                        'current_grade': 'Grade',
+                        'last_access': 'Last Access',
+                        'missing_assignments': 'Missing',
+                        'zeros': 'Zeros',
+                        'latest_submission': 'Latest Submission'
+                    }, inplace=True)
                     
                     st.dataframe(
                         report_df,
-                        use_container_width=True
+                        use_container_width=True,
+                        hide_index=True
                     )
                     
-                    # Add a quick metric for their average score
-                    report_df['current_score'] = pd.to_numeric(report_df['current_score'], errors='coerce')
-                    if not report_df['current_score'].isna().all():
-                        student_avg = report_df['current_score'].mean()
+                    report_df['Score'] = pd.to_numeric(report_df['Score'], errors='coerce')
+                    if not report_df['Score'].isna().all():
+                        student_avg = report_df['Score'].mean()
                         st.metric("Student's Average Score across all current courses", f"{student_avg:.2f}%")
 
         with tab3:
@@ -305,7 +335,7 @@ else:
             st.markdown("Track how the average scores across your selected terms change with each sync.")
 
             all_data_query = "SELECT sync_timestamp, current_score FROM student_grades"
-            trend_df = pd.read_sql(all_data_query, con=db_url)
+            trend_df = pd.read_sql(all_data_query, con=engine)
 
             trend_df['current_score'] = pd.to_numeric(trend_df['current_score'], errors='coerce')
             trend_df = trend_df.dropna(subset=['current_score'])
