@@ -69,28 +69,33 @@ def run_sync():
                         
                     user_ids = [u.id for u in users]
                     
-                    # 🚀 OPTIMIZATION: Fetch all submissions for the whole course at once
-                    submissions = course.get_multiple_submissions(student_ids=user_ids)
-                    
                     # Group the submission stats by student ID
                     student_stats = {uid: {'missing': 0, 'zeros': 0, 'latest_sub': None} for uid in user_ids}
                     
-                    for sub in submissions:
-                        uid = getattr(sub, 'user_id', None)
-                        if not uid or uid not in student_stats:
-                            continue
-                            
-                        if getattr(sub, 'missing', False):
-                            student_stats[uid]['missing'] += 1
+                    # 🚀 OPTIMIZATION: Fetch submissions in chunks of 50 to avoid Canvas API limits on large courses
+                    chunk_size = 50
+                    for i in range(0, len(user_ids), chunk_size):
+                        chunk = user_ids[i:i + chunk_size]
                         
-                        if getattr(sub, 'score', None) == 0:
-                            student_stats[uid]['zeros'] += 1
+                        # Fetch just this chunk of 50 students
+                        chunk_subs = course.get_multiple_submissions(student_ids=chunk)
+                        
+                        for sub in chunk_subs:
+                            uid = getattr(sub, 'user_id', None)
+                            if not uid or uid not in student_stats:
+                                continue
+                                
+                            if getattr(sub, 'missing', False):
+                                student_stats[uid]['missing'] += 1
                             
-                        sub_at = getattr(sub, 'submitted_at', None)
-                        if sub_at:
-                            current_latest = student_stats[uid]['latest_sub']
-                            if not current_latest or sub_at > current_latest:
-                                student_stats[uid]['latest_sub'] = sub_at
+                            if getattr(sub, 'score', None) == 0:
+                                student_stats[uid]['zeros'] += 1
+                                
+                            sub_at = getattr(sub, 'submitted_at', None)
+                            if sub_at:
+                                current_latest = student_stats[uid]['latest_sub']
+                                if not current_latest or sub_at > current_latest:
+                                    student_stats[uid]['latest_sub'] = sub_at
 
                     # Now, map all of this back to the individual student records
                     for user in users:
