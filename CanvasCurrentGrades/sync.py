@@ -58,6 +58,7 @@ def run_sync():
             courses = account.get_courses(enrollment_term_id=term_id, state=['available'], include=['teachers'])
             
             for course in courses:
+                print(f"[{datetime.now()}]   -> Processing Course {course.id}: {getattr(course, 'name', 'Unknown')}...")
                 try:
                     teacher_names = [t.get('display_name', 'Unknown') for t in getattr(course, 'teachers', [])]
                     instructor_string = ", ".join(teacher_names) if teacher_names else "No Instructor"
