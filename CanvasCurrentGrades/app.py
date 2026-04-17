@@ -77,6 +77,7 @@ db_url = f"mssql+pyodbc:///?odbc_connect={params}"
 engine = create_engine(db_url)
 
 # --- Helper Function: Check for existing, COMPLETE syncs ---
+# --- Helper Function: Check for existing, COMPLETE syncs ---
 def get_sync_dates():
     inspector = inspect(engine)
     # Check if BOTH tables exist

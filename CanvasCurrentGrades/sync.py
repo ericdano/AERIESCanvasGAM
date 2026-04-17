@@ -86,18 +86,38 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
         chunk_size = 50
         for i in range(0, len(user_ids), chunk_size):
             chunk = user_ids[i:i + chunk_size]
-            chunk_subs = course.get_multiple_submissions(student_ids=chunk)
+            
+            # Added include=['assignment'] to check if it's actually a graded item
+            chunk_subs = course.get_multiple_submissions(student_ids=chunk, include=['assignment'])
             
             for sub in chunk_subs:
                 uid = getattr(sub, 'user_id', None)
                 if not uid or uid not in student_stats:
                     continue
+                
+                # 1. Skip Excused assignments completely
+                if getattr(sub, 'excused', False):
+                    continue
                     
-                if getattr(sub, 'missing', False):
+                # 2. Skip deleted submissions
+                if getattr(sub, 'workflow_state', '') == 'deleted':
+                    continue
+                    
+                # 3. Check if the assignment is worth zero points to begin with (Practice/Ungraded)
+                assignment = getattr(sub, 'assignment', {})
+                if assignment.get('points_possible', 1) == 0:
+                    continue
+
+                is_missing = getattr(sub, 'missing', False)
+                score = getattr(sub, 'score', None)
+
+                # 4. Smart Counting: Mutually Exclusive Missing vs. Zeros
+                if is_missing:
                     student_stats[uid]['missing'] += 1
-                if getattr(sub, 'score', None) == 0:
+                elif score == 0 or score == 0.0:
                     student_stats[uid]['zeros'] += 1
                     
+                # Latest submission tracker
                 sub_at = getattr(sub, 'submitted_at', None)
                 if sub_at:
                     current_latest = student_stats[uid]['latest_sub']
