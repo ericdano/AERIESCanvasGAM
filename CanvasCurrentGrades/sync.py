@@ -33,7 +33,7 @@ try:
     TARGET_TERM_IDS = configs.get('TargetTermIDs')
     
     server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-    db_name = 'CanvasGradesDB'  # Explicitly defined as requested
+    db_name = 'CanvasGrades'  # Explicitly defined as requested
     uid = configs.get('LocalAERIES_Username')
     pwd = configs.get('LocalAERIES_Password')
     
@@ -71,6 +71,7 @@ def send_completion_email(sync_time, mode):
 
 # --- Worker Function for Delta Multithreading ---
 def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
+    print(f"[{datetime.now()}]   🧵 Thread started for Course {course.id}. Fetching roster...")
     course_data = []
     try:
         teacher_names = [t.get('display_name', 'Unknown') for t in getattr(course, 'teachers', [])]
@@ -218,11 +219,17 @@ def run_sync():
         account = canvas.get_account(ACCOUNT_ID)
 
         for term_id in TARGET_TERM_IDS:
-            courses = list(account.get_courses(enrollment_term_id=term_id, state=['available'], include=['teachers']))
+            print(f"[{datetime.now()}] 🌐 Fetching course list for Term ID: {term_id}...")
+            courses = list(account.get_courses(
+                enrollment_term_id=term_id, 
+                state=['available'], 
+                include=['teachers'], 
+                per_page=100
+            ))
             
             if completed_resume_courses:
                 courses = [c for c in courses if c.id not in completed_resume_courses]
-                
+            print(f"[{datetime.now()}] 📚 Found {len(courses)} courses. Dispatching threads...")    
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [executor.submit(process_single_course, course, term_id, new_sync_timestamp, cutoff_utc) for course in courses]
                 
