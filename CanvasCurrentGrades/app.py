@@ -52,7 +52,7 @@ except Exception as e:
 
 # --- Database Connection ---
 server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-db_name = configs.get('LocalAERIES_Cambium_DB')
+db_name = 'CanvasGrades'
 uid = configs.get('LocalAERIES_Username')
 pwd = configs.get('LocalAERIES_Password')
 
