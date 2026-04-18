@@ -10,8 +10,8 @@ from pathlib import Path
 from ldap3 import Server, Connection, ALL, Tls
 
 # --- Setup UI ---
-st.set_page_config(page_title="Canvas Grade Extractor", layout="wide")
-st.title("Canvas Account-Level Grade Extractor")
+st.set_page_config(page_title="Teacher Portal", layout="wide")
+st.title("Teacher Portal")
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -52,7 +52,7 @@ except Exception as e:
 
 # --- Database Connection ---
 server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-db_name = 'CanvasGrades'
+db_name = configs.get('CanvasDatabase')
 uid = configs.get('LocalAERIES_Username')
 pwd = configs.get('LocalAERIES_Password')
 
