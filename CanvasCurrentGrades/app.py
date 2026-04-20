@@ -207,13 +207,13 @@ if not st.session_state.authenticated:
         decoded_token = jwt.decode(id_token, options={"verify_signature": False})
         user_email = decoded_token.get('email')
         
-        # The Bouncer: Check against the JSON Allowlist
-        if user_email in ALLOWED_EMAILS:
+        # The Bouncer: Check the manual list AND the Google Group
+        if is_user_authorized(user_email):
             st.session_state.authenticated = True
             st.session_state.username = user_email
             st.rerun()
         else:
-            st.error(f"Access Denied: The account '{user_email}' is not on the approved administrator list.")
+            st.error(f"Access Denied: {user_email} is not authorized for this portal.")
 
 else:
     st.sidebar.header("Data Sync Setup")
