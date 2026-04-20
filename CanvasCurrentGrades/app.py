@@ -1,17 +1,17 @@
 import os
-import ssl 
 import json
 import urllib.parse
 import pandas as pd
 import streamlit as st
+import jwt
 from datetime import datetime
 from sqlalchemy import create_engine, inspect
 from pathlib import Path
-from ldap3 import Server, Connection, ALL, Tls
+from streamlit_oauth import OAuth2Component
 
 # --- Setup UI ---
-st.set_page_config(page_title="Canvas Grade Extractor", layout="wide")
-st.title("Canvas Account-Level Grade Extractor")
+st.set_page_config(page_title="Teacher Portal", layout="wide")
+st.title("Teacher Portal")
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -34,16 +34,14 @@ try:
     ACCOUNT_ID = configs.get('CanvasAccountID', 1) 
     TARGET_TERM_IDS = configs.get('TargetTermIDs')
     
-    # AD Configs
-    AD_SERVER = configs.get('AD_Server')
-    AD_DOMAIN = configs.get('AD_Domain')
-    AD_SEARCH_BASE = configs.get('AD_Search_Base')
-    AD_REQUIRED_GROUP = configs.get('AD_Required_Group')
-    AD_PORT = 636
-    AD_USE_SSL = True
+    # Google OAuth Configs
+    GOOGLE_CLIENT_ID = configs.get('GoogleClientID')
+    GOOGLE_CLIENT_SECRET = configs.get('GoogleClientSecret')
+    REDIRECT_URI = configs.get('GoogleRedirectURI')
+    ALLOWED_EMAILS = configs.get('AllowedAdminEmails', [])
     
-    if not AD_SERVER or not AD_DOMAIN or not AD_REQUIRED_GROUP:
-        st.error(f"Missing critical AD configuration variables in {confighome}")
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        st.error(f"Missing Google OAuth configuration variables in {confighome}")
         st.stop()
         
 except Exception as e:
@@ -52,7 +50,7 @@ except Exception as e:
 
 # --- Database Connection ---
 server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-db_name = 'CanvasGrades'
+db_name = configs.get('CanvasDatabase')
 uid = configs.get('LocalAERIES_Username')
 pwd = configs.get('LocalAERIES_Password')
 
@@ -80,20 +78,6 @@ def get_sync_dates():
 
 existing_syncs = get_sync_dates()
 
-def authenticate_user(username, password):
-    tls_config = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
-    server = Server(AD_SERVER, port=AD_PORT, use_ssl=AD_USE_SSL, tls=tls_config, get_info=ALL)
-    user_principal = f"{AD_DOMAIN}\\{username}"
-    try:
-        conn = Connection(server, user=user_principal, password=password, auto_bind=True)
-        search_filter = f"(&(objectclass=person)(sAMAccountName={username})(memberOf={AD_REQUIRED_GROUP}))"
-        conn.search(search_base=AD_SEARCH_BASE, search_filter=search_filter, attributes=['sAMAccountName'])
-        if len(conn.entries) > 0:
-            return True, "Authentication successful."
-        return False, "Access Denied."
-    except Exception as e:
-        return False, f"Authentication failed: {str(e)}"
-
 # --- Modal (Pop-Up) Definition ---
 @st.dialog("Data Explorer", width="large")
 def open_course_modal(course_name, sync_date):
@@ -102,11 +86,9 @@ def open_course_modal(course_name, sync_date):
         st.markdown(f"### 📘 Course Roster: {course_name}")
         st.info("👆 **Click the checkbox next to a student** to instantly pull up their full report card.")
         
-        # Grab course_id to build the hyperlink
         query = f"SELECT student_name, current_score, current_grade, course_id FROM student_grades WHERE sync_timestamp = '{sync_date}' AND course_name = '{course_name}'"
         course_df = pd.read_sql(query, con=engine)
         
-        # Build the dynamic URL column
         course_df['Course Page'] = "https://acalanes.instructure.com/courses/" + course_df['course_id'].astype(str)
         
         event = st.dataframe(
@@ -115,7 +97,7 @@ def open_course_modal(course_name, sync_date):
             on_select="rerun",
             selection_mode="single-row",
             column_config={
-                "course_id": None, # Hide raw IDs
+                "course_id": None, 
                 "Course Page": st.column_config.LinkColumn("Course Page", display_text="Open in Canvas ↗")
             }
         )
@@ -134,7 +116,6 @@ def open_course_modal(course_name, sync_date):
             
         st.markdown(f"### 🎓 Report Card: {student_name}")
         
-        # Fetch IDs for the student link generation
         query = f"""
             SELECT course_name, instructors, current_score, current_grade, 
                    last_access, missing_assignments, zeros, latest_submission, course_id, student_id
@@ -143,7 +124,6 @@ def open_course_modal(course_name, sync_date):
         """
         student_df = pd.read_sql(query, con=engine)
         
-        # Construct the Hyperlinks
         student_df['Course URL'] = "https://acalanes.instructure.com/courses/" + student_df['course_id'].astype(str)
         student_df['Grades URL'] = "https://acalanes.instructure.com/courses/" + student_df['course_id'].astype(str) + "/grades/" + student_df['student_id'].astype(str)
         student_df['Usage URL'] = "https://acalanes.instructure.com/courses/" + student_df['course_id'].astype(str) + "/users/" + student_df['student_id'].astype(str) + "/usage"
@@ -153,7 +133,6 @@ def open_course_modal(course_name, sync_date):
             'last_access': 'Last Access', 'missing_assignments': 'Missing', 'zeros': 'Zeros', 'latest_submission': 'Latest Sub'
         }, inplace=True)
         
-        # Order the columns nicely
         display_columns = ['Course', 'Teacher', 'Score', 'Grade', 'Missing', 'Zeros', 'Latest Sub', 'Last Access', 'Course URL', 'Grades URL', 'Usage URL']
         
         st.dataframe(
@@ -168,28 +147,49 @@ def open_course_modal(course_name, sync_date):
         )
 
 # ==========================================
-# UI RENDERING LOGIC
+# UI RENDERING LOGIC (Google OAuth)
 # ==========================================
 
 if not st.session_state.authenticated:
-    st.subheader("🔒 Active Directory Login")
-    with st.form("login_form"):
-        username_input = st.text_input("Username")
-        password_input = st.text_input("Password", type="password")
-        if st.form_submit_button("Log In"):
-            if username_input and password_input:
-                is_auth, msg = authenticate_user(username_input, password_input)
-                if is_auth:
-                    st.session_state.authenticated = True
-                    st.session_state.username = username_input
-                    st.rerun() 
-                else:
-                    st.error(msg)
-            else:
-                st.warning("Please enter both username and password.")
+    st.subheader("🔒 Administrator Login")
+    
+    # Initialize the OAuth2 Component
+    oauth2 = OAuth2Component(
+        client_id=GOOGLE_CLIENT_ID, 
+        client_secret=GOOGLE_CLIENT_SECRET, 
+        authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth", 
+        token_endpoint="https://oauth2.googleapis.com/token", 
+        refresh_token_endpoint="https://oauth2.googleapis.com/token", 
+        revoke_token_endpoint="https://oauth2.googleapis.com/revoke"
+    )
+    
+    # Render the Google Login Button
+    result = oauth2.authorize_button(
+        name="Sign in with Google",
+        redirect_uri=REDIRECT_URI,
+        scope="openid email profile",
+        icon="https://www.google.com/favicon.ico",
+        use_container_width=True
+    )
+    
+    if result and 'token' in result:
+        # Decode the secure Google JWT to extract the user's email address
+        id_token = result['token']['id_token']
+        decoded_token = jwt.decode(id_token, options={"verify_signature": False})
+        user_email = decoded_token.get('email')
+        
+        # The Bouncer: Check against the JSON Allowlist
+        if user_email in ALLOWED_EMAILS:
+            st.session_state.authenticated = True
+            st.session_state.username = user_email
+            st.rerun()
+        else:
+            st.error(f"Access Denied: The account '{user_email}' is not on the approved administrator list.")
+
 else:
     st.sidebar.header("Data Sync Setup")
     st.sidebar.success(f"✅ Logged in as: {st.session_state.username}")
+    
     if st.sidebar.button("Log Out"):
         st.session_state.authenticated = False
         st.session_state.username = None
@@ -241,7 +241,6 @@ else:
                     st.divider()
                     st.markdown(f"### 🎓 Report Card: {selected_student_search}")
                     
-                    # Fetch IDs for the student link generation
                     query_report = f"""
                         SELECT course_name, instructors, current_score, current_grade, 
                                last_access, missing_assignments, zeros, latest_submission, course_id, student_id
@@ -251,7 +250,6 @@ else:
                     """
                     report_df = pd.read_sql(query_report, con=engine)
                     
-                    # Construct the Hyperlinks
                     report_df['Course URL'] = "https://acalanes.instructure.com/courses/" + report_df['course_id'].astype(str)
                     report_df['Grades URL'] = "https://acalanes.instructure.com/courses/" + report_df['course_id'].astype(str) + "/grades/" + report_df['student_id'].astype(str)
                     report_df['Usage URL'] = "https://acalanes.instructure.com/courses/" + report_df['course_id'].astype(str) + "/users/" + report_df['student_id'].astype(str) + "/usage"
