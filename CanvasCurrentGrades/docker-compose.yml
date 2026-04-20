@@ -1,7 +1,8 @@
 services:
   web:
     build: .
-    restart: always
+    container_name: teacher_portal_web
+    restart: unless-stopped
     ports:
       - "8501:8501"
     environment:
@@ -13,7 +14,8 @@ services:
 
   scheduler:
     build: .
-    restart: always
+    container_name: teacher_portal_scheduler
+    restart: unless-stopped
     command: python sync.py
     environment:
       # Keeps the 6:30 AM timer synced to Pacific Time
