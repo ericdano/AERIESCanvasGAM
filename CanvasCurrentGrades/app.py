@@ -8,6 +8,8 @@ from datetime import datetime
 from sqlalchemy import create_engine, inspect
 from pathlib import Path
 from streamlit_oauth import OAuth2Component
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 # --- Setup UI ---
 st.set_page_config(page_title="Teacher Portal", layout="wide")
@@ -57,6 +59,33 @@ pwd = configs.get('LocalAERIES_Password')
 odbc_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};DATABASE={db_name};UID={uid};PWD={pwd};TrustServerCertificate=yes;"
 params = urllib.parse.quote_plus(odbc_str)
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+
+def is_user_authorized(user_email):
+    # 1. Check manual allowlist first
+    if user_email in ALLOWED_EMAILS:
+        return True
+    
+    # 2. Check Google Group via Admin SDK
+    try:
+        SCOPES = ['https://www.googleapis.com/auth/admin.directory.group.readonly']
+        # Load the Service Account credentials
+        creds = service_account.Credentials.from_service_account_file(
+            configs.get('ServiceAccountFile'), 
+            scopes=SCOPES
+        ).with_subject(configs.get('AdminEmail')) # Acting as the admin
+        
+        service = build('admin', 'directory_v1', credentials=creds)
+        
+        # Ask Google: "Is this user in the group?"
+        response = service.members().hasMember(
+            groupKey=configs.get('TargetGoogleGroup'), 
+            memberKey=user_email
+        ).execute()
+        
+        return response.get('isMember', False)
+    except Exception as e:
+        st.sidebar.error(f"Group Auth Error: {e}")
+        return False
 
 def get_sync_dates():
     inspector = inspect(engine)
