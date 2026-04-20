@@ -3,6 +3,7 @@ services:
     build: .
     container_name: teacher_portal_web
     restart: unless-stopped
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
     ports:
       - "8501:8501"
     environment:
@@ -11,6 +12,9 @@ services:
     volumes:
       # Maps your Mac's config folder securely into the container
       - ~/.Acalanes:/root/.Acalanes:ro 
+    networks:
+      - default
+      - proxy-network
 
   scheduler:
     build: .
@@ -22,3 +26,6 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - ~/.Acalanes:/root/.Acalanes:ro
+networks:
+  proxy-network:
+    external: true
