@@ -274,4 +274,8 @@ print(f"[{datetime.now()}] ⏳ Initial sync routine complete. Waiting for the ne
 
 while True:
     schedule.run_pending()
+    
+    # Send a "heartbeat" to Docker so Komodo knows the container isn't frozen
+    Path('/tmp/heartbeat.txt').touch()
+    
     time.sleep(60)
