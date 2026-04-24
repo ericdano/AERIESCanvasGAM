@@ -227,7 +227,15 @@ else:
     if not existing_syncs:
         st.info("The database is currently empty. Please wait for the initial background sync to complete.")
     else:
-        tab1, tab2, tab3 = st.tabs(["🗄️ Course Viewer", "🔍 Student Search", "📈 Analytics & Trends"])
+ # --- NEW 6-TAB LAYOUT ---
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "🗄️ Course Viewer", 
+            "🔍 Student Search", 
+            "📈 Analytics", 
+            "🚨 At-Risk Watchlist", 
+            "👻 Inactivity Monitor", 
+            "📊 Grade Distribution"
+        ])
         
         with tab1:
             st.subheader("Historical Course Viewer")
@@ -300,11 +308,6 @@ else:
                             "Usage URL": st.column_config.LinkColumn("Activity", display_text="Access Log")
                         }
                     )
-                    
-                    report_df['Score'] = pd.to_numeric(report_df['Score'], errors='coerce')
-                    if not report_df['Score'].isna().all():
-                        student_avg = report_df['Score'].mean()
-                        st.metric("Student's Average Score", f"{student_avg:.2f}%")
 
         with tab3:
             st.subheader("Average Score Trends Over Time")
@@ -321,3 +324,113 @@ else:
                 st.metric(label="Latest Institution Average", value=f"{latest_avg:.2f}%")
             else:
                 st.info("Not enough numeric score data to generate a trend chart yet.")
+
+        # --- TAB 4: INTERVENTION WATCHLIST ---
+# --- TAB 4: INTERVENTION WATCHLIST ---
+        with tab4:
+            st.subheader("🚨 Intervention Watchlist")
+            st.markdown("Identify students who are currently struggling based on their score, and optionally, their missing assignments.")
+            selected_sync_risk = st.selectbox("Select a Data Sync Date:", options=existing_syncs, index=0, key="sync_tab4")
+            
+            # The new toggle switch
+            include_missing = st.toggle("Include Missing Assignments in Risk Calculation", value=True)
+            
+            col1, col2 = st.columns(2)
+            score_threshold = col1.slider("Flag Scores Below (%)", 0, 100, 70)
+            
+            # Conditionally show the second input box based on the toggle
+            if include_missing:
+                missing_threshold = col2.number_input("Flag Missing Assignments Greater Than", min_value=0, value=3)
+            
+            if selected_sync_risk:
+                query = f"""
+                    SELECT student_name, course_name, instructors, current_score, current_grade, missing_assignments 
+                    FROM student_grades 
+                    WHERE sync_timestamp = '{selected_sync_risk}'
+                """
+                df_risk = pd.read_sql(query, con=engine)
+                df_risk['current_score'] = pd.to_numeric(df_risk['current_score'], errors='coerce')
+                df_risk['missing_assignments'] = pd.to_numeric(df_risk['missing_assignments'], errors='coerce')
+                
+                # Apply conditional filtering based on the toggle state
+                if include_missing:
+                    filtered_risk = df_risk[
+                        (df_risk['current_score'] < score_threshold) | 
+                        (df_risk['missing_assignments'] > missing_threshold)
+                    ]
+                else:
+                    filtered_risk = df_risk[
+                        (df_risk['current_score'] < score_threshold)
+                    ]
+                
+                filtered_risk.rename(columns={
+                    'student_name': 'Student', 'course_name': 'Course', 'instructors': 'Teacher', 
+                    'current_score': 'Score', 'current_grade': 'Grade', 'missing_assignments': 'Missing'
+                }, inplace=True)
+                
+                st.warning(f"Found {len(filtered_risk)} at-risk enrollments.")
+                st.dataframe(filtered_risk, use_container_width=True, hide_index=True)
+        # --- TAB 5: INACTIVITY MONITOR ---
+        with tab5:
+            st.subheader("👻 Inactivity Monitor")
+            st.markdown("Find students who have not logged into their Canvas course recently.")
+            selected_sync_inactive = st.selectbox("Select a Data Sync Date:", options=existing_syncs, index=0, key="sync_tab5")
+            
+            days_inactive_threshold = st.slider("Flag Students Inactive For (Days)", 1, 30, 7)
+            
+            if selected_sync_inactive:
+                query = f"""
+                    SELECT student_name, course_name, last_access
+                    FROM student_grades 
+                    WHERE sync_timestamp = '{selected_sync_inactive}'
+                """
+                df_inactive = pd.read_sql(query, con=engine)
+                sync_dt = datetime.strptime(selected_sync_inactive, "%Y-%m-%d %H:%M:%S")
+                
+                def calc_inactive(row):
+                    if row['last_access'] == 'Never' or pd.isna(row['last_access']):
+                        return 999 # Use 999 to represent 'Never'
+                    try:
+                        access_dt = datetime.strptime(row['last_access'], "%b %d, %Y")
+                        return (sync_dt - access_dt).days
+                    except:
+                        return 0
+                
+                df_inactive['Days Inactive'] = df_inactive.apply(calc_inactive, axis=1)
+                filtered_inactive = df_inactive[df_inactive['Days Inactive'] >= days_inactive_threshold].copy()
+                
+                filtered_inactive['Status'] = filtered_inactive['Days Inactive'].apply(
+                    lambda x: 'Never Logged In' if x == 999 else f"{x} Days"
+                )
+                
+                filtered_inactive.rename(columns={'student_name': 'Student', 'course_name': 'Course', 'last_access': 'Last Access Date'}, inplace=True)
+                
+                st.info(f"Found {len(filtered_inactive)} inactive enrollments.")
+                st.dataframe(filtered_inactive[['Student', 'Course', 'Last Access Date', 'Status']], use_container_width=True, hide_index=True)
+
+        # --- TAB 6: GRADE DISTRIBUTION ---
+        with tab6:
+            st.subheader("📊 Grade Distribution (School-Wide)")
+            selected_sync_dist = st.selectbox("Select a Data Sync Date:", options=existing_syncs, index=0, key="sync_tab6")
+            
+            if selected_sync_dist:
+                query = f"SELECT current_grade FROM student_grades WHERE sync_timestamp = '{selected_sync_dist}'"
+                df_grades = pd.read_sql(query, con=engine)
+                
+                # Clean out blanks and NaNs
+                df_grades = df_grades.dropna(subset=['current_grade'])
+                df_grades = df_grades[df_grades['current_grade'].str.strip() != '']
+                
+                if not df_grades.empty:
+                    grade_counts = df_grades['current_grade'].value_counts().reset_index()
+                    grade_counts.columns = ['Grade', 'Total Students']
+                    
+                    # Sort alphabetically to roughly group A, B, C, D, F
+                    grade_counts = grade_counts.sort_values(by='Grade')
+                    
+                    st.bar_chart(grade_counts.set_index('Grade'))
+                    
+                    with st.expander("View Raw Grade Data"):
+                        st.dataframe(grade_counts, hide_index=True)
+                else:
+                    st.info("No letter grade data available for this sync.")
