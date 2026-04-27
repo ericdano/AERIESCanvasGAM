@@ -13,7 +13,6 @@ from logging.handlers import SysLogHandler
 from collections.abc import Iterable
 
 """
-Docstring for FlaskApps.aeriesstudentchange.aeriesstuchange
 
 """
 
