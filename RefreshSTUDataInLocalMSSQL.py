@@ -23,7 +23,7 @@ try:
 
     # Local DB Configs
     local_server_name = 'AERIESLINK.acalanes.k12.ca.us,30000'
-    local_db_name = 'AERIES'
+    local_db_name = 'LocalAUHSD'
     local_uid = configs.get('LocalAERIES_Username')
     local_db_pwd = configs.get('LocalAERIES_Password')
 

@@ -52,7 +52,7 @@ except Exception as e:
 
 # --- Database Connection ---
 server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-db_name = configs.get('CanvasDatabase')
+db_name = configs.get('LocalAUHSD')
 uid = configs.get('LocalAERIES_Username')
 pwd = configs.get('LocalAERIES_Password')
 
