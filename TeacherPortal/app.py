@@ -513,41 +513,75 @@ else:
                 selected_session_id = st.selectbox("Select Session:", options=session_dict.keys(), format_func=lambda x: session_dict[x])
                 
                 st.markdown("**Search Aeries Database:**")
-                search_term = st.text_input("Search Student by Name (e.g., Smith):")
+                search_term = st.text_input("Scan Student ID or Search by Name (e.g., 123456 or Smith):")
                 
                 if search_term:
                     try:
-                        # Assuming STU table uses 'ID' for student number and 'NM' for name
-                        aeries_query = f"""SELECT ID as student_id, CONCAT(FN,' ',LN) AS student_name FROM STU WHERE  CONCAT(FN,' ',LN) LIKE '%{search_term}%' AND DEL = 0"""
+                        clean_term = search_term.strip()
+                        
+                        # Check if input is a scanned ID number or a typed Name
+                        if clean_term.isdigit():
+                            aeries_query = f"SELECT ID as student_id, CONCAT(FN,' ',LN) AS student_name FROM STU WHERE ID = {clean_term} AND DEL = 0"
+                        else:
+                            aeries_query = f"SELECT ID as student_id, CONCAT(FN,' ',LN) AS student_name FROM STU WHERE CONCAT(FN,' ',LN) LIKE '%{clean_term}%' AND DEL = 0"
+                        
                         search_results = pd.read_sql(aeries_query, con=engine)
                         
                         if not search_results.empty:
-                            event = st.dataframe(search_results, on_select="rerun", selection_mode="multi-row", hide_index=True)
+                            # Split the screen: 2/3 for search results, 1/3 for grades preview
+                            col1, col2 = st.columns([2, 1])
                             
-                            if st.button("Add Selected Students to Roster"):
+                            with col1:
+                                event = st.dataframe(search_results, on_select="rerun", selection_mode="multi-row", hide_index=True, use_container_width=True)
+                            
+                            with col2:
                                 if event.selection.rows:
-                                    with engine.begin() as conn:
-                                        for row_idx in event.selection.rows:
-                                            student_id = int(search_results.iloc[row_idx]['student_id'])
-                                            student_name = str(search_results.iloc[row_idx]['student_name'])
-                                            
-                                            check = conn.execute(text(f"SELECT * FROM academy_roster WHERE session_id = {selected_session_id} AND student_id = {student_id}")).fetchone()
-                                            if not check:
-                                                conn.execute(text("""
-                                                    INSERT INTO academy_roster (session_id, student_id, student_name)
-                                                    VALUES (:sid, :stid, :sname)
-                                                """), {"sid": selected_session_id, "stid": student_id, "sname": student_name})
-                                    st.success("Students added to the roster!")
-                                    st.rerun()
+                                    # Place the Add Button at the top of the side panel
+                                    if st.button("➕ Add Selected to Roster", use_container_width=True):
+                                        with engine.begin() as conn:
+                                            for row_idx in event.selection.rows:
+                                                student_id = int(search_results.iloc[row_idx]['student_id'])
+                                                student_name = str(search_results.iloc[row_idx]['student_name'])
+                                                
+                                                check = conn.execute(text(f"SELECT * FROM academy_roster WHERE session_id = {selected_session_id} AND student_id = {student_id}")).fetchone()
+                                                if not check:
+                                                    conn.execute(text("""
+                                                        INSERT INTO academy_roster (session_id, student_id, student_name)
+                                                        VALUES (:sid, :stid, :sname)
+                                                    """), {"sid": selected_session_id, "stid": student_id, "sname": student_name})
+                                        st.success("Students added to the roster!")
+                                        st.rerun()
+                                    
+                                    # Preview Grades for the last selected student
+                                    preview_idx = event.selection.rows[-1]
+                                    preview_id = search_results.iloc[preview_idx]['student_id']
+                                    preview_name = search_results.iloc[preview_idx]['student_name']
+                                    
+                                    st.divider()
+                                    st.markdown(f"**Current Grades:** {preview_name}")
+                                    
+                                    if existing_syncs:
+                                        latest_sync = existing_syncs[0]
+                                        grade_query = f"SELECT course_name, current_grade, current_score FROM student_grades WHERE student_id = '{preview_id}' AND sync_timestamp = '{latest_sync}'"
+                                        try:
+                                            grade_df = pd.read_sql(grade_query, con=engine)
+                                            if not grade_df.empty:
+                                                grade_df.rename(columns={'course_name': 'Course', 'current_grade': 'Grade', 'current_score': 'Score'}, inplace=True)
+                                                st.dataframe(grade_df, hide_index=True, use_container_width=True)
+                                            else:
+                                                st.info("No current Canvas grades found.")
+                                        except Exception as e:
+                                            st.error("Could not load grades from database.")
+                                    else:
+                                        st.info("No sync data available.")
                                 else:
-                                    st.warning("Please select at least one student from the table.")
+                                    st.info("👈 Select a student to preview grades and add them to the roster.")
                         else:
-                            st.info("No students found in Aeries.")
+                            st.info("No students found in Aeries matching that search.")
                     except Exception as e:
                         st.error(f"Error querying Aeries Database: {e}. Check your STU table column names.")
             else:
                 st.warning("You need to create a session first.")
-
         # --- ACADEMY TAB 3: CHECK-IN / OUT ---
         with acad_tab3:
             st.subheader("Live Attendance")
