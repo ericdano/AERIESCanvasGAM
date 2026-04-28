@@ -518,7 +518,7 @@ else:
                 if search_term:
                     try:
                         # Assuming STU table uses 'ID' for student number and 'NM' for name
-                        aeries_query = f"SELECT ID as student_id, NM as student_name FROM AERIES.dbo.STU WHERE NM LIKE '%{search_term}%' AND DEL = 0"
+                        aeries_query = f"SELECT ID as student_id, NM as student_name FROM STU WHERE NM LIKE '%{search_term}%' AND DEL = 0"
                         search_results = pd.read_sql(aeries_query, con=engine)
                         
                         if not search_results.empty:
