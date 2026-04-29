@@ -528,12 +528,18 @@ else:
                         search_results = pd.read_sql(aeries_query, con=engine)
                         
                         if not search_results.empty:
-                            # Split the screen: 2/3 for search results, 1/3 for grades preview
-                            col1, col2 = st.columns([2, 1])
+                            # Split the screen into 3 columns: [Search Results, Grade Preview, Empty Space]
+                            col1, col2, col3 = st.columns([2, 2, 1])
                             
                             with col1:
-                                event = st.dataframe(search_results, on_select="rerun", selection_mode="multi-row", hide_index=True, use_container_width=True)
-                            
+                                event = st.dataframe(
+                                    search_results, 
+                                    on_select="rerun", 
+                                    selection_mode="multi-row", 
+                                    hide_index=True, 
+                                    use_container_width=True, 
+                                    height=250
+                                )
                             with col2:
                                 if event.selection.rows:
                                     # Place the Add Button at the top of the side panel
@@ -554,26 +560,38 @@ else:
                                     
                                     # Preview Grades for the last selected student
                                     preview_idx = event.selection.rows[-1]
-                                    preview_id = search_results.iloc[preview_idx]['student_id']
+                                    
+                                    # Force the ID into a strict Python integer
+                                    preview_id = int(search_results.iloc[preview_idx]['student_id'])
                                     preview_name = search_results.iloc[preview_idx]['student_name']
                                     
                                     st.divider()
                                     st.markdown(f"**Current Grades:** {preview_name}")
                                     
-                                    if existing_syncs:
-                                        latest_sync = existing_syncs[0]
-                                        grade_query = f"SELECT course_name, current_grade, current_score FROM student_grades WHERE student_id = '{preview_id}' AND sync_timestamp = '{latest_sync}'"
-                                        try:
-                                            grade_df = pd.read_sql(grade_query, con=engine)
-                                            if not grade_df.empty:
-                                                grade_df.rename(columns={'course_name': 'Course', 'current_grade': 'Grade', 'current_score': 'Score'}, inplace=True)
-                                                st.dataframe(grade_df, hide_index=True, use_container_width=True)
-                                            else:
-                                                st.info("No current Canvas grades found.")
-                                        except Exception as e:
-                                            st.error("Could not load grades from database.")
-                                    else:
-                                        st.info("No sync data available.")
+                                    canvas_sis_format = f"STU_{preview_id}"
+                                    
+                                    # Bulletproof Query: Get the absolute most recent grades for this specific student
+                                    grade_query = f"""
+                                        SELECT course_name, current_grade, current_score 
+                                        FROM student_grades 
+                                        WHERE sis_user_id = '{canvas_sis_format}' 
+                                        AND sync_timestamp = (
+                                            SELECT MAX(sync_timestamp) 
+                                            FROM student_grades 
+                                            WHERE sis_user_id = '{canvas_sis_format}'
+                                        )
+                                    """
+                                    
+                                    try:
+                                        grade_df = pd.read_sql(grade_query, con=engine)
+                                        
+                                        if not grade_df.empty:
+                                            grade_df.rename(columns={'course_name': 'Course', 'current_grade': 'Grade', 'current_score': 'Score'}, inplace=True)
+                                            st.dataframe(grade_df, hide_index=True, use_container_width=True, height=250)
+                                        else:
+                                            st.error(f"No Canvas grades found anywhere in the database for ID: {canvas_sis_format}.")
+                                    except Exception as e:
+                                        st.error(f"Database Error: {e}")
                                 else:
                                     st.info("👈 Select a student to preview grades and add them to the roster.")
                         else:
@@ -591,10 +609,19 @@ else:
                 roster_df = pd.read_sql(f"SELECT roster_id, student_id, student_name, status FROM academy_roster WHERE session_id = {checkin_session_id}", con=engine)
                 
                 if not roster_df.empty:
-                    col1, col2 = st.columns([3, 1])
+                    # Split into 3 columns [2, 1, 1] to reduce the width of the table
+                    col1, col2, col3 = st.columns([2, 1, 1])
                     
                     with col1:
-                        event = st.dataframe(roster_df[['student_name', 'student_id', 'status']], on_select="rerun", selection_mode="single-row", hide_index=True, use_container_width=True)
+                        # Added height=250 to keep it compact vertically
+                        event = st.dataframe(
+                            roster_df[['student_name', 'student_id', 'status']], 
+                            on_select="rerun", 
+                            selection_mode="single-row", 
+                            hide_index=True, 
+                            use_container_width=True, 
+                            height=250
+                        )
                     
                     with col2:
                         st.markdown("**Update Status**")
