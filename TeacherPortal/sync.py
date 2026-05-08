@@ -33,7 +33,7 @@ try:
     TARGET_TERM_IDS = configs.get('TargetTermIDs')
     
     server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-    db_name = configs.get('CanvasDatabase')
+    db_name = configs.get('LocalAUHSD')
     uid = configs.get('LocalAERIES_Username')
     pwd = configs.get('LocalAERIES_Password')
     
@@ -153,6 +153,8 @@ def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
                         'instructors': instructor_string,
                         'student_id': user.id,   
                         'student_name': user.name,
+                        'sis_user_id': getattr(user, 'sis_user_id', None),
+                        'email': getattr(user, 'email', getattr(user,'login_id',None)),
                         'current_score': grades.get('current_score'),
                         'current_grade': grades.get('current_grade'),
                         'last_access': format_canvas_date(last_access_raw),

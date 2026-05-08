@@ -1,0 +1,42 @@
+services:
+  checkout-app:
+    build: .
+    container_name: day-checkout
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    networks:
+      - proxy-network
+    environment:
+      # Database Credentials
+      - DB_SERVER=AERIESLINK.acalanes.k12.ca.us:30000
+      - DB_USER=AUHSDPython
+      - DB_PASSWORD=
+      - DB_NAME=LocalAUHSD
+
+      # Email / SMTP Credentials
+      - SMTP_SERVER=10.99.0.202
+      - SMTP_PORT=25
+      - SMTP_USER=
+      - SMTP_PASSWORD=
+# THE NEW BOUNCER
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: checkout-auth
+    restart: unless-stopped
+    ports:
+      - "4180:4180"
+    environment:
+      OAUTH2_PROXY_PROVIDER: google
+      OAUTH2_PROXY_CLIENT_ID: ""
+      OAUTH2_PROXY_CLIENT_SECRET: ""
+      OAUTH2_PROXY_COOKIE_SECRET: "" # Replace with your own 32-byte base64 string
+      OAUTH2_PROXY_EMAIL_DOMAINS: "auhsdschools.org" # Only allows staff from your domain!
+      OAUTH2_PROXY_UPSTREAMS: "http://10.99.0.180:3005" # Must point to your physical server IP and Python port
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+networks:
+  proxy-network:
+    external: true
