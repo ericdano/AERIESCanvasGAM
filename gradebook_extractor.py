@@ -7,6 +7,9 @@ from pathlib import Path
 from canvasapi import Canvas
 from datetime import datetime
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 print("🚀 Starting Delta Gradebook Sync...")
 
@@ -46,42 +49,62 @@ def clean_canvas_date(date_string):
     except Exception:
         return None
 
+# --- Helper Function: Send Email Notification ---
+def send_summary_email(stats):
+    sender = configs.get('SMTPAddressFrom')
+    password = ""
+    receiver = configs.get('SendInfoEmailAddr')
+    smtp_server = configs.get('SMTPServerAddress')
+    smtp_port = 25 # Defaulting to 25
+
+    # Check if the absolute minimum requirements are there
+    if not all([sender, receiver, smtp_server]):
+        print("\n⚠️ Email sender, receiver, or server missing in JSON. Skipping notification.")
+        return
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = receiver
+    
+    current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+
+    # Heartbeat logic vs Update logic
+    if stats['scores'] == 0 and stats['assignments'] == 0 and stats['students'] == 0:
+        msg['Subject'] = "🟢 Canvas Sync Heartbeat: No New Updates"
+        body = f"The Canvas Delta Sync ran successfully via Task Scheduler at {current_time}.\n\n"
+        body += "No new assignments, student enrollments, or graded scores were detected since the last run."
+    else:
+        msg['Subject'] = f"🔵 Canvas Sync Complete: {stats['scores']} Scores Updated"
+        body = f"The Canvas Delta Sync ran successfully at {current_time}.\n\n"
+        body += "Data Upsert Summary:\n"
+        body += f"- Students Added/Updated: {stats['students']}\n"
+        body += f"- Assignments Added/Updated: {stats['assignments']}\n"
+        body += f"- Scores Added/Updated: {stats['scores']}\n"
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        # Connect strictly to the defined port without forcing TLS encryption
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        
+        # Only attempt to login if a password was actually provided in the JSON
+        if password:
+            server.login(sender, password)
+            
+        server.send_message(msg)
+        server.quit()
+        print("\n📧 Summary email sent successfully via Port 25!")
+    except Exception as e:
+        print(f"\n⚠️ Failed to send email: {e}")
+
 # --- Initialize Relational Tables ---
 try:
     with engine.begin() as conn:
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_active_courses' and xtype='U')
-            CREATE TABLE canvas_active_courses (course_id INT PRIMARY KEY, course_name VARCHAR(255))
-        """))
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_assignments' and xtype='U')
-            CREATE TABLE canvas_assignments (assignment_id INT PRIMARY KEY, course_id INT, title VARCHAR(255), points_possible FLOAT, due_at DATETIME)
-        """))
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_scores' and xtype='U')
-            CREATE TABLE canvas_scores (
-                submission_id INT PRIMARY KEY, 
-                assignment_id INT, 
-                student_id INT, 
-                score FLOAT, 
-                grade VARCHAR(50), 
-                workflow_state VARCHAR(50), 
-                submitted_at DATETIME
-            )
-        """))
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_students' and xtype='U')
-            CREATE TABLE canvas_students (
-                student_id INT PRIMARY KEY, student_name VARCHAR(255), email VARCHAR(255), sis_user_id VARCHAR(100)
-            )
-        """))
-        # NEW TABLE: To track our sync history for Delta pulls
-        conn.execute(text("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_sync_logs' and xtype='U')
-            CREATE TABLE canvas_sync_logs (
-                sync_id INT IDENTITY(1,1) PRIMARY KEY, sync_start DATETIME, status VARCHAR(50)
-            )
-        """))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_active_courses' and xtype='U') CREATE TABLE canvas_active_courses (course_id INT PRIMARY KEY, course_name VARCHAR(255))"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_assignments' and xtype='U') CREATE TABLE canvas_assignments (assignment_id INT PRIMARY KEY, course_id INT, title VARCHAR(255), points_possible FLOAT, due_at DATETIME)"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_scores' and xtype='U') CREATE TABLE canvas_scores (submission_id INT PRIMARY KEY, assignment_id INT, student_id INT, score FLOAT, grade VARCHAR(50), workflow_state VARCHAR(50), submitted_at DATETIME)"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_students' and xtype='U') CREATE TABLE canvas_students (student_id INT PRIMARY KEY, student_name VARCHAR(255), email VARCHAR(255), sis_user_id VARCHAR(100))"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_sync_logs' and xtype='U') CREATE TABLE canvas_sync_logs (sync_id INT IDENTITY(1,1) PRIMARY KEY, sync_start DATETIME, status VARCHAR(50))"))
 except Exception as e:
     print(f"❌ Database Initialization Error: {e}")
     exit(1)
@@ -94,11 +117,10 @@ try:
     with engine.connect() as conn:
         result = conn.execute(text("SELECT MAX(sync_start) FROM canvas_sync_logs WHERE status = 'SUCCESS'")).fetchone()
         if result and result[0]:
-            # Format to ISO 8601 for the Canvas API (e.g., 2025-05-08T12:00:00Z)
             last_sync_iso = result[0].strftime('%Y-%m-%dT%H:%M:%SZ')
             print(f"⚡ DELTA MODE ACTIVATED: Only fetching grades modified since {last_sync_iso}")
         else:
-            print("📥 FULL SYNC MODE ACTIVATED: No previous log found. Downloading entire historical gradebook. This will take a while!")
+            print("📥 FULL SYNC MODE ACTIVATED: No previous log found. Downloading entire historical gradebook.")
 except Exception as e:
     print(f"⚠️ Could not read sync logs: {e}")
 
@@ -120,27 +142,21 @@ for course in courses:
     try:
         print(f"\n📚 Course: {course.name} (ID: {course.id})")
         
-        # 1. Fetch Students & Assignments
         users = course.get_users(enrollment_type=['student'], include=['email'])
         student_data = [{"student_id": u.id, "student_name": getattr(u, 'name', '')[:255], "email": getattr(u, 'email', getattr(u, 'login_id', None)), "sis_user_id": getattr(u, 'sis_user_id', None)} for u in users]
 
         assignments = course.get_assignments()
         assign_data = [{"assignment_id": a.id, "course_id": course.id, "title": a.name[:250], "points_possible": getattr(a, 'points_possible', None), "due_at": clean_canvas_date(getattr(a, 'due_at', None))} for a in assignments]
         
-        # 2. DELTA OPTIMIZED SUBMISSION FETCH
         if last_sync_iso:
-            # Only ask Canvas for things that were specifically graded OR submitted recently
             subs_graded = course.get_multiple_submissions(student_ids=['all'], graded_since=last_sync_iso)
             subs_submitted = course.get_multiple_submissions(student_ids=['all'], submitted_since=last_sync_iso)
             
-            # Combine them into a dictionary to automatically remove duplicates
             unique_subs = {}
             for sub in subs_graded: unique_subs[sub.id] = sub
             for sub in subs_submitted: unique_subs[sub.id] = sub
-            
             submissions_to_process = list(unique_subs.values())
         else:
-            # If no last_sync date exists, download everything
             submissions_to_process = course.get_multiple_submissions(student_ids=['all'])
 
         sub_data = []
@@ -152,45 +168,25 @@ for course in courses:
                     "workflow_state": getattr(sub, 'workflow_state', None), "submitted_at": clean_canvas_date(getattr(sub, 'submitted_at', None))
                 })
 
-        # 3. WRITE TO DB USING DELTA "UPSERTS"
+        # --- WRITE TO DB ---
         with engine.begin() as conn:
-            # --- Students Directory Upsert ---
             if student_data:
                 df_students = pd.DataFrame(student_data).drop_duplicates(subset=['student_id'])
                 df_students.to_sql('stg_canvas_students', con=engine, if_exists='replace', index=False)
-                conn.execute(text("""
-                    MERGE canvas_students AS target USING stg_canvas_students AS source ON target.student_id = source.student_id
-                    WHEN MATCHED THEN UPDATE SET student_name = source.student_name, email = source.email, sis_user_id = source.sis_user_id
-                    WHEN NOT MATCHED THEN INSERT (student_id, student_name, email, sis_user_id) VALUES (source.student_id, source.student_name, source.email, source.sis_user_id);
-                """))
+                conn.execute(text("MERGE canvas_students AS target USING stg_canvas_students AS source ON target.student_id = source.student_id WHEN MATCHED THEN UPDATE SET student_name = source.student_name, email = source.email, sis_user_id = source.sis_user_id WHEN NOT MATCHED THEN INSERT (student_id, student_name, email, sis_user_id) VALUES (source.student_id, source.student_name, source.email, source.sis_user_id);"))
                 total_students_processed += len(df_students)
 
-            # --- Courses & Assignments Upsert ---
             pd.DataFrame([{"course_id": course.id, "course_name": course.name[:250]}]).to_sql('stg_canvas_courses', con=engine, if_exists='replace', index=False)
-            conn.execute(text("""
-                MERGE canvas_active_courses AS target USING stg_canvas_courses AS source ON target.course_id = source.course_id
-                WHEN MATCHED THEN UPDATE SET course_name = source.course_name
-                WHEN NOT MATCHED THEN INSERT (course_id, course_name) VALUES (source.course_id, source.course_name);
-            """))
+            conn.execute(text("MERGE canvas_active_courses AS target USING stg_canvas_courses AS source ON target.course_id = source.course_id WHEN MATCHED THEN UPDATE SET course_name = source.course_name WHEN NOT MATCHED THEN INSERT (course_id, course_name) VALUES (source.course_id, source.course_name);"))
             
             if assign_data:
                 pd.DataFrame(assign_data).to_sql('stg_canvas_assignments', con=engine, if_exists='replace', index=False)
-                conn.execute(text("""
-                    MERGE canvas_assignments AS target USING stg_canvas_assignments AS source ON target.assignment_id = source.assignment_id
-                    WHEN MATCHED THEN UPDATE SET title = source.title, points_possible = source.points_possible, due_at = source.due_at, course_id = source.course_id
-                    WHEN NOT MATCHED THEN INSERT (assignment_id, course_id, title, points_possible, due_at) VALUES (source.assignment_id, source.course_id, source.title, source.points_possible, source.due_at);
-                """))
+                conn.execute(text("MERGE canvas_assignments AS target USING stg_canvas_assignments AS source ON target.assignment_id = source.assignment_id WHEN MATCHED THEN UPDATE SET title = source.title, points_possible = source.points_possible, due_at = source.due_at, course_id = source.course_id WHEN NOT MATCHED THEN INSERT (assignment_id, course_id, title, points_possible, due_at) VALUES (source.assignment_id, source.course_id, source.title, source.points_possible, source.due_at);"))
                 total_assignments_processed += len(assign_data)
             
-            # --- Scores Upsert ---
             if sub_data:
                 pd.DataFrame(sub_data).to_sql('stg_canvas_scores', con=engine, if_exists='replace', index=False)
-                conn.execute(text("""
-                    MERGE canvas_scores AS target USING stg_canvas_scores AS source ON target.submission_id = source.submission_id
-                    WHEN MATCHED AND (ISNULL(target.score, -999) <> ISNULL(source.score, -999) OR ISNULL(target.workflow_state, '') <> ISNULL(source.workflow_state, '') OR ISNULL(target.grade, '') <> ISNULL(source.grade, '')) 
-                    THEN UPDATE SET assignment_id = source.assignment_id, student_id = source.student_id, score = source.score, grade = source.grade, workflow_state = source.workflow_state, submitted_at = source.submitted_at
-                    WHEN NOT MATCHED THEN INSERT (submission_id, assignment_id, student_id, score, grade, workflow_state, submitted_at) VALUES (source.submission_id, source.assignment_id, source.student_id, source.score, source.grade, source.workflow_state, source.submitted_at);
-                """))
+                conn.execute(text("MERGE canvas_scores AS target USING stg_canvas_scores AS source ON target.submission_id = source.submission_id WHEN MATCHED AND (ISNULL(target.score, -999) <> ISNULL(source.score, -999) OR ISNULL(target.workflow_state, '') <> ISNULL(source.workflow_state, '') OR ISNULL(target.grade, '') <> ISNULL(source.grade, '')) THEN UPDATE SET assignment_id = source.assignment_id, student_id = source.student_id, score = source.score, grade = source.grade, workflow_state = source.workflow_state, submitted_at = source.submitted_at WHEN NOT MATCHED THEN INSERT (submission_id, assignment_id, student_id, score, grade, workflow_state, submitted_at) VALUES (source.submission_id, source.assignment_id, source.student_id, source.score, source.grade, source.workflow_state, source.submitted_at);"))
                 total_scores_processed += len(sub_data)
 
         print(f"   ✅ Checked {len(sub_data)} modified scores.")
@@ -207,3 +203,11 @@ except Exception as e:
     print(f"⚠️ Could not write success log: {e}")
 
 print(f"\n🎉 Sync Complete! Updated {total_students_processed} students, {total_assignments_processed} assignments, and {total_scores_processed} delta scores.")
+
+# --- Send Summary Email ---
+sync_stats = {
+    "students": total_students_processed,
+    "assignments": total_assignments_processed,
+    "scores": total_scores_processed
+}
+send_summary_email(sync_stats)
