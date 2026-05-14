@@ -21,7 +21,7 @@ engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
 
 # --- Canvas Setup ---
 CANVAS_URL = "https://acalanes.instructure.com"
-CANVAS_TOKEN = configs.get('CanvasAPIKey') # Assuming your token is in the JSON
+CANVAS_TOKEN = configs.get('CanvasToken') # Assuming your token is in the JSON
 canvas = Canvas(CANVAS_URL, CANVAS_TOKEN)
 
 print("Connecting to database...")
@@ -44,11 +44,9 @@ with engine.begin() as conn:
     df_students = pd.read_sql("SELECT DISTINCT student_id FROM student_grades WHERE sis_user_id IS NULL", con=conn)
     print(f"Found {len(df_students)} unique students to update.")
 
-# 3. Look up and update each student
+    # 3. Look up and update each student
     for index, row in df_students.iterrows():
-        # THE FIX: Cast the numpy.int64 to a standard Python int
-        c_id = int(row['student_id']) 
-        
+        c_id = row['student_id']
         try:
             # Query Canvas for the user profile
             user = canvas.get_user(c_id)

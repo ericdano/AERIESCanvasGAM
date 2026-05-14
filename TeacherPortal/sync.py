@@ -1,212 +1,283 @@
 import os
+import time
 import json
 import urllib.parse
+import schedule
+import smtplib
 import pandas as pd
+import concurrent.futures
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+from canvasapi import Canvas
 from sqlalchemy import create_engine, text
 from pathlib import Path
-from canvasapi import Canvas
-from datetime import datetime
-import time
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-print("🚀 Starting Delta Gradebook Sync...")
+# --- Helper to format Canvas ISO dates ---
+def format_canvas_date(date_str):
+    if not date_str:
+        return "Never"
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+        return dt.strftime("%b %d, %Y")
+    except Exception:
+        return str(date_str)
 
 # --- Load Configuration ---
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 try:
     with open(confighome, 'r') as f:
         configs = json.load(f)
+    API_URL = configs.get('CanvasAPIURL')
+    API_KEY = configs.get('CanvasAPIKey')
+    ACCOUNT_ID = configs.get('CanvasAccountID', 1) 
+    TARGET_TERM_IDS = configs.get('TargetTermIDs')
+    
+    server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
+    db_name = configs.get('LocalAUHSD')
+    uid = configs.get('LocalAERIES_Username')
+    pwd = configs.get('LocalAERIES_Password')
+    
+    # Updated Email Configs using your JSON keys
+    SMTP_SERVER = configs.get('SMTPServerAddress', '10.99.0.202')
+    SMTP_FROM = configs.get('SMTPAddressFrom', 'donotreply@auhsdschools.org')
+    ALERT_EMAIL = configs.get('SendInfoEmailAddr', 'edannewitz@auhsdschools.org')
 except Exception as e:
-    print(f"❌ Could not load config file: {e}")
+    print(f"Error loading config: {e}")
     exit(1)
 
-CANVAS_URL = "https://acalanes.instructure.com"
-CANVAS_TOKEN = configs.get('CanvasAPIKey')
-ACCOUNT_ID = 1
-TARGET_TERM_IDS = configs.get('TargetTermIDs', [])
-
-# --- Database Setup ---
-server_name = r'AERIESLINK.acalanes.k12.ca.us,30000'
-db_name = configs.get('LocalAUHSD')
-uid = configs.get('LocalAERIES_Username')
-pwd = configs.get('LocalAERIES_Password')
-
+# --- Database Connection ---
 odbc_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};DATABASE={db_name};UID={uid};PWD={pwd};TrustServerCertificate=yes;"
 params = urllib.parse.quote_plus(odbc_str)
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
+db_url = f"mssql+pyodbc:///?odbc_connect={params}"
+engine = create_engine(db_url)
 
-# --- Helper Function: Clean Canvas Dates ---
-def clean_canvas_date(date_string):
-    if not date_string or pd.isna(date_string) or str(date_string).lower() in ['none', 'nan', 'nat']:
-        return None
-    try:
-        dt = pd.to_datetime(date_string, utc=True)
-        if dt.year < 1753 or dt.year > 9999:
-            return None
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
-    except Exception:
-        return None
-
-# --- Helper Function: Send Email Notification ---
-def send_summary_email(stats):
-    sender = configs.get('EmailSeSMTPAddressFromnder')
-    password = ""
-    receiver = configs.get('SendInfoEmailAddr')
-    smtp_server = configs.get('SMTPServerAddress')
-    smtp_port = 25
-    # Check if the absolute minimum requirements are there
-    if not all([sender, receiver, smtp_server]):
-        print("\n⚠️ Email sender, receiver, or server missing in JSON. Skipping notification.")
+# --- Email Helper Function (Unsecured Port 25 Relay) ---
+def send_completion_email(sync_time, mode):
+    if not SMTP_SERVER or not ALERT_EMAIL:
         return
+    try:
+        msg = MIMEText(f"The Canvas Grade Extractor has successfully completed a {mode} sync at {sync_time} PDT.")
+        msg['Subject'] = f"✅ Canvas Data Sync Complete ({mode})"
+        msg['From'] = SMTP_FROM
+        msg['To'] = ALERT_EMAIL
 
-    msg = MIMEMultipart()
-    msg['From'] = sender
-    msg['To'] = receiver
+        # Connects to your local unsecured SMTP server on port 25
+        with smtplib.SMTP(SMTP_SERVER, 25) as server: 
+            server.send_message(msg)
+            
+        print(f"[{datetime.now()}] 📧 Success email sent to {ALERT_EMAIL}")
+    except Exception as e:
+        print(f"[{datetime.now()}] ⚠️ Could not send email: {e}")
+
+# --- Worker Function for Delta Multithreading ---
+def process_single_course(course, term_id, new_sync_timestamp, cutoff_utc):
+    print(f"[{datetime.now()}]   🧵 Thread started for Course {course.id}. Fetching roster...")
+    course_data = []
+    try:
+        teacher_names = [t.get('display_name', 'Unknown') for t in getattr(course, 'teachers', [])]
+        instructor_string = ", ".join(teacher_names) if teacher_names else "No Instructor"
+        
+        users = list(course.get_users(enrollment_type=['student'], include=['enrollments']))
+        if not users:
+            return course_data
+            
+        delta_users = []
+        for u in users:
+            changed = False
+            for e in getattr(u, 'enrollments', []):
+                updated_at_str = e.get('updated_at')
+                if updated_at_str:
+                    try:
+                        updated_dt = datetime.strptime(updated_at_str, "%Y-%m-%dT%H:%M:%SZ")
+                        if updated_dt > cutoff_utc:
+                            changed = True
+                            break
+                    except Exception:
+                        changed = True
+                else:
+                    changed = True 
+                    
+            if changed:
+                delta_users.append(u)
+                
+        if not delta_users:
+            print(f"[{datetime.now()}]   ⏩ No changes in Course {course.id}. Skipping heavy fetch.")
+            return course_data
+
+        user_ids = [u.id for u in delta_users]
+        student_stats = {uid: {'missing': 0, 'zeros': 0, 'latest_sub': None} for uid in user_ids}
+        
+        chunk_size = 50
+        for i in range(0, len(user_ids), chunk_size):
+            chunk = user_ids[i:i + chunk_size]
+            chunk_subs = course.get_multiple_submissions(student_ids=chunk, include=['assignment'])
+            
+            for sub in chunk_subs:
+                uid = getattr(sub, 'user_id', None)
+                if not uid or uid not in student_stats:
+                    continue
+                    
+                if getattr(sub, 'excused', False) or getattr(sub, 'workflow_state', '') == 'deleted':
+                    continue
+                    
+                assignment = getattr(sub, 'assignment', {})
+                if assignment.get('points_possible', 1) == 0:
+                    continue
+
+                is_missing = getattr(sub, 'missing', False)
+                score = getattr(sub, 'score', None)
+
+                if is_missing:
+                    student_stats[uid]['missing'] += 1
+                elif score == 0 or score == 0.0:
+                    student_stats[uid]['zeros'] += 1
+                    
+                sub_at = getattr(sub, 'submitted_at', None)
+                if sub_at:
+                    current_latest = student_stats[uid]['latest_sub']
+                    if not current_latest or sub_at > current_latest:
+                        student_stats[uid]['latest_sub'] = sub_at
+
+        for user in delta_users:
+            if hasattr(user, 'enrollments'):
+                for enrollment in user.enrollments:
+                    grades = enrollment.get('grades', {})
+                    last_access_raw = enrollment.get('last_activity_at', None)
+                    stats = student_stats.get(user.id, {})
+                    
+                    course_data.append({
+                        'sync_timestamp': new_sync_timestamp,
+                        'term_id': term_id,
+                        'course_id': course.id,
+                        'course_name': course.name,
+                        'instructors': instructor_string,
+                        'student_id': user.id,   
+                        'student_name': user.name,
+                        'sis_user_id': getattr(user, 'sis_user_id', None),
+                        'email': getattr(user, 'email', getattr(user,'login_id',None)),
+                        'current_score': grades.get('current_score'),
+                        'current_grade': grades.get('current_grade'),
+                        'last_access': format_canvas_date(last_access_raw),
+                        'missing_assignments': stats.get('missing', 0),
+                        'zeros': stats.get('zeros', 0),
+                        'latest_submission': format_canvas_date(stats.get('latest_sub'))
+                    })
+    except Exception as e:
+        print(f"[{datetime.now()}]   ❌ Skipped Course {course.id}: {e}")
+        
+    return course_data
+
+def run_sync():
+    print(f"[{datetime.now()}] 🚀 Starting scheduled Sync...")
+    canvas = Canvas(API_URL, API_KEY)
+    new_sync_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sync_mode = "Delta"
     
-    current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-
-    # Heartbeat logic vs Update logic
-    if stats['scores'] == 0 and stats['assignments'] == 0 and stats['students'] == 0:
-        msg['Subject'] = "🟢 Canvas Sync Heartbeat: No New Updates"
-        body = f"The Canvas Delta Sync ran successfully via Task Scheduler at {current_time}.\n\n"
-        body += "No new assignments, student enrollments, or graded scores were detected since the last run."
-    else:
-        msg['Subject'] = f"🔵 Canvas Sync Complete: {stats['scores']} Scores Updated"
-        body = f"The Canvas Delta Sync ran successfully at {current_time}.\n\n"
-        body += "Data Upsert Summary:\n"
-        body += f"- Students Added/Updated: {stats['students']}\n"
-        body += f"- Assignments Added/Updated: {stats['assignments']}\n"
-        body += f"- Scores Added/Updated: {stats['scores']}\n"
-
-    msg.attach(MIMEText(body, 'plain'))
-
     try:
-        # Connect strictly to the defined port without forcing TLS encryption
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        
-        # Only attempt to login if a password was actually provided in the JSON
-        if password:
-            server.login(sender, password)
+        try:
+            history_df = pd.read_sql("SELECT MAX(sync_timestamp) FROM sync_history WHERE status = 'COMPLETE'", con=engine)
+            last_valid_sync = history_df.iloc[0, 0] if not history_df.empty else None
             
-        server.send_message(msg)
-        server.quit()
-        print("\n📧 Summary email sent successfully via Port 25!")
-    except Exception as e:
-        print(f"\n⚠️ Failed to send email: {e}")
+            if last_valid_sync:
+                check_data = pd.read_sql(f"SELECT TOP 1 1 FROM student_grades WHERE sync_timestamp = '{last_valid_sync}'", con=engine)
+                if check_data.empty:
+                    last_valid_sync = None 
+        except Exception:
+            last_valid_sync = None
 
-# --- Initialize Relational Tables ---
-try:
-    with engine.begin() as conn:
-        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_active_courses' and xtype='U') CREATE TABLE canvas_active_courses (course_id INT PRIMARY KEY, course_name VARCHAR(255))"))
-        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_assignments' and xtype='U') CREATE TABLE canvas_assignments (assignment_id INT PRIMARY KEY, course_id INT, title VARCHAR(255), points_possible FLOAT, due_at DATETIME)"))
-        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_scores' and xtype='U') CREATE TABLE canvas_scores (submission_id INT PRIMARY KEY, assignment_id INT, student_id INT, score FLOAT, grade VARCHAR(50), workflow_state VARCHAR(50), submitted_at DATETIME)"))
-        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_students' and xtype='U') CREATE TABLE canvas_students (student_id INT PRIMARY KEY, student_name VARCHAR(255), email VARCHAR(255), sis_user_id VARCHAR(100))"))
-        conn.execute(text("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='canvas_sync_logs' and xtype='U') CREATE TABLE canvas_sync_logs (sync_id INT IDENTITY(1,1) PRIMARY KEY, sync_start DATETIME, status VARCHAR(50))"))
-except Exception as e:
-    print(f"❌ Database Initialization Error: {e}")
-    exit(1)
+        completed_resume_courses = []
 
-# --- Check Last Sync Time for Delta API Fetch ---
-current_sync_start = datetime.utcnow()
-last_sync_iso = None
-
-try:
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT MAX(sync_start) FROM canvas_sync_logs WHERE status = 'SUCCESS'")).fetchone()
-        if result and result[0]:
-            last_sync_iso = result[0].strftime('%Y-%m-%dT%H:%M:%SZ')
-            print(f"⚡ DELTA MODE ACTIVATED: Only fetching grades modified since {last_sync_iso}")
+        if last_valid_sync:
+            print(f"[{datetime.now()}] 🗄️ Last complete sync found at {last_valid_sync}. Cloning to {new_sync_timestamp}...")
+            cutoff_utc = datetime.utcnow() - timedelta(hours=48)
+            
+            clone_sql = text("""
+                INSERT INTO student_grades (sync_timestamp, term_id, course_id, course_name, instructors, student_id, student_name, current_score, current_grade, last_access, missing_assignments, zeros, latest_submission)
+                SELECT :new_sync, term_id, course_id, course_name, instructors, student_id, student_name, current_score, current_grade, last_access, missing_assignments, zeros, latest_submission
+                FROM student_grades
+                WHERE sync_timestamp = :last_sync
+            """)
+            with engine.begin() as conn:
+                conn.execute(clone_sql, {"new_sync": new_sync_timestamp, "last_sync": last_valid_sync})
+            print(f"[{datetime.now()}] ✅ Clone complete!")
+            
         else:
-            print("📥 FULL SYNC MODE ACTIVATED: No previous log found. Downloading entire historical gradebook.")
-except Exception as e:
-    print(f"⚠️ Could not read sync logs: {e}")
-
-# --- Connect to Canvas ---
-try:
-    canvas = Canvas(CANVAS_URL, CANVAS_TOKEN)
-    account = canvas.get_account(ACCOUNT_ID)
-except Exception as e:
-    print(f"❌ Canvas Connection Error: {e}")
-    exit(1)
-
-courses = account.get_courses(enrollment_term_id=TARGET_TERM_IDS, state=['available'])
-
-total_assignments_processed = 0
-total_scores_processed = 0
-total_students_processed = 0
-
-for course in courses:
-    try:
-        print(f"\n📚 Course: {course.name} (ID: {course.id})")
-        
-        users = course.get_users(enrollment_type=['student'], include=['email'])
-        student_data = [{"student_id": u.id, "student_name": getattr(u, 'name', '')[:255], "email": getattr(u, 'email', getattr(u, 'login_id', None)), "sis_user_id": getattr(u, 'sis_user_id', None)} for u in users]
-
-        assignments = course.get_assignments()
-        assign_data = [{"assignment_id": a.id, "course_id": course.id, "title": a.name[:250], "points_possible": getattr(a, 'points_possible', None), "due_at": clean_canvas_date(getattr(a, 'due_at', None))} for a in assignments]
-        
-        if last_sync_iso:
-            subs_graded = course.get_multiple_submissions(student_ids=['all'], graded_since=last_sync_iso)
-            subs_submitted = course.get_multiple_submissions(student_ids=['all'], submitted_since=last_sync_iso)
+            sync_mode = "Initial Baseline"
+            print(f"[{datetime.now()}] ⚠️ No valid history found. Operating in INITIAL BASELINE mode.")
+            cutoff_utc = datetime.utcnow() - timedelta(days=3650)
             
-            unique_subs = {}
-            for sub in subs_graded: unique_subs[sub.id] = sub
-            for sub in subs_submitted: unique_subs[sub.id] = sub
-            submissions_to_process = list(unique_subs.values())
-        else:
-            submissions_to_process = course.get_multiple_submissions(student_ids=['all'])
+            try:
+                crashed_df = pd.read_sql("SELECT MAX(sync_timestamp) FROM student_grades", con=engine)
+                crashed_ts = crashed_df.iloc[0, 0] if not crashed_df.empty else None
+            except Exception:
+                crashed_ts = None
+                
+            if crashed_ts:
+                new_sync_timestamp = crashed_ts 
+                df_completed = pd.read_sql(f"SELECT DISTINCT course_id FROM student_grades WHERE sync_timestamp = '{crashed_ts}'", con=engine)
+                completed_resume_courses = df_completed['course_id'].tolist()
+                print(f"[{datetime.now()}] ⏭️ Resuming crashed sync. Skipping {len(completed_resume_courses)} courses.")
 
-        sub_data = []
-        for sub in submissions_to_process:
-            if getattr(sub, 'workflow_state', 'unsubmitted') != 'deleted':
-                sub_data.append({
-                    "submission_id": sub.id, "assignment_id": sub.assignment_id, "student_id": sub.user_id,
-                    "score": getattr(sub, 'score', None), "grade": str(getattr(sub, 'grade', ''))[:50] if getattr(sub, 'grade', None) else None,
-                    "workflow_state": getattr(sub, 'workflow_state', None), "submitted_at": clean_canvas_date(getattr(sub, 'submitted_at', None))
-                })
+        account = canvas.get_account(ACCOUNT_ID)
 
-        # --- WRITE TO DB ---
-        with engine.begin() as conn:
-            if student_data:
-                df_students = pd.DataFrame(student_data).drop_duplicates(subset=['student_id'])
-                df_students.to_sql('stg_canvas_students', con=engine, if_exists='replace', index=False)
-                conn.execute(text("MERGE canvas_students AS target USING stg_canvas_students AS source ON target.student_id = source.student_id WHEN MATCHED THEN UPDATE SET student_name = source.student_name, email = source.email, sis_user_id = source.sis_user_id WHEN NOT MATCHED THEN INSERT (student_id, student_name, email, sis_user_id) VALUES (source.student_id, source.student_name, source.email, source.sis_user_id);"))
-                total_students_processed += len(df_students)
-
-            pd.DataFrame([{"course_id": course.id, "course_name": course.name[:250]}]).to_sql('stg_canvas_courses', con=engine, if_exists='replace', index=False)
-            conn.execute(text("MERGE canvas_active_courses AS target USING stg_canvas_courses AS source ON target.course_id = source.course_id WHEN MATCHED THEN UPDATE SET course_name = source.course_name WHEN NOT MATCHED THEN INSERT (course_id, course_name) VALUES (source.course_id, source.course_name);"))
+        for term_id in TARGET_TERM_IDS:
+            print(f"[{datetime.now()}] 🌐 Fetching course list for Term ID: {term_id}...")
+            courses = list(account.get_courses(
+                enrollment_term_id=term_id, 
+                state=['available'], 
+                include=['teachers'], 
+                per_page=100
+            ))
             
-            if assign_data:
-                pd.DataFrame(assign_data).to_sql('stg_canvas_assignments', con=engine, if_exists='replace', index=False)
-                conn.execute(text("MERGE canvas_assignments AS target USING stg_canvas_assignments AS source ON target.assignment_id = source.assignment_id WHEN MATCHED THEN UPDATE SET title = source.title, points_possible = source.points_possible, due_at = source.due_at, course_id = source.course_id WHEN NOT MATCHED THEN INSERT (assignment_id, course_id, title, points_possible, due_at) VALUES (source.assignment_id, source.course_id, source.title, source.points_possible, source.due_at);"))
-                total_assignments_processed += len(assign_data)
-            
-            if sub_data:
-                pd.DataFrame(sub_data).to_sql('stg_canvas_scores', con=engine, if_exists='replace', index=False)
-                conn.execute(text("MERGE canvas_scores AS target USING stg_canvas_scores AS source ON target.submission_id = source.submission_id WHEN MATCHED AND (ISNULL(target.score, -999) <> ISNULL(source.score, -999) OR ISNULL(target.workflow_state, '') <> ISNULL(source.workflow_state, '') OR ISNULL(target.grade, '') <> ISNULL(source.grade, '')) THEN UPDATE SET assignment_id = source.assignment_id, student_id = source.student_id, score = source.score, grade = source.grade, workflow_state = source.workflow_state, submitted_at = source.submitted_at WHEN NOT MATCHED THEN INSERT (submission_id, assignment_id, student_id, score, grade, workflow_state, submitted_at) VALUES (source.submission_id, source.assignment_id, source.student_id, source.score, source.grade, source.workflow_state, source.submitted_at);"))
-                total_scores_processed += len(sub_data)
+            if completed_resume_courses:
+                courses = [c for c in courses if c.id not in completed_resume_courses]
+            print(f"[{datetime.now()}] 📚 Found {len(courses)} courses. Dispatching threads...")    
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                futures = [executor.submit(process_single_course, course, term_id, new_sync_timestamp, cutoff_utc) for course in courses]
+                
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        delta_df = pd.DataFrame(result)
+                        course_id_log = delta_df.iloc[0]['course_id']
+                        
+                        if last_valid_sync:
+                            delete_sql = text("""
+                                DELETE FROM student_grades 
+                                WHERE sync_timestamp = :sync_ts 
+                                AND course_id = :c_id 
+                                AND student_name = :s_name
+                            """)
+                            delete_params = [
+                                {"sync_ts": new_sync_timestamp, "c_id": row['course_id'], "s_name": row['student_name']}
+                                for _, row in delta_df.iterrows()
+                            ]
+                            with engine.begin() as conn:
+                                conn.execute(delete_sql, delete_params)
+                                
+                        delta_df.to_sql(name='student_grades', con=engine, if_exists='append', index=False)
+                        print(f"[{datetime.now()}]   💾 Saved updates for Course {course_id_log}")
 
-        print(f"   ✅ Checked {len(sub_data)} modified scores.")
+        # === PHASE 3: MARK AS COMPLETE & SEND EMAIL ===
+        print(f"[{datetime.now()}] 🏁 Marking sync {new_sync_timestamp} as COMPLETE.")
+        pd.DataFrame([{'sync_timestamp': new_sync_timestamp, 'status': 'COMPLETE'}]).to_sql('sync_history', con=engine, if_exists='append', index=False)
         
+        # Trigger the newly added email alert
+        send_completion_email(new_sync_timestamp, sync_mode)
+
     except Exception as e:
-        print(f"   ⚠️ Error processing course {course.id}: {e}")
+        print(f"[{datetime.now()}] ❌ Fatal Sync Error: {e}")
 
-# --- Mark Sync as Successful ---
-try:
-    with engine.begin() as conn:
-        conn.execute(text("INSERT INTO canvas_sync_logs (sync_start, status) VALUES (:start, 'SUCCESS')"), 
-                     {"start": current_sync_start.strftime('%Y-%m-%d %H:%M:%S')})
-except Exception as e:
-    print(f"⚠️ Could not write success log: {e}")
+# --- Scheduler Setup ---
+schedule.every().day.at("06:30").do(run_sync)
+print(f"[{datetime.now()}] 🕰️ Background Scheduler started.")
+run_sync()
+print(f"[{datetime.now()}] ⏳ Initial sync routine complete. Waiting for the next scheduled run at 06:30 AM...")
 
-print(f"\n🎉 Sync Complete! Updated {total_students_processed} students, {total_assignments_processed} assignments, and {total_scores_processed} delta scores.")
-
-# --- Send Summary Email ---
-sync_stats = {
-    "students": total_students_processed,
-    "assignments": total_assignments_processed,
-    "scores": total_scores_processed
-}
-send_summary_email(sync_stats)
+while True:
+    schedule.run_pending()
+    
+    # Send a "heartbeat" to Docker so Komodo knows the container isn't frozen
+    Path('/tmp/heartbeat.txt').touch()
+    
+    time.sleep(60)
