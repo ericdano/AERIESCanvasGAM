@@ -16,12 +16,15 @@
             --th-bg: #2c2c2c; --btn-tab-bg: #333333; --btn-tab-text: #e0e0e0;
             --card-bg: #2c2c2c;
         }
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s;}
-        .header-container { display: flex; justify-content: space-between; align-items: center; }
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 950px; margin: auto; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s;}
+        
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .global-controls { display: flex; align-items: center; gap: 15px; }
+        #globalSiteSelect { padding: 8px; font-weight: bold; background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 4px;}
         #theme-toggle { background: none; border: none; font-size: 24px; cursor: pointer; }
         
         /* Navigation */
-        .nav-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+        .nav-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
         .tab-btn { padding: 10px 20px; cursor: pointer; background: var(--btn-tab-bg); color: var(--btn-tab-text); border: none; border-radius: 4px; transition: background-color 0.3s; }
         .tab-btn.active { background: #007bff; color: white; }
         
@@ -36,11 +39,9 @@
         .stat-value.danger { color: #dc3545; }
         .setup-warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba; margin-bottom: 15px; }
         
-        /* Inputs */
+        /* Inputs & Buttons */
         input[type="text"], input[type="email"], textarea, select { padding: 10px; margin-bottom: 10px; width: 100%; box-sizing: border-box; background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 4px; }
         textarea { height: 150px; resize: vertical; }
-        
-        /* Buttons */
         .btn { padding: 10px; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .btn-green { background: #28a745; width: 100%; }
         .btn-blue { background: #007bff; }
@@ -52,15 +53,25 @@
         th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
         th { background-color: var(--th-bg); }
         .checkbox-cell { text-align: center; }
-        
-        .settings-hint { font-size: 0.9em; color: #888; margin-bottom: 15px; }
+        .site-badge { background: #6c757d; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-container">
         <h2>Device Check In/Out</h2>
-        <button id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
+        <div class="global-controls">
+            <select id="globalSiteSelect" onchange="handleGlobalSiteChange()">
+                <option value="">-- Setup Needed --</option>
+                <option value="AHS">Acalanes (AHS)</option>
+                <option value="CHS">Campolindo (CHS)</option>
+                <option value="MHS">Miramonte (MHS)</option>
+                <option value="LLHS">Las Lomas (LLHS)</option>
+                <option value="DV">Del Valle (DV)</option>
+                <option value="ALL">🌐 Show All Sites</option>
+            </select>
+            <button id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
+        </div>
     </div>
 
     <div class="nav-container">
@@ -75,31 +86,16 @@
 
     <div id="dashboardPanel" class="panel">
         <h3 id="dashboardTitle">Dashboard Overview</h3>
-        <div id="setupWarning" class="setup-warning hidden">
-            <strong>⚠️ Welcome!</strong> Please go to the <strong>Settings</strong> tab and configure your School Site before proceeding.
-        </div>
-        
+        <div id="setupWarning" class="setup-warning hidden"><strong>⚠️ Welcome!</strong> Please select a site or configure your Settings tab before proceeding.</div>
         <div id="dashboardContent" class="hidden">
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-title">Checked Out Today</div>
-                    <div class="stat-value" id="statOutToday">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-title">Total Active Devices</div>
-                    <div class="stat-value" id="statTotalOut">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-title">Total Overdue</div>
-                    <div class="stat-value danger" id="statOverdue">--</div>
-                </div>
+                <div class="stat-card"><div class="stat-title">Checked Out Today</div><div class="stat-value" id="statOutToday">--</div></div>
+                <div class="stat-card"><div class="stat-title">Total Active Devices</div><div class="stat-value" id="statTotalOut">--</div></div>
+                <div class="stat-card"><div class="stat-title">Total Overdue</div><div class="stat-value danger" id="statOverdue">--</div></div>
             </div>
-
             <h4>Top 5 Oldest Overdue Devices</h4>
             <table>
-                <thead>
-                    <tr><th>Student</th><th>Barcode</th><th>Checkout Date</th></tr>
-                </thead>
+                <thead><tr><th>Site</th><th>Student</th><th>Barcode</th><th>Checkout Date</th></tr></thead>
                 <tbody id="dashboardOverdueBody"></tbody>
             </table>
         </div>
@@ -107,19 +103,7 @@
 
     <div id="checkoutPanel" class="panel hidden">
         <h3>Check-Out Device</h3>
-        
-        <div style="margin-bottom: 15px;">
-            <label><b>Checkout Location:</b></label>
-            <select id="checkoutSite" style="padding: 10px; width: 100%; box-sizing: border-box; background-color: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 4px;">
-                <option value="">-- Use My Default Site --</option>
-                <option value="AHS">Acalanes High School (AHS)</option>
-                <option value="CHS">Campolindo High School (CHS)</option>
-                <option value="MHS">Miramonte High School (MHS)</option>
-                <option value="LLHS">Las Lomas High School (LLHS)</option>
-                <option value="DV">Del Valle (DV)</option>
-            </select>
-        </div>
-
+        <p style="color: #888; font-size: 0.9em; margin-bottom: 15px;">Device will be checked out to the site selected in the top-right corner.</p>
         <input type="text" id="studentSearch" placeholder="Scan ID or type Student Name and press Enter..." onkeypress="handleStudentSearch(event)">
         <div id="studentSuggestions" class="hidden"></div>
         <div id="studentDisplay"></div>
@@ -139,37 +123,30 @@
     <div id="inventoryPanel" class="panel hidden">
         <h3>Currently Checked Out</h3>
         <table>
-            <thead>
-                <tr><th>Student</th><th>Barcode</th><th>Date/Time</th><th>Staff User</th></tr>
-            </thead>
+            <thead><tr><th>Site</th><th>Student</th><th>Barcode</th><th>Date/Time</th><th>Staff User</th></tr></thead>
             <tbody id="inventoryTableBody"></tbody>
         </table>
     </div>
 
     <div id="historyPanel" class="panel hidden">
-        <h3>Transaction History</h3>
-        <table>
-            <thead>
-                <tr><th>Student</th><th>Barcode</th><th>Status</th><th>Checked Out</th><th>Out By</th><th>Checked In</th><th>In By</th></tr>
-            </thead>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Transaction History</h3>
+            <button class="btn btn-blue" style="width: auto; padding: 8px 15px;" onclick="exportHistoryCSV()">📥 Export to CSV</button>
+        </div>
+        <table id="historyTable">
+            <thead><tr><th>Site</th><th>Student</th><th>Barcode</th><th>Status</th><th>Checked Out</th><th>Out By</th><th>Checked In</th><th>In By</th></tr></thead>
             <tbody id="historyTableBody"></tbody>
         </table>
     </div>
 
     <div id="overduePanel" class="panel hidden">
-        <div class="header-container">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3>Overdue Devices (> 1 Day)</h3>
-            <button class="btn btn-blue" onclick="sendSelectedEmails()">✉️ Send Emails to Selected</button>
+            <button class="btn btn-blue" style="width: auto;" onclick="sendSelectedEmails()">✉️ Send Emails</button>
         </div>
         <table>
             <thead>
-                <tr>
-                    <th class="checkbox-cell"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                    <th>Student</th>
-                    <th>Email</th>
-                    <th>Barcode</th>
-                    <th>Checkout Date</th>
-                </tr>
+                <tr><th class="checkbox-cell"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th><th>Site</th><th>Student</th><th>Email</th><th>Barcode</th><th>Checkout Date</th></tr>
             </thead>
             <tbody id="overdueTableBody"></tbody>
         </table>
@@ -177,31 +154,45 @@
 
     <div id="settingsPanel" class="panel hidden">
         <h3>User Settings</h3>
-        
-        <label><b>School Site</b></label>
-        <div class="settings-hint">Select the campus you are currently working at.</div>
+        <label><b>Default School Site</b></label>
         <select id="schoolSite">
-            <option value="">-- Select Site --</option>
+            <option value="">-- Select Default Site --</option>
             <option value="AHS">Acalanes High School (AHS)</option>
             <option value="CHS">Campolindo High School (CHS)</option>
             <option value="MHS">Miramonte High School (MHS)</option>
             <option value="LLHS">Las Lomas High School (LLHS)</option>
             <option value="DV">Del Valle (DV)</option>
         </select>
-
         <label><b>Reply-To Email Address</b></label>
-        <div class="settings-hint">Where should students reply if they have questions?</div>
         <input type="email" id="replyToEmail" placeholder="e.g. your.email@auhsdschools.org">
-        
         <label><b>Overdue Email Template</b></label>
-        <div class="settings-hint">Available tags: <code>[FirstName]</code>, <code>[LastName]</code>, <code>[Barcode]</code>, <code>[Date]</code></div>
         <textarea id="emailTemplate"></textarea>
-        
         <button class="btn btn-green" style="width: auto; padding: 10px 30px;" onclick="saveSettings()">Save Settings</button>
     </div>
 
     <script>
-        // --- THEME LOGIC ---
+        let currentGlobalSite = '';
+
+        // --- INIT & GLOBAL DROPDOWN ---
+        window.onload = async () => {
+            applyTheme(localStorage.getItem('darkMode') === 'true');
+            const res = await fetch('/api/settings');
+            if (res.ok) {
+                const settings = await res.json();
+                if (settings.SchoolSite) {
+                    currentGlobalSite = settings.SchoolSite;
+                    document.getElementById('globalSiteSelect').value = currentGlobalSite;
+                }
+            }
+            loadDashboard(); 
+        };
+
+        function handleGlobalSiteChange() {
+            currentGlobalSite = document.getElementById('globalSiteSelect').value;
+            const activeBtn = document.querySelector('.tab-btn.active');
+            if (activeBtn) showPanel(activeBtn.id.replace('btn-', ''));
+        }
+
         function applyTheme(isDark) {
             document.body.classList.toggle('dark-mode', isDark);
             document.getElementById('theme-toggle').innerText = isDark ? '☀️' : '🌙';
@@ -213,26 +204,9 @@
             applyTheme(isDark);
         }
 
-        // Initialize default view
-        window.onload = async () => {
-            applyTheme(localStorage.getItem('darkMode') === 'true');
-            loadDashboard(); // Load Dashboard immediately on startup
-            
-            // NEW: Auto-select their default site in the Checkout dropdown
-            const res = await fetch('/api/settings');
-            if (res.ok) {
-                const settings = await res.json();
-                if (settings.SchoolSite) {
-                    document.getElementById('checkoutSite').value = settings.SchoolSite;
-                }
-            }
-        };
-
-        // --- PANEL LOGIC ---
         function showPanel(panel) {
             document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            
             document.getElementById(panel + 'Panel').classList.remove('hidden');
             document.getElementById('btn-' + panel).classList.add('active');
 
@@ -243,86 +217,56 @@
             if (panel === 'settings') loadSettings();
         }
 
-        // --- DASHBOARD LOGIC ---
+        // --- DASHBOARD ---
         async function loadDashboard() {
-            const res = await fetch('/api/dashboard');
+            if (!currentGlobalSite) {
+                document.getElementById('setupWarning').classList.remove('hidden');
+                document.getElementById('dashboardContent').classList.add('hidden');
+                return;
+            }
+            const res = await fetch(`/api/dashboard?site=${currentGlobalSite}`);
             if (res.ok) {
                 const data = await res.json();
-                
-                if (data.requiresSetup) {
-                    document.getElementById('setupWarning').classList.remove('hidden');
-                    document.getElementById('dashboardContent').classList.add('hidden');
-                    return;
-                }
-
                 document.getElementById('setupWarning').classList.add('hidden');
                 document.getElementById('dashboardContent').classList.remove('hidden');
-                
-                document.getElementById('dashboardTitle').innerText = `Dashboard Overview - ${data.site}`;
+                document.getElementById('dashboardTitle').innerText = data.site === 'ALL' ? 'District-Wide Dashboard' : `Dashboard Overview - ${data.site}`;
                 document.getElementById('statOutToday').innerText = data.outToday;
                 document.getElementById('statTotalOut').innerText = data.totalOut;
                 document.getElementById('statOverdue').innerText = data.overdueCount;
 
                 const tbody = document.getElementById('dashboardOverdueBody');
-                tbody.innerHTML = data.topOverdue.length ? data.topOverdue.map(i => `<tr>
-                    <td>${i.StudentFirstName} ${i.StudentLastName}</td>
-                    <td>${i.ItemBarcode}</td>
-                    <td>${i.CheckoutDateTime}</td>
-                </tr>`).join('') : '<tr><td colspan="3">Great job! No overdue items.</td></tr>';
+                tbody.innerHTML = data.topOverdue.length ? data.topOverdue.map(i => `<tr><td><span class="site-badge">${i.SchoolSite}</span></td><td>${i.StudentFirstName} ${i.StudentLastName}</td><td>${i.ItemBarcode}</td><td>${i.CheckoutDateTime}</td></tr>`).join('') : '<tr><td colspan="4">Great job! No overdue items.</td></tr>';
             }
         }
 
-        // --- CHECKOUT/IN LOGIC ---
+        // --- CHECKOUT/IN ---
         let currentStudent = {};
-
         async function handleStudentSearch(e) {
             if (e.key === 'Enter') {
                 const query = document.getElementById('studentSearch').value.trim();
                 if (!query) return;
-
-                document.getElementById('studentSuggestions').innerHTML = '';
-                document.getElementById('studentSuggestions').classList.add('hidden');
-                document.getElementById('studentDisplay').innerText = 'Searching...';
-                document.getElementById('itemDetails').classList.add('hidden');
-
                 const response = await fetch(`/api/search-students?q=${encodeURIComponent(query)}`);
-                
                 if (response.ok) {
                     const students = await response.json();
-                    if (students.length === 1) {
-                        selectStudent(students[0]);
-                    } else if (students.length > 1) {
-                        document.getElementById('studentDisplay').innerText = '';
-                        const suggestionsDiv = document.getElementById('studentSuggestions');
-                        suggestionsDiv.classList.remove('hidden');
-                        suggestionsDiv.innerHTML = '<h4 style="margin-top: 5px; margin-bottom: 10px;">Did you mean:</h4>';
-                        
-                        const btnContainer = document.createElement('div');
-                        btnContainer.style.display = 'flex';
-                        btnContainer.style.flexDirection = 'column';
-                        btnContainer.style.gap = '5px';
-                        btnContainer.style.marginBottom = '15px';
-
+                    if (students.length === 1) selectStudent(students[0]);
+                    else if (students.length > 1) {
+                        const sDiv = document.getElementById('studentSuggestions');
+                        sDiv.classList.remove('hidden');
+                        sDiv.innerHTML = '<h4 style="margin-bottom: 10px;">Did you mean:</h4>';
                         students.forEach(stu => {
                             const btn = document.createElement('button');
-                            btn.className = 'btn btn-blue';
+                            btn.className = 'btn btn-blue'; btn.style.margin = '2px';
                             btn.innerText = `${stu.FN} ${stu.LN} (${stu.ID})`;
                             btn.onclick = () => selectStudent(stu);
-                            btnContainer.appendChild(btn);
+                            sDiv.appendChild(btn);
                         });
-                        suggestionsDiv.appendChild(btnContainer);
-                    } else {
-                        document.getElementById('studentDisplay').innerHTML = '<span style="color:#dc3545;">Student not found. Please try a different search.</span>';
-                    }
-                } else {
-                    document.getElementById('studentDisplay').innerText = 'Error searching Aeries database.';
+                    } else document.getElementById('studentDisplay').innerHTML = '<span style="color:#dc3545;">Student not found.</span>';
                 }
             }
         }
 
         function selectStudent(student) {
             currentStudent = student;
-            document.getElementById('studentSearch').value = ''; 
             document.getElementById('studentSuggestions').classList.add('hidden');
             document.getElementById('studentDisplay').innerText = `Student: ${student.FN} ${student.LN}`;
             document.getElementById('itemDetails').classList.remove('hidden');
@@ -330,22 +274,14 @@
         }
 
         async function submitCheckout() {
-            const data = { 
-                studentId: currentStudent.ID, 
-                firstName: currentStudent.FN, 
-                lastName: currentStudent.LN, 
-                barcode: document.getElementById('itemBarcode').value, 
-                reason: document.getElementById('reason').value,
-                site: document.getElementById('checkoutSite').value // <--- ADD THIS LINE
-            };
-            const response = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            if (response.ok) { 
-                alert('Checked out successfully!'); 
-                location.reload(); 
-            } else {
-                const errData = await response.json();
-                alert(errData.error || 'Error checking out device.');
+            if (!currentGlobalSite || currentGlobalSite === 'ALL') {
+                alert("Please select a specific campus in the top-right dropdown before checking out a device.");
+                return;
             }
+            const data = { studentId: currentStudent.ID, firstName: currentStudent.FN, lastName: currentStudent.LN, barcode: document.getElementById('itemBarcode').value, reason: document.getElementById('reason').value, site: currentGlobalSite };
+            const response = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (response.ok) { alert('Checked out successfully!'); location.reload(); } 
+            else { const errData = await response.json(); alert(errData.error || 'Error checking out device.'); }
         }
         
         async function handleCheckinEnter(e) {
@@ -363,38 +299,53 @@
         // --- FETCH INVENTORY & HISTORY ---
         async function loadInventory() {
             const tbody = document.getElementById('inventoryTableBody');
-            tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
-            const res = await fetch('/api/active-checkouts');
+            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            const res = await fetch(`/api/active-checkouts?site=${currentGlobalSite}`);
             if (res.ok) {
                 const items = await res.json();
-                tbody.innerHTML = items.length ? items.map(i => `<tr><td>${i.StudentFirstName} ${i.StudentLastName} (${i.StudentID})</td><td>${i.ItemBarcode}</td><td>${i.CheckoutDateTime}</td><td>${i.CheckoutStaffUser}</td></tr>`).join('') : '<tr><td colspan="4">No active checkouts.</td></tr>';
+                tbody.innerHTML = items.length ? items.map(i => `<tr><td><span class="site-badge">${i.SchoolSite}</span></td><td>${i.StudentFirstName} ${i.StudentLastName} (${i.StudentID})</td><td>${i.ItemBarcode}</td><td>${i.CheckoutDateTime}</td><td>${i.CheckoutStaffUser}</td></tr>`).join('') : '<tr><td colspan="5">No active checkouts.</td></tr>';
             }
         }
         async function loadHistory() {
             const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
-            const res = await fetch('/api/history');
+            tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+            const res = await fetch(`/api/history?site=${currentGlobalSite}`);
             if (res.ok) {
                 const items = await res.json();
-                tbody.innerHTML = items.length ? items.map(i => `<tr><td>${i.StudentFirstName} ${i.StudentLastName} (${i.StudentID})</td><td>${i.ItemBarcode}</td><td><span style="color:${i.Status === 'CheckedIn' ? '#28a745' : '#dc3545'}; font-weight:bold;">${i.Status}</span></td><td>${i.CheckoutDateTime}</td><td>${i.CheckoutStaffUser}</td><td>${i.CheckinDateTime}</td><td>${i.CheckinStaffUser}</td></tr>`).join('') : '<tr><td colspan="7">No history found.</td></tr>';
+                tbody.innerHTML = items.length ? items.map(i => `<tr><td><span class="site-badge">${i.SchoolSite}</span></td><td>${i.StudentFirstName} ${i.StudentLastName} (${i.StudentID})</td><td>${i.ItemBarcode}</td><td><span style="color:${i.Status === 'CheckedIn' ? '#28a745' : '#dc3545'}; font-weight:bold;">${i.Status}</span></td><td>${i.CheckoutDateTime}</td><td>${i.CheckoutStaffUser}</td><td>${i.CheckinDateTime}</td><td>${i.CheckinStaffUser}</td></tr>`).join('') : '<tr><td colspan="8">No history found.</td></tr>';
             }
+        }
+
+        // --- CSV EXPORT ---
+        function exportHistoryCSV() {
+            const table = document.getElementById("historyTable");
+            let csv = [];
+            for (let i = 0; i < table.rows.length; i++) {
+                let row = [], cols = table.rows[i].querySelectorAll("td, th");
+                for (let j = 0; j < cols.length; j++) {
+                    row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+                }
+                csv.push(row.join(","));
+            }
+            const csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+            const downloadLink = document.createElement("a");
+            downloadLink.download = `Checkout_History_${new Date().toISOString().split('T')[0]}.csv`;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
         }
 
         // --- OVERDUE LOGIC ---
         async function loadOverdue() {
             const tbody = document.getElementById('overdueTableBody');
             document.getElementById('selectAll').checked = false;
-            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
-            const res = await fetch('/api/overdue');
+            tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            const res = await fetch(`/api/overdue?site=${currentGlobalSite}`);
             if (res.ok) {
                 const items = await res.json();
-                tbody.innerHTML = items.length ? items.map(i => `<tr>
-                    <td class="checkbox-cell"><input type="checkbox" class="email-cb" value="${i.TransactionID}"></td>
-                    <td>${i.StudentFirstName} ${i.StudentLastName}</td>
-                    <td>${i.StudentEmail || '<span style="color:red">No Email</span>'}</td>
-                    <td>${i.ItemBarcode}</td>
-                    <td>${i.CheckoutDateTime}</td>
-                </tr>`).join('') : '<tr><td colspan="5">No overdue devices!</td></tr>';
+                tbody.innerHTML = items.length ? items.map(i => `<tr><td class="checkbox-cell"><input type="checkbox" class="email-cb" value="${i.TransactionID}"></td><td><span class="site-badge">${i.SchoolSite}</span></td><td>${i.StudentFirstName} ${i.StudentLastName}</td><td>${i.StudentEmail || '<span style="color:red">No Email</span>'}</td><td>${i.ItemBarcode}</td><td>${i.CheckoutDateTime}</td></tr>`).join('') : '<tr><td colspan="6">No overdue devices!</td></tr>';
             }
         }
 
@@ -406,13 +357,10 @@
         async function sendSelectedEmails() {
             const selected = Array.from(document.querySelectorAll('.email-cb:checked')).map(cb => parseInt(cb.value));
             if (selected.length === 0) return alert("Please select at least one student.");
-            
             if (confirm(`Are you sure you want to send overdue emails to ${selected.length} student(s)?`)) {
                 const res = await fetch('/api/send-emails', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transactionIds: selected }) });
-                if (res.ok) {
-                    alert("Emails sent successfully!");
-                    loadOverdue(); 
-                } else alert("Error sending emails.");
+                if (res.ok) { alert("Emails sent successfully!"); loadOverdue(); } 
+                else alert("Error sending emails.");
             }
         }
 
@@ -428,15 +376,12 @@
         }
 
         async function saveSettings() {
-            const data = {
-                site: document.getElementById('schoolSite').value,
-                template: document.getElementById('emailTemplate').value,
-                replyTo: document.getElementById('replyToEmail').value
-            };
+            const data = { site: document.getElementById('schoolSite').value, template: document.getElementById('emailTemplate').value, replyTo: document.getElementById('replyToEmail').value };
             const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (res.ok) {
                 alert('Settings saved successfully!');
-                loadDashboard(); // Refresh dashboard with the new site data
+                currentGlobalSite = document.getElementById('schoolSite').value;
+                document.getElementById('globalSiteSelect').value = currentGlobalSite;
             } else alert('Error saving settings.');
         }
     </script>
