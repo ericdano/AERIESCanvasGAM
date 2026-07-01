@@ -295,7 +295,7 @@ def send_manual_emails():
                 items_to_email = cursor.fetchall()
 
         # Send to both platforms
-        send_emails_via_smtp(items_to_email, template, reply_to)
+        #send_emails_via_smtp(items_to_email, template, reply_to)
         send_canvas_messages(items_to_email, template, request.staff_user)
 
         return jsonify({'success': True, 'count': len(items_to_email)})
@@ -356,7 +356,7 @@ def send_auto_overdue_emails():
                     template = settings.get('EmailTemplate') or 'Hi [FirstName],\n\nYou checked out an item (Barcode: [Barcode]) on [Date]. Please return it to the office as soon as possible.\n\nThank you!'
                     reply_to = settings.get('ReplyToEmail') or ''
                     
-                    send_emails_via_smtp(staff_items, template, reply_to)
+                    #send_emails_via_smtp(staff_items, template, reply_to)
                     send_canvas_messages(staff_items, template, staff)
                     print(f"Sent {len(staff_items)} auto overdue notices via Email and Canvas for {staff}.")
 
