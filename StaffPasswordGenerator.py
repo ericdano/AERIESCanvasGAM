@@ -1,6 +1,11 @@
 import random
 import string
 
+"""
+Python 3.14 Script to generate Staff passwords for new Staff
+"""
+
+
 # --- 1. Define Character Sets ---
 VOWELS = "aeiou"
 CONSONANTS = "bcdfghjklmnprstvw"

@@ -11,8 +11,11 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
-This script finds counselors and their assigned students in AERIES, then updates Google Groups lists with any student changes
-Counselors are the Owners of the list. The GAM commands updates the groups with whatever is in the CSV file
+Python 3.14
+
+Script to put Students into the right Google Groups based on their enrollment in AERIES
+
+
 """
 
 def main():

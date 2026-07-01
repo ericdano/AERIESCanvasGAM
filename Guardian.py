@@ -16,7 +16,7 @@ from logging.handlers import SysLogHandler
 from datetime import datetime
 
 """
- Python 3.11+ script to pull data from AERIES and to send it Guardian .
+ Python 3.14 script to pull data from AERIES and to send it Guardian .
 
  Uses a .JSON file specified in confighome which has a logserveraddress, ssh hostkey, and the login info for CareSolace.
 
@@ -32,7 +32,6 @@ if __name__ == '__main__':
     thelogger.setLevel(logging.DEBUG)
     handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
     thelogger.addHandler(handler)
-    #prep status (msg) email
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     msgbody += f'Using Database->{str(configs["AERIESDatabase"])}\n'
 
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     thelogger.info('Update-Guardian ->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})

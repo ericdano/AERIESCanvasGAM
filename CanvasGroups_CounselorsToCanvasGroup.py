@@ -36,6 +36,8 @@ AHS,2,mmeadows@auhsdschools.org,18790,12,18739
 
 2025 by Eric Dannewitz
 
+Python 3.14
+
 '''
 
     
@@ -118,6 +120,7 @@ for i in CounselorCanvasSection.index:
     AND GR = '{GradeToGet}'
   """
   aeriesSQLData = pd.read_sql_query(the_query,engine)
+  print(aeriesSQLData)
   thelogger.info('Canvas-Groups-for-Counselors ->Making SET of Aeries IDs')
   # Now go get the group off Canvas
   msgbody += f"Getting exisiting users from group id->{CanvasSectionID}\n"

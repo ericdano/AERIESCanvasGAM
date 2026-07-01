@@ -15,7 +15,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.11+ script to pull data from AERIES and to send it Care/Solace.
+ Python 3.14 script to pull data from AERIES and to send it Care/Solace.
 
  Uses a .JSON file specified in confighome which has a logserveraddress, ssh hostkey, and the login info for CareSolace.
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     thelogger.info('Update Care/Solace->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})

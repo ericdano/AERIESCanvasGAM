@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from io import StringIO
 from pathlib import Path
 from ssl import SSLSocket
+import subprocess
 from timeit import default_timer as timer
 import pandas as pd
 from email.message import EmailMessage
@@ -13,26 +14,23 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.12 script to pull data from AERIES and to send it to ASB Works.
- Built in support for this is busted in AERIES as of 5/2022
+ Python 3.14 script to pull data from AERIES and to send it to ASB Works.
+ Built in support for this is busted in AERIES as of 7/2026
  Is it working now? No clue. This however works.
  Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for ASB Works.
 """
 
-
-class ReusedSslSocket(SSLSocket):
+class ReusedSslSocket(ssl.SSLSocket):
     def unwrap(self):
         pass
 
 class MyFTP_TLS(ftplib.FTP_TLS):
-    #Explicit FTPS, with shared TLS session
     def ntransfercmd(self, cmd, rest=None):
         conn, size = ftplib.FTP.ntransfercmd(self, cmd, rest)
         if self._prot_p:
-            conn = self.context.wrap_socket(conn,
-                                            server_hostname=self.host,
-                                            session=self.sock.session)  # reuses TLS session            
-            conn.__class__ = ReusedSslSocket  # we should not close reused ssl socket when file transfers finish
+            # Force session reuse, omit server_hostname to disable SNI
+            conn = self.context.wrap_socket(conn, session=self.sock.session)
+            conn.__class__ = ReusedSslSocket
         return conn, size
 
 if __name__ == '__main__':
@@ -60,7 +58,7 @@ if __name__ == '__main__':
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     thelogger.info('Update ASB Works->Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
@@ -77,7 +75,8 @@ if __name__ == '__main__':
             STU.ST AS State,
             STU.ZC AS 'Zip Code',
             STU.TL AS 'Home Phone',
-            STU.GR AS Grade 
+            STU.GR AS Grade,
+            STU.SEM AS Email
     FROM STU WHERE
         STU.SC < 5
         AND STU.DEL = 0
@@ -87,46 +86,67 @@ if __name__ == '__main__':
 
     sql_query = pd.read_sql_query(TheASBQuery, engine)
     sql_query['School'] = sql_query['School'].replace({1: 'LLHS1', 2: 'AHS1', 3: 'MHS1', 4: 'CHS1'})
-    """
-    sql_query['School'].mask(sql_query['School'] == 1,'LLHS1', inplace=True)
-    sql_query['School'].mask(sql_query['School'] == 2,'AHS1', inplace=True)
-    sql_query['School'].mask(sql_query['School'] == 3,'MHS1', inplace=True)
-    sql_query['School'].mask(sql_query['School'] == 4,'CHS1', inplace=True)
-    """
     print(sql_query)
     sql_query.to_csv(dest_filename, index = False)
     thelogger.info('Update ASB Works->Wrote temp CSV to disk')
     msgbody += f"Got AERIES data, connecting to FTPS\n"
+
     thelogger.info('Update ASB Works->Connecting to ASB Works via FTPS')
-    # Create the FTP Connection
-    ftp = MyFTP_TLS()
-    ftp.ssl_version = ssl.PROTOCOL_TLSv1_2
+    
+    # 1. Create a secure default context
+    #ctx = ssl.create_default_context()
+    
+    # 2. Load the specific certificate the vendor provided
+    # IMPORTANT: Change "csm_cert.pem" to the exact name of the file you downloaded
+    #ctx.load_verify_locations(cafile="C:\\Users\\edannewitz\\.Acalanes\\asb_cert.txt")
+
+    # 3. Lock to TLS 1.2 (to prevent the session resumption crashes we fixed earlier)
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+
+    # 4. Connect and authenticate using our custom session-reusing class
+    ftp = MyFTP_TLS(context=ctx)
     ftp.connect(server, 21)
-    ftp.set_pasv(True)
-    ftp.auth()
+    ftp.login(user, passwd) 
+    
+    # 5. Server requires Data Channel Protection "Private" (PROT P)
     ftp.prot_p()
-    ftp.login(user, passwd)
+    
+    # ---------------------------------------------------------
+    # 4. THE FIX: Switch to Active Mode (PORT) to bypass firewall drops
+    ftp.set_pasv(True)
+    # ---------------------------------------------------------
+    
     thelogger.info('Update ASB Works->Connected to FTPS')
     print("Success connection")
     ftp.set_debuglevel(2)
-    ftp.encoding = "utf-8"
-    ftp.getwelcome()
-    with open(dest_filename,"rb") as file:
+
+    # 5. Upload the file safely
+    with open(dest_filename, "rb") as file:
         try:
             ftp.storbinary(f"STOR {dest_filename}", file)
             msgbody += f"Successfully uploaded CSV to ASB Works\n"
             thelogger.info('Update ASB Works->Uploaded CSV to FTPS')
-        except:
-            ftp.quit()
-            os.remove(dest_filename)
-            msgbody += f"Error uploading to ASB Works\n"
+        except Exception as e:
+            ftp.close() 
+            msgbody += f"Error uploading to ASB Works: {e}\n"
             WasThereAnError = True
-            thelogger.error('Update ASB Works->Error Uploading to FTPS')
-    ftp.quit()
-    # Close ftp connection
-    os.remove(dest_filename)
-    # Remove temp file
+            thelogger.error(f'Update ASB Works->Error Uploading to FTPS: {e}')
+            
+    # 6. Clean up the temp file OUTSIDE the 'with' block
+    if os.path.exists(dest_filename):
+        os.remove(dest_filename)
+        thelogger.info('Update ASB Works->Deleted temp CSV')
+
+    if not WasThereAnError:
+        ftp.quit()
+        thelogger.info('Update ASB Works->Closed FTP')
+
     msgbody += f"{len(sql_query.index)} students in file uploaded.\n"
+
     thelogger.info('Update ASB Works->Closed FTP and deleted temp CSV')
     if WasThereAnError:
         msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} ASB Works Upload {datetime.datetime.now():%I:%M%p on %B %d, %Y}"

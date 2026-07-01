@@ -18,7 +18,7 @@ import arrow
 
 Look for Account Expiration date, and if found, disable AD account, Canvas Account, and Google Account
 This script runs every morning.
-Python 3.11 or higher.
+Python 3.14 or higher.
 
 
 """

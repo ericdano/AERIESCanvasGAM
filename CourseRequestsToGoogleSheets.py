@@ -13,7 +13,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.11
+ Python 3.14
 
  AERIES Query
  LIST STU SSS CRS STU.SC STU.CU STU.ID STU.NM STU.NG SSS.CN CRS.CO IF STU.NG # 13 AND STU.SC # 999 AND SSS.CN # NULL
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     msg['To'] = configs['BusinessOfficeNotifications']
 
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     # Need to put some error checking in here to account for SQL connect errors
     connection_url = URL.create(
         "mssql+pyodbc",
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     target_user = 'ncarpenter'
     google_sheet_id = "12ZAyR1MJkd1xF3Ff9jBDc8LARlmy_Bv_Auy40ttTvMw"
     gam.initializeLogging()
-    uploadfilestring = os.path.join("E:\\", "PythonTemp", dest_filename)
+    uploadfilestring = os.path.join(configs['PythonTempDirectory'], dest_filename)
     print(uploadfilestring)
     stat1 = gam.CallGAMCommand(['gam',
                                 'user',
@@ -150,7 +150,7 @@ if __name__ == '__main__':
             <p>GAM Status:{stat1}</p>
             """
     else:
-        html_body += f"""<p>AERIES Course Requests ran successfully</p>
+        html_body += f"""<p>AERIES Course Requests ran successfully against {configs['AERIESDatabase']} Database.</p>
                 {html_table_first10}
                 <p></p>
                 <p>{len(sql_query)} records uploaded to spreadsheet</p>

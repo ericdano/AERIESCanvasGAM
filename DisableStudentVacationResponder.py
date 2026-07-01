@@ -1,4 +1,4 @@
-import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
+import os, sys, shlex, subprocess, datetime, json, smtplib, logging
 from pathlib import Path
 from timeit import default_timer as timer
 from email.message import EmailMessage
@@ -6,13 +6,23 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+import multiprocessing
+import platform
 
+from gam import initializeLogging, CallGAMCommand
 """
- This script is run once a day to make sure students don't have a vacation responder on
+This script is run once a day to make sure students don't have a vacation responder on
+
+Python 3.14
 """
 
 
 def main():
+    gam_config_dir = "/Users/edannewitz/.gam"
+    if platform.system() != 'Linux':
+        multiprocessing.freeze_support()
+        multiprocessing.set_start_method('spawn')
+    initializeLogging()
     start_of_timer = timer()
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
@@ -26,7 +36,7 @@ def main():
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
     thelogger.info('Disable-Student-Vacation-Responder ->Running GAM')
-    stat1 = gam.CallGAMCommand(['gam','ou_and_children','/Students','vacation','off'])
+    stat1 = CallGAMCommand(['gam','ou_and_children','/Students','vacation','off'])
 #    gamstring2 = "E:\\GAMADV-XTD3\\gam.exe ou_and_children '/Students' vacation off"
     msgbody = f'Turned off vacation responders on STUDENT OU. Gam Status-> {stat1}\n Done!' 
 
