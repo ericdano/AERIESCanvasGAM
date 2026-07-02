@@ -16,9 +16,7 @@ from logging.handlers import SysLogHandler
 
 """
  Python 3.14 script to pull data from AERIES and to send it Care/Solace.
-
  Uses a .JSON file specified in confighome which has a logserveraddress, ssh hostkey, and the login info for CareSolace.
-
 """
 
 if __name__ == '__main__':
