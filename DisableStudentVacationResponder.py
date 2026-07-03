@@ -8,7 +8,6 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 import multiprocessing
 import platform
-
 from gam import initializeLogging, CallGAMCommand
 """
 This script is run once a day to make sure students don't have a vacation responder on

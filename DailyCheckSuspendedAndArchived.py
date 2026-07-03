@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, shlex, subprocess, json, datetime, gam, multiprocessing, smtplib, logging, socket
+import os, sys, shlex, subprocess, json, datetime, smtplib, logging, socket
 from pathlib import Path
 from timeit import default_timer as timer
 from email.message import EmailMessage
@@ -7,7 +7,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+import multiprocessing
+import platform
+from gam import initializeLogging, CallGAMCommand
+
 """
+Python 3.14
+
 Basically, a Windows version of this crontab job
 except it is Python, does some logging, and emails what happens (crontab was doing that though.....)
 
@@ -21,7 +27,6 @@ Also added GAM stuff to remove Google EDU licenses from Suspended users.
 
 """
 if __name__ == '__main__':
-# One time initialization
   start_of_timer = timer()
   confighome = Path.home() / ".Acalanes" / "Acalanes.json"
   with open(confighome) as f:
@@ -36,18 +41,18 @@ if __name__ == '__main__':
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
   WasThereAnError = False
-  filetempname = '.\suspendedusers.csv'
-  os.chdir('E:\\PythonTemp')
-  if sys.platform == 'darwin':
-    multiprocessing.set_start_method('fork')
-  gam.initializeLogging()
+  if platform.system() != 'Linux':
+    multiprocessing.freeze_support()
+    multiprocessing.set_start_method('spawn')
+  initializeLogging()
+
   
   # Go through Google and find accounts suspended but not archived, and then archive them
   # Going to assume that automation using ExpireADAccounts has already removed staff user from any google groups
   # Lists that students are part of get auto regenerated 
   
   thelogger.info('CheckArchivedIfSuspended->Checking if Suspended Accounts are also Archived')
-  stat1 = gam.CallGAMCommand(['gam','update','users','query','isSuspended=True isArchived=False','suspended','on','archive','on'])
+  stat1 = CallGAMCommand(['gam','update','users','query','isSuspended=True isArchived=False','suspended','on','archive','on'])
   if stat1 == 0:
     msgbody += f'RAN gam query isSuspended=True isArchived=False suspended on archive on. GAM Status->{stat1}\n'
   elif stat1 == 2:
