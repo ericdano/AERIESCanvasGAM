@@ -1,5 +1,5 @@
 import pandas as pd
-import os, sys, shlex, subprocess, gam, datetime, json, smtplib, logging
+import os, sys, shlex, subprocess, datetime, json, smtplib, logging
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine
 from pathlib import Path
@@ -9,13 +9,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
+import multiprocessing
+import platform
+from gam import initializeLogging, CallGAMCommand
 
 """
+Python 3.14
+
 This script finds counselors and their assigned students in AERIES, then updates Google Groups lists with any student changes
 Counselors are the Owners of the list. The GAM commands updates the groups with whatever is in the CSV file
 """
 def GetAERIESData(thelogger,configs):
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -100,7 +105,7 @@ def main():
     WasThereAnError = False
     DontDeleteFiles = False
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     #populate a table with counselor parts
     #populate a table with counselor parts
     counselors = [ ('AHS','evasquez','vasquez'),
@@ -122,14 +127,18 @@ def main():
                     ('MHS','nganey','ganey')]
     msgbody += f"Using Database->{configs['AERIESDatabase']}\n"
     GetAERIESData(thelogger,configs)
-    gam.initializeLogging()
+    # GAM init
+    if platform.system() != 'Linux':
+        multiprocessing.freeze_support()
+        multiprocessing.set_start_method('spawn')
+    initializeLogging()
     # Now call gam
     for counselor in counselors:
         # Sync Lists for All Students for counselor
         gamliststring = counselor[0] + counselor[2] + 'counselinglist'
         filenamestring = counselor[0] + counselor[1] + 'ALL.csv'
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
             thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
@@ -144,7 +153,7 @@ def main():
         gamliststring = counselor[0] + counselor[2] + 'grade9counselinglist'
         filenamestring = counselor[0] + "9" + counselor[1] + ".csv"
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
             thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
@@ -159,7 +168,7 @@ def main():
         gamliststring = counselor[0] + counselor[2] + "grade10counselinglist"
         filenamestring = counselor[0] + "10" + counselor[1] + ".csv"
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
             thelogger.critical(f"UpdateCounselingListsInGoogle->GAM returned an error for the last command")
@@ -174,7 +183,7 @@ def main():
         gamliststring = counselor[0] + counselor[2] + 'grade11counselinglist'
         filenamestring = counselor[0] + "11" + counselor[1] + ".csv"
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
             thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
@@ -189,7 +198,7 @@ def main():
         gamliststring = counselor[0] + counselor[2] + 'grade12counselinglist'
         filenamestring = counselor[0] + "12" + counselor[1] + ".csv"
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
-        stat1 = gam.CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
+        stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
             WasThereAnError = True
             thelogger.critical('UpdateCounselingListsInGoogle->GAM returned an error for the last command')
@@ -201,16 +210,16 @@ def main():
                 thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 12th grade list csv")
         msgbody += f"Synced {counselor[1]} 12th grade list. Gam Status->{stat1}\n" 
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"ERROR! {configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " AUHSD Counseling Lists to Google Groups " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"{configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f'\n\n Elapsed Time={end_of_timer - start_of_timer}\n'
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
     thelogger.info('UpdateCounselingListsInGoogle->Sent status message')
-    thelogger.info('UpdateCounselingListsInGoogle->DONE! - took ' + str(end_of_timer - start_of_timer))
+    thelogger.info(f'UpdateCounselingListsInGoogle->DONE! - took {end_of_timer - start_of_timer}')
     print('Done!!!')
 
 if __name__ == '__main__':

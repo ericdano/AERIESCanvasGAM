@@ -15,6 +15,9 @@ from logging.handlers import SysLogHandler
 
 
 '''
+Python 3.14
+
+
 This script was originally written to put students into a Canvas "Group" with the counselor. 
 However, Canvas Groups seem to not really work well and seem to be deprecated. So now we are using
 a Canvas class for each counselor and putting students into the class section for the counselor.
