@@ -66,7 +66,6 @@ ORDER BY
 QueryStr2 = f"""
 SELECT
     SEM, 
-    GR,
     SC
 FROM
     STU
@@ -94,9 +93,9 @@ connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_st
 engine = create_engine(connection_url)
 with engine.begin() as connection:
     thelogger.info('Student Google Group Updater->Connecting to AERIES to get emails')
-    df = pd.read_sql_query(QueryStr2,connection)
+    df2 = pd.read_sql_query(QueryStr2,connection)
     thelogger.info('Student Google Group Updater>Closed AERIES connection')
-print(df)
+print(df2)
 #
 msgbody += "Connected to AERIES and got all the student email addresses\n"
 # Mapping of site numbers to abbrivations of school names
@@ -117,24 +116,62 @@ print(df.head())
 Grouped = df.groupby(['SC','GR'])
 print(Grouped)
 # We'll create an empty dataframe to hold the filenames for GAM to process.
+# Dump Students by Grade Level to CSV
 file_list = pd.DataFrame(columns=['filename','groupname'])
-print("Iterating through groups and creating CVS")
+print("Iterating through groups and creating CVS for Student by Grade")
 for name, group_df in Grouped:
-    #    file_name = f"{'_'.join(name).replace(' ', '_')}.csv"
     file_name = f"{''.join(name).replace(' ', '')}.csv"
     group_name = f"{''.join(name).replace(' ', '')}"
+
     new_row_data = {'filename': file_name,'groupname': group_name}
     file_list = pd.concat([file_list, pd.DataFrame([new_row_data])],ignore_index=True)
+
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
     print(f"Saved {name}")
-# All CSV files created
+# All CSV files created by Grade Level/Site
 thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
+#--------------------
+
+df2['SC'] = df2['SC'].replace(sc_mapping)
+grouped2 = df2.groupby('SC')
+print(grouped2)
+
+file_list2 = pd.DataFrame(columns=['filename','groupname'])
+print("Iterating through groups and creating CSVs for Student by Site")
+
+for name, group_df in grouped2:
+    file_name = f"{name.replace(' ', '')}students.csv"
+    group_name = f"{name.replace(' ', '')}students"
+    
+    new_row_data = {'filename': file_name, 'groupname': group_name}
+    file_list2 = pd.concat([file_list2, pd.DataFrame([new_row_data])], ignore_index=True)
+    
+    output_path = os.path.join(output_dir, file_name)
+    group_df[['SEM']].to_csv(output_path, index=False)
+    print(f"Saved {name}")
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
 # we are going to loop through the file_list dataframe which contains the csv filename and the name of the group to update
+# Go through and do students by SITE and Grade first
 for row in file_list.itertuples(index=False):
+    print(f"filename: {row.filename}, groupname: {row.groupname}")
+    thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
+    msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
+    # Call GAM from Python
+    GAMliststring=f"{row.groupname}"
+    filenamestring=f"{row.filename}"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', GAMliststring, 'sync', 'members', 'file', filenamestring])
+    if stat1 != 0:
+        WasThereAnError = True
+        thelogger.info('Student Google Group Updater->GAM returned an error from last command')
+        msgbody += f"GAM returned an error from last command on {row.groupname} {row.filename}\n"
+    if not DontDeleteFiles:
+        # Delete CSV when done
+        os.remove(f"{row.filename}")
+# Go through and do students by SITE
+for row in file_list2.itertuples(index=False):
     print(f"filename: {row.filename}, groupname: {row.groupname}")
     thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
