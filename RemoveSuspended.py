@@ -41,7 +41,7 @@ if __name__ == '__main__':
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
   WasThereAnError = False
-  filetempname = 'suspendedusers.csv'
+  filetempname = '.\\suspendedusers.csv'
   os.chdir(configs['PythonTempDirectory'])
   # GAM Initialization  
   if platform.system() != 'Linux':
@@ -50,7 +50,7 @@ if __name__ == '__main__':
   initializeLogging()
   #
   thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
-  rc2 = CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=True isArchived=True'])
+  rc2 = CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=True'])
 
   if rc2 != 0:
     WasThereAnError = True

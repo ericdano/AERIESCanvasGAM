@@ -25,6 +25,104 @@ def GetAERIESData(thelogger,configs):
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
     thelogger.info('UpdateCounselingListsInGoogle->Connecting To AERIES to get ALL students for Counselors')
+       
+    newquery1 = f"""
+    SELECT
+    CASE STU.SC
+        WHEN 1 THEN 'LLHS'
+        WHEN 2 THEN 'AHS'
+        WHEN 3 THEN 'MHS'
+        WHEN 4 THEN 'CHS'
+        WHEN 6 THEN 'ACIS'
+        WHEN 7 THEN 'DVCEP'
+        WHEN 30 THEN 'TRANS'
+    END AS ALTSC,
+    STU.LN,
+    STU.SEM,
+    STU.GR,
+    STU.CU,
+    TCH.EM,
+    CONCAT(
+        CASE STU.SC
+            WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+            WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+        END, 
+        TCH.EM
+    ) AS SITEEM,
+    CONCAT(
+        CASE STU.SC
+            WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+            WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+        END, 
+        CAST(STU.GR as VARCHAR), 
+        TCH.EM
+    ) AS SITEGRADEEM
+FROM STU
+INNER JOIN
+    TCH ON STU.SC = TCH.SC AND
+    STU.CU = TCH.TN
+WHERE
+    (STU.SC < 5) AND
+    STU.DEL = 0 AND STU.TG = '' AND
+    STU.SP <> '2' AND
+    STU.CU > 0
+ORDER BY 
+    CASE STU.SC
+        WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+        WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+    END, 
+    STU.CU, 
+    STU.LN
+    """
+       
+    newquery2 = f"""
+    SELECT
+    CASE STU.SC
+        WHEN 1 THEN 'LLHS'
+        WHEN 2 THEN 'AHS'
+        WHEN 3 THEN 'MHS'
+        WHEN 4 THEN 'CHS'
+        WHEN 6 THEN 'ACIS'
+        WHEN 7 THEN 'DVCEP'
+        WHEN 30 THEN 'TRANS'
+    END AS ALTSC,
+    STU.LN,
+    STU.SEM,
+    STU.GR,
+    STU.CU,
+    TCH.EM,
+    CONCAT(
+        CASE STU.SC
+            WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+            WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+        END, 
+        TCH.EM
+    ) AS SITEEM,
+    CONCAT(
+        CASE STU.SC
+            WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+            WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+        END, 
+        CAST(STU.GR as VARCHAR), 
+        TCH.EM
+    ) AS SITEGRADEEM
+FROM STU
+INNER JOIN
+    TCH ON STU.SC = TCH.SC AND
+    STU.CU = TCH.TN
+WHERE
+    (STU.SC < 5) AND
+    STU.DEL = 0 AND STU.TG = '' AND
+    STU.SP <> '2' AND
+    STU.CU > 0
+ORDER BY 
+    CASE STU.SC
+        WHEN 1 THEN 'LLHS' WHEN 2 THEN 'AHS' WHEN 3 THEN 'MHS' 
+        WHEN 4 THEN 'CHS' WHEN 6 THEN 'ACIS' WHEN 7 THEN 'DVCEP' WHEN 30 THEN 'TRANS'
+    END, 
+    STU.CU, 
+    STU.LN
+    """
     thequery1 = f"""
     SELECT
         ALTSCH.ALTSC,
@@ -48,7 +146,8 @@ def GetAERIESData(thelogger,configs):
         STU.CU > 0
     ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN
     """
-    sql_query = pd.read_sql_query(thequery1,engine)
+
+    sql_query = pd.read_sql_query(newquery1,engine)
     for SITEEM, SEM in sql_query.groupby('SITEEM'):
         filename = SITEEM.replace("@auhsdschools.org","")+"ALL.csv"
         #filename = filename[1:]
@@ -80,7 +179,8 @@ def GetAERIESData(thelogger,configs):
         STU.CU > 0
     ORDER BY ALTSCH.ALTSC, STU.CU, STU.LN
     """
-    sql_query2 = pd.read_sql_query(thequery2,engine)
+ 
+    sql_query2 = pd.read_sql_query(newquery2,engine)
     for SITEGRADEEM, SEM in sql_query2.groupby('SITEGRADEEM'):
         filename2 = SITEGRADEEM.replace("@auhsdschools.org","")+".csv"
         #filename2 = filename2[1:]
@@ -117,7 +217,7 @@ def main():
                     ('CHS','csantellan','santellan'),
                     ('CHS','dmagno','magno'),
                     ('LLHS','jennysmith','jennysmith'),
-                    ('LLHS','sfeinberg','feinberg'),
+                    ('LLHS','evasquez','vasquez'),
                     ('LLHS','mconstantin','constantin'),
                     ('LLHS','kbloodgood','bloodgood'),
                     ('LLHS','msabeh','sabeh'),
@@ -150,8 +250,8 @@ def main():
                 thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} ALL Grades list csv")
         msgbody += f"Synced {counselor[1]} All list. Gam Status->{stat1}\n" 
         # Sync Lists for Grade 9 for counselor
-        gamliststring = counselor[0] + counselor[2] + 'grade9counselinglist'
-        filenamestring = counselor[0] + "9" + counselor[1] + ".csv"
+        gamliststring = f"{counselor[0]}{counselor[2]}grade9counselinglist"
+        filenamestring = f"{counselor[0]}9{counselor[1]}.csv"
         thelogger.info(f"UpdateCounselingListsInGoogle->Running GAM for {gamliststring} using {filenamestring}")
         stat1 = CallGAMCommand(['gam','update', 'group', gamliststring, 'sync', 'members', 'file', filenamestring])
         if stat1 != 0:
@@ -210,9 +310,9 @@ def main():
                 thelogger.critical(f"UpdateCounselingListsInGoogle->Error trying to remove file {counselor[1]} 12th grade list csv")
         msgbody += f"Synced {counselor[1]} 12th grade list. Gam Status->{stat1}\n" 
     if WasThereAnError:
-        msg['Subject'] = f"ERROR! {configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
+        msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
     else:
-        msg['Subject'] = f"{configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
+        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} AUHSD Counseling Lists to Google Groups {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
     end_of_timer = timer()
     msgbody += f'\n\n Elapsed Time={end_of_timer - start_of_timer}\n'
     msg.set_content(msgbody)

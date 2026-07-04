@@ -5,22 +5,16 @@ from email.mime.image import MIMEImage
 from xkcdpass import xkcd_password as xp
 import smtplib, datetime, shlex, subprocess, sys, os
 import pandas as pd
-import pendulum, random, gam, ldap3, logging, json
+import pendulum, random, gam, logging, json
 from logging.handlers import SysLogHandler
 from ldap3 import Server, Connection, ALL, MODIFY_REPLACE, SUBTREE
 import ldap3, random, string
 from pathlib import Path
 """
+ Python 3.14
+
  Based on a program written for COVID, this program takes 5 substitute accounts across sites, and rotates the passwords for them every week.
  
-
-campuses = [('ahs','jlarsen@auhsdschools.org,potoole@auhsdschools.org,tcatanesi@auhsdschools.org',''),
-             ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,mhall@auhsdschools.org',''),
-             ('llhs','tvu@auhsdschools.org,mmcewen@auhsdschools.org',''),
-             ('mhs','kharvin,ssilkitis@auhsdschools.org',''),
-             ('dv','jdrury@auhsdschools.org,cstanton@auhsdschools.org,sfrance@auhsdschools.org,lheptig@auhsdschools.org',''),
-             ('dvtrans','sfrance@auhsdschools.org,lheptig@auhsdschools.org,bbenjamin@auhsdschools.org,mleavitt@auhsdschools.org','')]
-
 """
 def getConfigs():
   # Function to get passwords and API keys for Acalanes Canvas and stuff
@@ -91,7 +85,7 @@ def main():
             """
             stat = gam.CallGAMCommand(['gam','update','user',theuser,'password',password])
             #Call powershell script to update the password in AD as well
-            p = subprocess.Popen(["powershell.exe","E:\\PowerShellScripts\\UpdatePassword.ps1",adusername,password],stdout=sys.stdout)
+            p = subprocess.Popen(["powershell.exe","C:\\Users\\Public\\GitHub\\PowerShellScripts\\UpdatePassword.ps1",adusername,password],stdout=sys.stdout)
             p_out, p_err = p.communicate()
             #msgbodysummary+= f"""<p>GAM error status->{stat} AD errors->{p_err}</p>"""
             print(stat)
@@ -122,7 +116,7 @@ def main():
             msgindv = MIMEMultipart()
             msgindv['Subject'] = f"""Password for {theuser} {theweekof}"""
             msgindv['From'] = 'dontreply@auhsdschools.org'
-            msgindv['To'] = str(df['contacts'][x] + "," + "edannewitz@auhsdschools.org")
+            msgindv['To'] = f"{df['contacts'][x]},edannewitz@auhsdschools.org"
             msgindv.attach(MIMEText(msgbodyindv,'html'))
             try:
               # Using 'with' automatically handles s.quit() even if an error occurs
@@ -138,9 +132,9 @@ def main():
 
         # Send summary of all campus subaccount passwords here
         msg = MIMEMultipart()
-        msg['Subject'] = "Sub Account Passwords for " + df['campusname'][x].upper() + " " + theweekof
+        msg['Subject'] = f"Sub Account Passwords for {df['campusname'][x].upper() {theweekof}"
         msg['From'] = 'donotreply@auhsdschools.org'
-        msg['To'] = str(df['contacts'][x] + "," + docontacts)
+        msg['To'] = f"{df['contacts'][x]},{docontacts}"
         msg.attach(MIMEText(msgbodysummary,'html'))
         try:
           # Using 'with' automatically handles s.quit() even if an error occurs

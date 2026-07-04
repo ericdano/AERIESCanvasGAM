@@ -12,6 +12,8 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
+Python 3.14
+
 This Python Script talks to AERIES, gets students from 5 sites, sorts them by Grade 
 and Site, makes CSV files split out by Grade and Site, and then calls
 GAM to update student lists with the same name as the csv file name.
@@ -43,9 +45,9 @@ msgbody = ''
 WasThereAnError = False
 DontDeleteFiles = False
 # Change directory to a TEMP Directory where GAM and Python can process CSV files 
-os.chdir('E:\\PythonTemp')
-output_dir = "E:\\PythonTemp"
-msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
+os.chdir(configs['PythonTempDirectory'])
+output_dir = "C:\\Users\\Public\\PythonTemp"
+msgbody += f'Using Database->{configs['AERIESDatabase']}\n'
 QueryStr = f"""
 SELECT
     SEM, 
@@ -61,8 +63,22 @@ ORDER BY
     STU.SC,
     STU.GR
 """
+QueryStr2 = f"""
+SELECT
+    SEM, 
+    GR,
+    SC
+FROM
+    STU
+WHERE
+    STU.SC IN ('1','2','3','4','6')
+    AND DEL=0
+    AND TG=''
+ORDER BY
+    STU.SC
+"""
 # Logging is a good thing
-thelogger.info(f"Student Google Group Updater->Gathering all students")
+thelogger.info(f"Student Google Group Updater->Gathering all students by Grade Level")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
@@ -71,6 +87,17 @@ with engine.begin() as connection:
     df = pd.read_sql_query(QueryStr,connection)
     thelogger.info('Student Google Group Updater>Closed AERIES connection')
 print(df)
+#
+thelogger.info(f"Student Google Group Updater->Gathering all students by Site")
+connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+engine = create_engine(connection_url)
+with engine.begin() as connection:
+    thelogger.info('Student Google Group Updater->Connecting to AERIES to get emails')
+    df = pd.read_sql_query(QueryStr2,connection)
+    thelogger.info('Student Google Group Updater>Closed AERIES connection')
+print(df)
+#
 msgbody += "Connected to AERIES and got all the student email addresses\n"
 # Mapping of site numbers to abbrivations of school names
 sc_mapping = {
@@ -112,28 +139,28 @@ for row in file_list.itertuples(index=False):
     thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
     # Call GAM from Python
-    #stat1 = gam.CallGAMCommand(['gam','update', 'group', 'f"{row.group_name}"', 'sync', 'members', 'file', 'f"{row.file_name}"'])
-    """"
+    GAMliststring=f"{row.groupname}"
+    filenamestring=f"{row.filename}"
+    stat1 = gam.CallGAMCommand(['gam','update', 'group', GAMliststring, 'sync', 'members', 'file', filenamestring])
     if stat1 != 0:
         WasThereAnError = True
         thelogger.info('Student Google Group Updater->GAM returned an error from last command')
-        msgbody += f"GAM returned an error from last command on {row.group_name} {row.file_name}\n"
+        msgbody += f"GAM returned an error from last command on {row.groupname} {row.filename}\n"
     if not DontDeleteFiles:
         # Delete CSV when done
         os.remove(f"{row.filename}")
-    """
-msgbody+='Done!\n'
+msgbody+=f"Done!\n"
 thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
 # Now email status report
 if WasThereAnError:
-    msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Student Google Group Updater " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Student Google Group Updater {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
 else:
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Student Google Group Updater " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+    msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} Student Google Group Updater {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
 end_of_timer = timer()
-msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
-#msg.set_content(msgbody)
-#s = smtplib.SMTP(configs['SMTPServerAddress'])
-#s.send_message(msg)
+msgbody += f"\n\n Elapsed Time={end_of_timer - start_of_timer}\n"
+msg.set_content(msgbody)
+s = smtplib.SMTP(configs['SMTPServerAddress'])
+s.send_message(msg)
 thelogger.info('Student Google Group Updater->Sent status message')
-thelogger.info('Student Google Group Updater->Done - Took ' + str(end_of_timer - start_of_timer))
+thelogger.info(f'Student Google Group Updater->Done - Took {end_of_timer - start_of_timer}')
 print("\nProcess complete.")
