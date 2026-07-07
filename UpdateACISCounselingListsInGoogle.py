@@ -11,6 +11,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
+Python 3.14
 Script to update the ACIS counselor Google Group
 """
 def GetAERIESData(thelogger,configs):
@@ -106,7 +107,7 @@ if __name__ == '__main__':
     WasThereAnError = False
     DontDeleteFiles = False
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     #populate a table with counselor parts
     counselors = [ ('acis','sfeinberg','feinberg')]
     GetAERIESData(thelogger,configs)

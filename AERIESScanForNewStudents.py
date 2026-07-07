@@ -93,7 +93,7 @@ if __name__ == '__main__':
     if WasThereAnError:
         msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     else:
-        msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
+        msg['Subject'] = f"🟢🔴 {configs['SMTPStatusMessage']} AERIES New Student Scan {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
     msg.attach(MIMEText(html_body,'html'))
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)

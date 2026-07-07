@@ -1,13 +1,16 @@
 import pandas as pd
-import os, sys, shlex, gam, subprocess, json, logging, smtplib, datetime, socket
+import os, sys, shlex, subprocess, json, logging, smtplib, datetime, socket
 from pathlib import Path
 from timeit import default_timer as timer
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-
+import multiprocessing
+import platform
+from gam import initializeLogging, CallGAMCommand
 """
+Python 3.14
 Python Script to suspend and archive all users in a certain OU
 In this case, it suspends and archives all the users in OU Z-Former Students and Former Staff
 and any users in any sub OUs
@@ -27,16 +30,22 @@ def main():
   msg['From'] = configs['SMTPAddressFrom']
   msg['To'] = configs['SendInfoEmailAddr']
   msgbody = ''
+  # GAM Initialization  
+  if platform.system() != 'Linux':
+    multiprocessing.freeze_support()
+    multiprocessing.set_start_method('spawn')
+  initializeLogging()
+
   # Check Z-Former Students
   thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension Check for Z-Former student OU')
-  stat = gam.CallGAMCommand(['gam','ou_and_children','/Z-Former Students','update','user','archive','on','suspended','on'])
+  stat = CallGAMCommand(['gam','ou_and_children','/Z-Former Students','update','user','archive','on','suspended','on'])
   if stat != 0:
     msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Monthly Student and Staff Suspension Script {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
   else:
     msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} Monthly Student and Staff Suspension Script {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
   thelogger.info('WeeklyStudentSuspend->Starting GAM Suspension Check for Former Staff student OU')
   # Check Former Staff now
-  stat = gam.CallGAMCommand(['gam','ou_and_children','/Former Staff','update','user','archive','on','suspended','on'])
+  stat = CallGAMCommand(['gam','ou_and_children','/Former Staff','update','user','archive','on','suspended','on'])
   if stat != 0:
     msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Monthly Student and Staff Suspension Script {datetime.datetime.now().strftime('%I:%M%p on %B %d, %Y')}"
   else:

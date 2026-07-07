@@ -15,7 +15,7 @@ from email.mime.image import MIMEImage
 from logging.handlers import SysLogHandler
 
 """
- Python 3.11+ script to pull data from AERIES and to send it to Maia Learning.
+ Python 3.14 script to pull data from AERIES and to send it to Maia Learning.
 
  Uses a .JSON file specified in confighome which has a logserveraddress, and the login info for Maia Learning.
 """
@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     WasThereAnError = False
     # Get AERIES Data
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     # connection_string = "DRIVER={SQL Server};SERVER=SATURN;DATABASE=DST22000AUHSD;Trusted_Connection=yes"
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
@@ -116,46 +116,47 @@ if __name__ == '__main__':
     """
     the_query = f"""
     SELECT
-        ALTSCN.ALTSC AS School_ID,
-        STU.ID AS StudentID,
-        STU.SEM AS Email,
-        STU.FN AS FirstName,
-        STU.MN AS MiddleName,
-        STU.LN AS LastName,
-        STU.FNA AS NickName,
-        LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth,
-        STU.SX AS Gender,
-        STU.GR AS Grade,
-        TECH.GYR AS Classof,
-        STU.AD AS Address1,
-        '' AS Address2,
-        STU.CY AS City,
-        STU.ST AS State,
-        STU.ZC AS Zipcode,
-        '' AS Country,
-        '' AS Citizenship,
-        '' AS EnrollmentEndDate,
-        '' AS Telephone,
-        '' AS FAFSA,
-        CASE
-            WHEN RC1 = 'RCB' THEN 9
-            ELSE ((CAST(RC1 AS INT) / 100) * 10 + (CAST(RC1 AS INT) % 10))
-        END AS Race,
-        CASE
-            WHEN ETH = 'B' THEN 2
-            WHEN ETH = 'N' THEN 0
-            WHEN ETH = 'Y' THEN 1
-        END AS Ethnicity,
-        TCH.EM AS AssignedCounselor
-    FROM
-        STU
-    INNER JOIN
-        TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN
-    INNER JOIN
-        ALTSCN ON STU.SC = ALTSCN.SCID
-    INNER JOIN
-        TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
-    WHERE
+    ALTSCN.ALTSC AS School_ID,
+    STU.ID AS StudentID,
+    STU.SEM AS Email,
+    STU.FN AS FirstName,
+    STU.MN AS MiddleName,
+    STU.LN AS LastName,
+    STU.FNA AS NickName,
+    LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth,
+    STU.SX AS Gender,
+    STU.GR AS Grade,
+    TECH.GYR AS Classof,
+    STU.AD AS Address1,
+    '' AS Address2,
+    STU.CY AS City,
+    STU.ST AS State,
+    STU.ZC AS Zipcode,
+    '' AS Country,
+    '' AS Citizenship,
+    '' AS EnrollmentEndDate,
+    '' AS Telephone,
+    '' AS FAFSA,
+    CASE
+        WHEN RC1 = 'RCB' THEN 9
+        -- Updated to TRY_CAST to prevent 'ZZZ' string conversion errors
+        ELSE ((TRY_CAST(RC1 AS INT) / 100) * 10 + (TRY_CAST(RC1 AS INT) % 10))
+    END AS Race,
+    CASE
+        WHEN ETH = 'B' THEN 2
+        WHEN ETH = 'N' THEN 0
+        WHEN ETH = 'Y' THEN 1
+    END AS Ethnicity,
+    TCH.EM AS AssignedCounselor
+FROM
+    STU
+INNER JOIN
+    TECH ON STU.SC = TECH.SC AND STU.SN = TECH.SN
+INNER JOIN
+    ALTSCN ON STU.SC = ALTSCN.SCID
+INNER JOIN
+    TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
+WHERE
     (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')
     """
     sql_query = pd.read_sql_query(the_query,engine)
@@ -306,9 +307,9 @@ if __name__ == '__main__':
                 thelogger.info("[" + key + "] successfully uploaded to [" + value + "]")
                 msgbody += "[" + key + "] successfully uploaded to [" + value + "]\n"
             except PermissionError as err:
-                print("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                thelogger.info("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                msgbody += "SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]\n"
+                print(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                thelogger.info(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                msgbody += f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}\n"
                 WasThereAnError = True
             except Exception as err:
                 print(f"SFTP failed due to error [{str(err)}]")
@@ -379,6 +380,9 @@ if __name__ == '__main__':
                 WasThereAnError = True
 
         """
+        NOT USED AT THIS TIME
+
+
         fileToUploadStudentCounselors = {"Acalanes_Maia_GPA.csv":"./students_counselors/Acalanes_Maia_StudentCounselors.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
         thelogger.info('Update-Maia-Learning ->Uploading Students and Counselor Relationships')

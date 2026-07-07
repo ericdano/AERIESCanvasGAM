@@ -137,7 +137,7 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
     sql_query_demo.to_csv(dest_filename_demo, index = False)
     sql_query_staff.to_csv(dest_filename_staff, index = False)
     thelogger.info('Care/Solace->Wrote temp CSV to disk')
-    msgbody += "Got AERIES data, connecting to FTPS\n"
+    msgbody += f"Got AERIES data, connecting to FTPS\n"
     thelogger.info('Care/Solace->Connecting to Care/Solaces via FTPS')
     hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     hostFingerprint = hostkeys.lookup(server)['ssh-rsa']
@@ -156,14 +156,14 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
                 thelogger.info("[" + key + "] successfully uploaded to [" + value + "]")
                 msgbody += "[" + key + "] successfully uploaded to [" + value + "]\n"
             except PermissionError as err:
-                print("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                thelogger.info("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                msgbody += "SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]\n"
+                print(f"SFTP Operation Failed on {key} due to a permissions error on the remote server [{err}]")
+                thelogger.info(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                msgbody += f"SFTP Operation Failed on {key} due to a permissions error on the remote server [{err}\n"
                 WasThereAnError = True
             except Exception as err:
-                print("SFTP failed due to error [" + str(err) + "]")
-                thelogger.info("SFTP failed due to error [" + str(err) + "]")
-                msgbody += "SFTP failed due to error [" + str(err) + "]\n"
+                print(f"SFTP failed due to error [{err}")
+                thelogger.info(f"SFTP failed due to error [{err}]")
+                msgbody += f"SFTP failed due to error [{err}]\n"
                 WasThereAnError = True
         # Staff Upload------------------------
         fileToUploadstaff = {"CARE_SOLACE_STAFF.csv":"CARE_SOLACE_STAFF.csv"}
@@ -172,28 +172,28 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
         for key, value in fileToUploadstaff.items():
             try:  
                 sftpClient.put(key, value)
-                print("[" + key + "] successfully uploaded to [" + value + "]")
-                thelogger.info("[" + key + "] successfully uploaded to [" + value + "]")
-                msgbody += "[" + key + "] successfully uploaded to [" + value + "]\n"
+                print(f"[{key}] successfully uploaded to [{value}]")
+                thelogger.info(f"[{key}] successfully uploaded to [{value}]")
+                msgbody += f"[{key}] successfully uploaded to [{value}]\n"
             except PermissionError as err:
-                print("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                thelogger.info("SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]")
-                msgbody += "SFTP Operation Failed on [" + key + "] due to a permissions error on the remote server [" + str(err) + "]\n"
+                print(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                thelogger.info(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                msgbody += f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}\n"
                 WasThereAnError = True
             except Exception as err:
                 print("SFTP failed due to error [" + str(err) + "]")
-                thelogger.info("SFTP failed due to error [" + str(err) + "]")
-                msgbody += "SFTP failed due to error [" + str(err) + "]\n"
+                thelogger.info(f"SFTP failed due to error [{err}]")
+                msgbody += f"SFTP failed due to error {err}]\n"
                 WasThereAnError = True
     except paramiko.ssh_exception.AuthenticationException as err:
-        print ("Can't connect due to authentication error [" + str(err) + "]")
-        thelogger.info("Can't connect due to authentication error [" + str(err) + "]")
-        msgbody +="Can't connect due to authentication error [" + str(err) + "]"
+        print (f"Can't connect due to authentication error [{err}]")
+        thelogger.info(f"Can't connect due to authentication error [{err}]")
+        msgbody +=f"Can't connect due to authentication error [{err}]"
         WasThereAnError = True
     except Exception as err:
-        print ("Can't connect due to other error [" + str(err) + "]")
-        thelogger.info("Can't connect due to other error [" + str(err) + "]")
-        msgbody +="Can't connect due to other error [" + str(err) + "]"
+        print (f"Can't connect due to other error [{err}]")
+        thelogger.info(f"Can't connect due to other error [{err}]")
+        msgbody +=f"Can't connect due to other error [{err}]"
         WasThereAnError = True
     try:
         remote_dir = "/"
