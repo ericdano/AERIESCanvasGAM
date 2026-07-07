@@ -81,5 +81,11 @@ def create_password():
             return final_word + three_digits
 
 # --- Main Generation Loop ---
-new_password = create_password()
-print(new_password)
+password_list = set()
+while len(password_list) < 50:
+    new_password = create_password()
+    password_list.add(new_password)
+
+# Print or save the list
+for pwd in sorted(list(password_list)):
+    print(pwd)
