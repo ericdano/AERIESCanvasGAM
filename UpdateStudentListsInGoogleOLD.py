@@ -15,6 +15,8 @@ Python 3.14
 
 Script to put Students into the right Google Groups based on their enrollment in AERIES
 
+OLD
+
 
 """
 
@@ -35,7 +37,7 @@ def main():
     WasThereAnError = False
     DontDeleteFiles = False
     # Change directory to a TEMP Directory where GAM and Python can process CSV files 
-    os.chdir('E:\\PythonTemp')
+    os.chdir(configs['PythonTempDirectory'])
     """
     name of the lists is ahsgrade10students@auhsdschools.org (all at site by grade level)
                          ahsstudents@auhsdschools.org (all at site)

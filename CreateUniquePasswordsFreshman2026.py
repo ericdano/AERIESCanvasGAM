@@ -15,7 +15,10 @@ import multiprocessing
 import platform
 from gam import initializeLogging, CallGAMCommand
 """
-Python 3.14 Script to generate Staff passwords for new Staff
+Python 3.14 Script to generate Unique Passwords (comparing them to existing AERIES passwords) and then Google Accounts
+
+
+
 """
 
 
@@ -100,7 +103,7 @@ def GetAERIESData(thelogger,configs):
     thelogger.info('CreateNewStudentsInGoogle2026->Connecting To AERIES to get ALL 9th Graders without Passwords')
        
     findquery = fr"""
-    select id, sem, fn, ln, STU.SC,
+    select id, sem, fn, ln, gr, STU.SC,
     CASE STU.SC
         WHEN 1 THEN '\Students\LLHS\Freshman'
         WHEN 2 THEN '\Students\AHS\Freshman'
@@ -112,7 +115,7 @@ def GetAERIESData(thelogger,configs):
         ELSE '\Students\Un Mapped School ABBR'
     END AS ou,
     nid, sem from stu
-    where STU.DEL = 0 AND STU.TG = '' AND gr = 9 AND NID = ''
+    where STU.DEL = 0 AND STU.TG = '' AND GR=9 AND NID = ''
     """
     sql_query = pd.read_sql_query(findquery,engine)       
     return sql_query
