@@ -7,9 +7,9 @@ from pathlib import Path
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine, text
 from timeit import default_timer as timer
-
-# Assuming GAM is installed in a way that allows this import
-from gam import CallGAMCommand 
+import multiprocessing
+import platform
+from gam import initializeLogging, CallGAMCommand
 
 # --- Character Sets & Word Lists ---
 VOWELS = "aeiou"
@@ -65,7 +65,7 @@ def setup_environment():
 
 def get_engine(configs):
     """Creates and returns the SQLAlchemy engine."""
-    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
+    connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsernameE'] + ";PWD=" + configs['AERIESPasswordE'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     return create_engine(connection_url)
 
@@ -94,8 +94,8 @@ def get_all_aeries_students(engine):
     query = r"""
     SELECT id, fn, ln, NID, SEM, STU.U10, STU.SC, STU.GR,
     CASE STU.SC
-        WHEN 30 THEN '\Students\Transition'
-        ELSE '\Students\' + 
+        WHEN 30 THEN '/Students/Transition'
+        ELSE '/Students/' + 
             CASE STU.SC
                 WHEN 1 THEN 'LLHS'
                 WHEN 2 THEN 'AHS'
@@ -104,12 +104,12 @@ def get_all_aeries_students(engine):
                 WHEN 6 THEN 'CIS'
                 WHEN 7 THEN 'CENR'
                 ELSE 'Un Mapped School ABBR'
-            END + '\' +
+            END + '/' +
             CASE STU.GR
                 WHEN 9 THEN 'Freshman'
-                WHEN 10 THEN 'Sophomore'
-                WHEN 11 THEN 'Junior'
-                WHEN 12 THEN 'Senior'
+                WHEN 10 THEN 'Sophomores'
+                WHEN 11 THEN 'Juniors'
+                WHEN 12 THEN 'Seniors'
                 ELSE ''
             END
     END AS ou
@@ -152,10 +152,11 @@ def update_aeries_credentials(engine, student_id, new_password, new_email, thelo
         return
         
     query_str = f"UPDATE STU SET {', '.join(updates)} WHERE ID = :student_id"
-    print(query_str)
-    """
+    print(f"QUERY: {query_str}")
+    print(f"DATA:  {params}")
+
     update_query = text(query_str)
-    
+    """
     try:
         with engine.begin() as conn:
             conn.execute(update_query, params)
@@ -171,6 +172,11 @@ def main():
     
     thelogger.info("--- Starting 2026 Google Account Reconciliation & Creation (All Grades) ---")
     os.chdir(configs['PythonTempDirectory'])
+    # GAM Initialization  
+    if platform.system() != 'Linux':
+        multiprocessing.freeze_support()
+        multiprocessing.set_start_method('spawn')
+    initializeLogging()
     # 1. Export current Google users to CSV
     export_google_users(thelogger)
     
@@ -237,14 +243,13 @@ def main():
 
         # Build GAM command
         gam_args = [
-            "create", "user", email,
+            "gam", "create", "user", email,
             "firstname", fn,
             "lastname", ln,
             "password", current_password,
             "org", ou
         ]
         print(gam_args)
-        """
         # Execute GAM
         try:
             print(f"Creating Google Account: {email} in {ou}")
@@ -254,7 +259,7 @@ def main():
         except Exception as e:
             thelogger.error(f"FAILED to create GAM account for {email}: {e}")
             print(f"ERROR creating {email}: {e}")
-        """
+
     end_time = timer()
     elapsed = round(end_time - start_time, 2)
     thelogger.info(f"--- Finished. Created {success_count} accounts in {elapsed} seconds. ---")
