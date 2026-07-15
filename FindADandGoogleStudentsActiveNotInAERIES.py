@@ -1,7 +1,7 @@
-import io
 import json
 import logging
 import logging.handlers
+import tempfile
 from pathlib import Path
 from contextlib import redirect_stdout
 
@@ -62,30 +62,36 @@ def get_google_active(logger, student_ou):
         'query', f"isSuspended=false orgUnitPath='{student_ou}'"
     ]
     
-    output = io.StringIO()
-    
     try:
-        with redirect_stdout(output):
-            gam.CallGAMCommand(gam_args)
-    except SystemExit as e:
-        if e.code not in [0, None]:
-            logger.error(f"GAM Error: Exited with code {e.code}")
-            return pd.DataFrame(columns=['Email'])
-    except Exception as e:
-        logger.error(f"GAM Exception: {e}")
-        return pd.DataFrame(columns=['Email'])
+        # Use a real temporary file to prevent GAM 'fileno' errors
+        with tempfile.TemporaryFile(mode='w+', encoding='utf-8', newline='') as output:
+            with redirect_stdout(output):
+                try:
+                    gam.CallGAMCommand(gam_args)
+                except SystemExit as e:
+                    if e.code not in [0, None]:
+                        logger.error(f"GAM Error: Exited with code {e.code}")
+                        return pd.DataFrame(columns=['Email'])
+                except Exception as e:
+                    logger.error(f"GAM Exception: {e}")
+                    return pd.DataFrame(columns=['Email'])
 
-    output.seek(0)
-    
-    try:
-        df_google = pd.read_csv(output)
-        df_google = df_google[['primaryEmail']].rename(columns={'primaryEmail': 'Email'})
-        df_google['Email'] = df_google['Email'].str.lower()
-    except pd.errors.EmptyDataError:
-        logger.warning("GAM returned no data.")
+            # Rewind the temporary file to the beginning to read it into Pandas
+            output.seek(0)
+            
+            try:
+                df_google = pd.read_csv(output)
+                df_google = df_google[['primaryEmail']].rename(columns={'primaryEmail': 'Email'})
+                df_google['Email'] = df_google['Email'].str.lower()
+            except pd.errors.EmptyDataError:
+                logger.warning("GAM returned no data.")
+                return pd.DataFrame(columns=['Email'])
+            
+            return df_google
+            
+    except Exception as e:
+        logger.error(f"Failed to process GAM output: {e}")
         return pd.DataFrame(columns=['Email'])
-        
-    return df_google
 
 # ==========================================
 # 3. GET ACTIVE AD STUDENTS (LDAP)
