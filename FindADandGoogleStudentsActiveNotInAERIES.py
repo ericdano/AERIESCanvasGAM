@@ -132,6 +132,7 @@ if __name__ == "__main__":
     configs, thelogger = setup_environment()
     thelogger.info("Starting Orphaned Account Check")
     os.chdir(configs['PythonTempDirectory'])
+    
     # Database Connection using URL.create
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
@@ -139,26 +140,37 @@ if __name__ == "__main__":
     # Create the SQLAlchemy engine
     engine = create_engine(connection_url)
     
-    # Fetch data
+    # Fetch data and log record counts
     df_aeries = get_aeries_active(engine, thelogger)
+    thelogger.info(f"Total active records found in Aeries: {len(df_aeries)}")
+    
     df_google = get_google_active(thelogger, configs.get('google_student_ou', '/Students'))
+    thelogger.info(f"Total active records found in Google: {len(df_google)}")
+    
     df_ad = get_ad_active(configs, thelogger)
+    thelogger.info(f"Total active records found in Active Directory: {len(df_ad)}")
     
-    # Compare
-    thelogger.info("Comparing directory datasets...")
-    df_active_both = pd.merge(df_google, df_ad, on='Email', how='inner')
-    df_orphans = df_active_both[~df_active_both['Email'].isin(df_aeries['Email'])]
+    # Compare 1: Active in Google, NOT in Aeries
+    thelogger.info("Comparing Google vs Aeries...")
+    df_google_orphans = df_google[~df_google['Email'].isin(df_aeries['Email'])]
     
-    # Handle Results
-    if not df_orphans.empty:
-        orphan_count = len(df_orphans)
-        thelogger.warning(f"Found {orphan_count} orphaned student accounts.")
-        
-        export_file = "orphaned_student_accounts.csv"
-        df_orphans.to_csv(export_file, index=False)
-        thelogger.info(f"Exported orphan list to {export_file}")
+    if not df_google_orphans.empty:
+        thelogger.warning(f"Found {len(df_google_orphans)} accounts active in Google but NOT in Aeries.")
+        df_google_orphans.to_csv("google_differences.csv", index=False)
+        thelogger.info("Exported Google differences to google_differences.csv")
     else:
-        thelogger.info("No orphaned accounts found. Directories are clean.")
+        thelogger.info("No Google discrepancies found.")
+
+    # Compare 2: Active in AD, NOT in Aeries
+    thelogger.info("Comparing AD vs Aeries...")
+    df_ad_orphans = df_ad[~df_ad['Email'].isin(df_aeries['Email'])]
+    
+    if not df_ad_orphans.empty:
+        thelogger.warning(f"Found {len(df_ad_orphans)} accounts active in AD but NOT in Aeries.")
+        df_ad_orphans.to_csv("ad_differences.csv", index=False)
+        thelogger.info("Exported AD differences to ad_differences.csv")
+    else:
+        thelogger.info("No AD discrepancies found.")
         
     # Clean up engine resources
     engine.dispose()
