@@ -1,5 +1,4 @@
-import json
-import logging
+import json, os, logging, sys
 import logging.handlers
 import tempfile
 from pathlib import Path
@@ -14,7 +13,7 @@ import gam
 # 0. SETUP AND CONFIGURATION
 # ==========================================
 def setup_environment():
-    """Loads configs and sets up syslog routing."""
+    """Loads configs, sets up syslog routing, and console output."""
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
@@ -24,8 +23,15 @@ def setup_environment():
     
     # Prevent duplicate logging lines if running interactively
     if not thelogger.handlers:
-        handler = logging.handlers.SysLogHandler(address=(configs['logserveraddress'], 514))
-        thelogger.addHandler(handler)
+        # 1. Syslog Handler (Sends to your log server)
+        syslog_handler = logging.handlers.SysLogHandler(address=(configs['logserveraddress'], 514))
+        thelogger.addHandler(syslog_handler)
+        
+        # 2. Console Handler (Prints to your screen)
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+        console_handler.setFormatter(console_formatter)
+        thelogger.addHandler(console_handler)
 
     return configs, thelogger
 
@@ -125,7 +131,7 @@ def get_ad_active(configs, logger):
 if __name__ == "__main__":
     configs, thelogger = setup_environment()
     thelogger.info("Starting Orphaned Account Check")
-    
+    os.chdir(configs['PythonTempDirectory'])
     # Database Connection using URL.create
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
