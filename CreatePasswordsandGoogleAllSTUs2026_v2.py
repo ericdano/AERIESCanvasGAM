@@ -156,14 +156,12 @@ def update_aeries_credentials(engine, student_id, new_password, new_email, thelo
     print(f"DATA:  {params}")
 
     update_query = text(query_str)
-    """
     try:
         with engine.begin() as conn:
             conn.execute(update_query, params)
     except Exception as e:
         thelogger.error(f"Failed to update AERIES for {student_id}: {e}")
         print(f"CRITICAL ERROR updating AERIES for {student_id}: {e}")
-    """
 def main():
     start_time = timer()
     configs, thelogger = setup_environment()
