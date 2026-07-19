@@ -6,6 +6,14 @@ from pathlib import Path
 import json, logging, os
 import time
 
+
+"""
+Python 3.14 Script to go through Active Directory, then compare it to students that are actively enrolled in AERIES and
+find students who are NOT in Active Directory
+
+
+"""
+
 def setup_environment():
     """Loads configs and sets up syslog routing."""
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
