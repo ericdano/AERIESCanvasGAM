@@ -114,7 +114,7 @@ if __name__ == '__main__':
         AND (STU.SP <> '2')
 
     """
-    the_query = f"""
+    the_query_semiold = f"""
     SELECT
     ALTSCN.ALTSC AS School_ID,
     STU.ID AS StudentID,
@@ -157,6 +157,49 @@ INNER JOIN
 INNER JOIN
     TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
 WHERE
+    (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')
+    """
+    the_query = f"""
+SELECT
+    CASE 
+        WHEN STU.SC = 7 THEN 6 
+        ELSE STU.SC 
+    END AS School_ID,
+    STU.ID AS StudentID,
+    STU.SEM AS Email,
+    STU.FN AS FirstName,
+    STU.MN AS MiddleName,
+    STU.LN AS LastName,
+    STU.FNA AS NickName,
+    LEFT(CONVERT(VARCHAR, STU.BD, 101), 5) + RIGHT(CONVERT(VARCHAR, STU.BD, 101), 5) AS DateOfBirth,
+    STU.SX AS Gender,
+    STU.GR AS Grade,
+    CONCAT('20',STU.U10) AS Classof,
+    STU.AD AS Address1,
+    '' AS Address2,
+    STU.CY AS City,
+    STU.ST AS State,
+    STU.ZC AS Zipcode,
+    '' AS Country,
+    '' AS Citizenship,
+    '' AS EnrollmentEndDate,
+    '' AS Telephone,
+    '' AS FAFSA,
+    CASE
+        WHEN RC1 = 'RCB' THEN 9
+        ELSE ((TRY_CAST(RC1 AS INT) / 100) * 10 + (TRY_CAST(RC1 AS INT) % 10))
+    END AS Race,
+    CASE
+        WHEN ETH = 'B' THEN 2
+        WHEN ETH = 'N' THEN 0
+        WHEN ETH = 'Y' THEN 1
+    END AS Ethnicity,
+    TCH.EM AS AssignedCounselor
+FROM
+    STU
+INNER JOIN
+    TCH ON STU.SC = TCH.SC AND STU.CU = TCH.TN
+WHERE    
     (STU.SC < 7) AND (STU.DEL = 0) AND (STU.TG = '') AND (STU.SP <> '2')
     """
     sql_query = pd.read_sql_query(the_query,engine)
@@ -378,7 +421,7 @@ WHERE
                 thelogger.info(f"Update-Maia-Learning ->SFTP failed due to error [{str(err)}]")
                 msgbody += f"SFTP failed due to error [{str(err)}]\n"
                 WasThereAnError = True
-
+        
         """
         NOT USED AT THIS TIME
 
@@ -403,10 +446,8 @@ WHERE
                 msgbody += "SFTP failed due to error [" + str(err) + "]\n"
                 WasThereAnError = True
         """ 
+    
         # close connection
-
-        
-        # -----
         sftpClient.close()
         tp.close()
         thelogger.info("Closed SFTP connections")
