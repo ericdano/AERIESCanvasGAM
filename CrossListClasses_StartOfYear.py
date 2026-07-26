@@ -5,7 +5,7 @@ from pathlib import Path
 from timeit import default_timer as timer
 import requests, json, logging, smtplib, datetime, sys
 from canvasapi import Canvas
-from canvasapi.exceptions import CanvasException
+from canvasapi.exceptions import CanvasException, ResourceDoesNotExist
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -33,10 +33,17 @@ if __name__ == '__main__':
     confighome = Path.home() / ".Acalanes" / "Acalanes.json"
     with open(confighome) as f:
         configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
+
+    logger = logging.getLogger('Cross Listing Script')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
+
     #prep status (msg) email
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
@@ -63,6 +70,9 @@ if __name__ == '__main__':
     Use THIS ONE 2025
 
     Change the MST.SM to whatever term you want, so S is Spring, F is Fall and Y is Year round
+    
+
+
     change MST.SC to whatever SITE you are using. We have these 5
         
     This should be run, to prevent issues, by TERM id. 
@@ -74,25 +84,50 @@ if __name__ == '__main__':
     2026~4_S,2026~4_F,2026~4_Y - CHS
     2026~6_S,2026~6_F,2026~6_Y - ACIS
     """
-    sql_query = pd.read_sql_query("""SELECT CRS.CN AS CourseID, CRS.CO AS CourseTitle,
-                 MST.SC AS School, MST.SE AS SectionNum, MST.SE AS ShortTitle,
-                 FTF.STI AS CourseNum, MST.CN AS CourseName, STF.LN AS LastName, MST.SM as Semester FROM MST
-                 INNER JOIN SSE ON MST.SC = SSE.SC AND MST.SE = SSE.SE INNER JOIN FTF ON MST.FSQ = FTF.SQ
-                 INNER JOIN STF ON SSE.ID = STF.ID INNER JOIN CRS ON MST.CN = CRS.CN WHERE MST.DEL = 0 
-                 AND MST.SM = 'S' AND MST.SC ='4'
-                 AND (MST.CN <> 'OS535E' AND MST.CN <> 'PREPTO' AND MST.CN <> 'O0535E' AND MST.CN <> 'O0544E')
-                 ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM""",engine)
+    sql_query = pd.read_sql_query("""
+SELECT 
+  CRS.CN AS CourseID, 
+  CRS.CO AS CourseTitle,
+  MST.SC AS School, 
+  MST.SE AS SectionNum, 
+  MST.SE AS ShortTitle,
+  FTF.STI AS CourseNum,
+  MST.CN AS CourseName, 
+  STF.LN AS LastName, 
+  MST.SM as Semester 
+FROM MST
+  INNER JOIN SSE ON MST.SC = SSE.SC 
+     AND MST.SE = SSE.SE 
+  INNER JOIN FTF ON MST.FSQ = FTF.SQ
+  INNER JOIN STF ON SSE.ID = STF.ID 
+  INNER JOIN CRS ON MST.CN = CRS.CN 
+WHERE MST.DEL = 0 
+  AND MST.SM = 'S' AND MST.SC IN ('1','2','3','4','6')
+  AND (MST.CN <> 'OS535E' 
+  AND MST.CN <> 'PREPTO' 
+  AND MST.CN <> 'O0535E' 
+  AND MST.CN <> 'O0544E')
+ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM
+    """,engine)
     print(sql_query)
-    sql_query["SIS_ID"] = "2026~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
+    #
+    # CHANGE THIS TO 2028~ next year. VERY IMPORTANT!!!!
+    #
+
+    sql_query["SIS_ID"] = "2027~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
+
+
     #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " " + sql_query['CourseNum']
 
     # REMEMBER TO CHANGE THE FALL and SPRING and leave BLANK if YEAR
     # If you mess this up, it's real easy just to rename everything again.
     # ------------------------------------------------------------------------------------------------------------------
-    #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
-    #sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Fall"
-    sql_query["NewCourseTitle"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Spring"
-    sql_query["NewCourseTitleSort"] = "25-26 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
+    #sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
+    #sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Fall"
+    sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Spring"
+
+
+    sql_query["NewCourseTitleSort"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
     sql_query["NewCourseSectionData"] = sql_query["SectionNum"].astype(str) + " - " + sql_query["CourseTitle"].astype(str)
 
     #sql_query.to_csv('export.csv')
@@ -101,9 +136,10 @@ if __name__ == '__main__':
 
     # Using BETA URL 
     #Canvas_API_URL = configs['CanvasBETAAPIURL']
-    Canvas_API_URL = configs['CanvasAPIURL']
-    Canvas_API_KEY = configs['CanvasAPIKey']
-    thelogger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
+    Canvas_API_URL = configs['CanvasBETAAPIURL']
+    Canvas_API_KEY = "16797~GGQGRMEZKL9RmmzxcnPvwekEXmCh3AraFCMwwnnLAuFRuRarzUYyZ49ZCx3vwnk4"
+    #Canvas_API_KEY = configs['CanvasAPIKey']
+    logger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
 
@@ -114,14 +150,16 @@ if __name__ == '__main__':
     for i in sql_query.index:
         try:
             CourseToRename = canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
-            print("Renaming course " + str(sql_query['SIS_ID'][i]) + " to " + str(sql_query['NewCourseTitle'][i]))
-            CourseToRename.update(course={'course_code': sql_query['NewCourseTitle'][i],
-                                          'name': sql_query['NewCourseTitle'][i]})
+            logger.info(f"Renaming course {sql_query['SIS_ID'][i]} to {sql_query['NewCourseTitle'][i]}")
+            renameResult = CourseToRename.update(course={'course_code': sql_query['NewCourseTitle'][i], 'name': sql_query['NewCourseTitle'][i]})
+            logger.info(renameResult)
+        except ResourceDoesNotExist:
+            logger.error(f"PANIC - Course SIS_ID {sql_query['SIS_ID'][i]} seems not to be in Canvas but is in AERIES")
+            msgbody += f"PANIC - Course SIS_ID {sql_query['SIS_ID'][i]} seems not to be in Canvas but is in AERIES\n"
         except CanvasException as e:
-            if str(e) == "Not Found":
-                print("PANIC - Course SIS_ID " + str(sql_query['SIS_ID'][i]) + " seems not to be in Canvas but is in AERIES")
-                msgbody += "PANIC - Course SIS_ID " + str(sql_query['SIS_ID'][i]) + " seems not to be in Canvas but is in AERIES\n"
-    #exit(1)
+            logger.error(f"PANIC - {e}")
+            msgbody += f"PANIC - {e}"
+  
         
     CurrentMasterSectionSIS_ID = 0
     CurrentMasterSectionCourseName = ""
@@ -144,12 +182,12 @@ if __name__ == '__main__':
                 CurrentMasterSectionSIS_ID =  canvas.get_course(sql_query['SIS_ID'][i],use_sis_id=True)
                 CurrentMasterSectionCourseName = sql_query['NewCourseTitle'][i]
                 CurrentMasterSelectionSimpleCourseName = sql_query['NewCourseTitleSort'][i]
-                print('Found a potential class->' + str(sql_query['SIS_ID'][i]))
-                msgbody += ('Found a potential class->' + str(sql_query['SIS_ID'][i]) + ' ' + sql_query['NewCourseTitle'][i] + '\n')
+                logger.info(f"Found a potential class->{sql_query['SIS_ID'][i]}")
+                msgbody += f"Found a potential class->{sql_query['SIS_ID'][i]} {sql_query['NewCourseTitle'][i]} \n"
             except CanvasException as f:
                 if str(f) == "Not Found":
-                    print("Panic - Look up of Course SIS_ID " + str(sql_query['SIS_ID'][i]) + " does not seem to be in Canvas but is in AERIES")
-                    msgbody += "Panic - Look up of Course SIS_ID " + str(sql_query['SIS_ID'][i]) + " does not seem to be in Canvas but is in AERIES\n"
+                    logger.info(f"Panic - Look up of Course SIS_ID {sql_query['SIS_ID'][i]} does not seem to be in Canvas but is in AERIES")
+                    msgbody += f"Panic - Look up of Course SIS_ID {sql_query['SIS_ID'][i]} does not seem to be in Canvas but is in AERIES\n"
         elif sql_query['Dup'][i] == True:
             # Here, we seem to have a course that should be cross listed
             # we have the SIS_ID of the FIRST Canvas course, and we need to rename it, getting rid of the P2 or whatever after it
@@ -159,16 +197,16 @@ if __name__ == '__main__':
                 #cross list the section
                 for section in sections:
                     new_section = section.cross_list_section(CurrentMasterSectionSIS_ID)
-                print('Cross listed ' + str(sql_query['SIS_ID'][i]) + ' to ' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName)
-                msgbody += 'Crosslisted ->' + str(sql_query['SIS_ID'][i]) + ' ' + sql_query['NewCourseTitle'][i] + ' to SIS_ID->' + str(CurrentMasterSectionSIS_ID) + ' ' + CurrentMasterSectionCourseName + '\n'
+                logger.info(f"Cross listed {sql_query['SIS_ID'][i]} to {CurrentMasterSectionSIS_ID}  {CurrentMasterSectionCourseName}")
+                msgbody += f"Crosslisted ->{sql_query['SIS_ID'][i]} {sql_query['NewCourseTitle'][i]} to SIS_ID-> {CurrentMasterSectionSIS_ID} {CurrentMasterSectionCourseName}\n"
                 # Rename the course title of the section we are cross listing
                 try:
                     course.update(course={'course_code': CurrentMasterSelectionSimpleCourseName,
                                             'name': CurrentMasterSelectionSimpleCourseName})
                 except CanvasException as q:
                     if str(q) == "Not Found":
-                        print("PANIC - Course SIS_ID " + str(sql_query['SIS_ID'][i]) + " seems not to be in Canvas but is in AERIES")
-                        msgbody += "PANIC - Course SIS_ID " + str(sql_query['SIS_ID'][i])+ " seems not to be in Canvas but is in AERIES\n"
+                        logger.error(f"PANIC - Course SIS_ID {sql_query['SIS_ID'][i]} seems not to be in Canvas but is in AERIES")
+                        msgbody += f"PANIC - Course SIS_ID {sql_query['SIS_ID'][i]} seems not to be in Canvas but is in AERIES\n"
                 #Rename the 'Master Class'
                 try:
                     CourseToRename = canvas.get_course(CurrentMasterSectionSIS_ID)
@@ -176,20 +214,21 @@ if __name__ == '__main__':
                                             'name': CurrentMasterSelectionSimpleCourseName})
                 except CanvasException as e:
                     if str(e) == "Not Found":
-                        print("PANIC - Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES")
-                        msgbody += "PANIC - Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES\n"
+                        logger.error(f"PANIC - Course SIS_ID {CurrentMasterSectionSIS_ID} seems not to be in Canvas but is in AERIES")
+                        msgbody += f"PANIC - Course SIS_ID {CurrentMasterSectionSIS_ID} seems not to be in Canvas but is in AERIES\n"
             except CanvasException as g:
                 if str(g) == "Not Found":
-                    print("PANIC - Potential course for cross reference, Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES")
-                    msgbody += "PANIC - Potential course for cross reference, Course SIS_ID " + str(CurrentMasterSectionSIS_ID) + " seems not to be in Canvas but is in AERIES\n"
+                    logger.error(f"PANIC - Potential course for cross reference, Course SIS_ID {CurrentMasterSectionSIS_ID} seems not to be in Canvas but is in AERIES")
+                    msgbody += f"PANIC - Potential course for cross reference, Course SIS_ID {CurrentMasterSectionSIS_ID} seems not to be in Canvas but is in AERIES\n"
         else:
-            print('Error!')
+            logger.error('Error! Big one. Exiting around line 210')
             exit(1)
 
-    print("Done!")
-    msg['Subject'] = str(configs['SMTPStatusMessage'] + " Canvas Renamer and Crosslister " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+
+    msg['Subject'] = f"""{configs['SMTPStatusMessage']} Canvas Renamer and Crosslister {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"""
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f"\n\n Elapsed Time= {end_of_timer - start_of_timer}\n"
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
+    logger.info("Done!")
