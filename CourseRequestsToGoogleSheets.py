@@ -30,6 +30,15 @@ if __name__ == '__main__':
         configs = {"default_setting": True}
     # Set up some variables for emailing and error checking
     WasThereAnError = False
+    logger = logging.getLogger('AERIES Course Requests')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     msg = MIMEMultipart()
     msg['From'] = configs['SMTPAddressFrom']
@@ -69,6 +78,7 @@ if __name__ == '__main__':
         AND STU.NG <> 13 
         AND (SSS.CN IS NOT NULL AND SSS.CN <> '');
     """
+    logger.info('Getting AERIES data')
     sql_query = pd.read_sql_query(TheQuery, engine)
 
     # Use Pandas to rename the columns to proper labels
@@ -82,7 +92,7 @@ if __name__ == '__main__':
         'CO': 'Course Title',
         'SE': 'Section Number'
     })
-
+    logger.info('Writing course requests temp file')
     dest_filename = "Course Requests from AERIES.csv" # this is a temp file, will be delete at end of script
     print(sql_query)
     sql_query.to_csv(dest_filename, index = False)
@@ -91,6 +101,7 @@ if __name__ == '__main__':
     gam.initializeLogging()
     uploadfilestring = os.path.join(configs['PythonTempDirectory'], dest_filename)
     print(uploadfilestring)
+    logger.info('Uploading csv to sheet using GAM')
     stat1 = gam.CallGAMCommand(['gam',
                                 'user',
                                 target_user,
@@ -105,8 +116,7 @@ if __name__ == '__main__':
                                 "Course Requests from AERIES"])
     if stat1 != 0:  
         WasThereAnError = True
-        print('GAM Error')
-        print(stat1)
+        logger.error('GAM Error {stat1}')
     first_10_rows = sql_query.head(10)
     html_table_first10 = first_10_rows.to_html(index=False, justify='left', classes='red-table')
     html_body = f"""
@@ -161,11 +171,13 @@ if __name__ == '__main__':
         """
     if WasThereAnError:
         msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} - AERIES Course Requests to Google Sheets {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
+        logger.error(f"ERROR!- AERIES Course Requests to Google Sheets {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}")
     else:
         msg['Subject'] = f"🟢 {configs['SMTPStatusMessage']} - AERIES Course Requests to Google Sheets {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
+        logger.error(f"Sending Google Sheets email {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}")
     msg.attach(MIMEText(html_body,'html'))
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    print("Done!")
     # remove tempfile when done
     os.remove(dest_filename)
+    logger.info("Done!")  
