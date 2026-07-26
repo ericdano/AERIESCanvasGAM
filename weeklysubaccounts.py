@@ -24,13 +24,20 @@ def getConfigs():
   return configs
 
 def main():
-    global msgbody,thelogger
+    global msgbody,logger
     configs = getConfigs()
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
-    thelogger.info('Subaccounts->Connecting to Zeus...')
+
+    logger = logging.getLogger('Weekly Sub Accounts Password Change')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
+
+    logger.info('Connecting to Zeus...')
     # array for sending out emails
     campuses = [('mhs','kharvin@auhsdschools.org,jyee@auhsdschools.org,dwarford@auhsdschools.org'),
                 ('chs','mhaldeman@auhsdschools.org,aluk@auhsdschools.org,kharvin@auhsdschools.org'),
@@ -59,6 +66,7 @@ def main():
     df = pd.DataFrame(campuses, columns = ['campusname','contacts'])
     wordfile = xp.locate_wordfile('E:\PythonScripts\GuestPasswords.txt')
     mywords = xp.generate_wordlist(wordfile=wordfile,min_length=6,max_length=6)
+    logger.info('Generating Passwords')
     for x in df.index:
         msgbodysummary = f"""
         <html>
@@ -83,6 +91,7 @@ def main():
             ---------------------<br>
             <p></p>
             """
+            logger.info(f'Calling GAM to change passwords in Google for {theuser}')
             stat = gam.CallGAMCommand(['gam','update','user',theuser,'password',password])
             #Call powershell script to update the password in AD as well
             p = subprocess.Popen(["powershell.exe","C:\\Users\\Public\\GitHub\\PowerShellScripts\\UpdatePassword.ps1",adusername,password],stdout=sys.stdout)
@@ -123,14 +132,18 @@ def main():
               with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
                   s.send_message(msgindv)
                   print(f"Email sent successfully {msgindv['Subject']}")
+                  logger.info(f"Email sent successfully {msgindv['Subject']}")
             except smtplib.SMTPConnectError:
                 print("Error: Could not connect to the SMTP server. Check the address/port.")
+                logger.error(f"Error: Could not connect to the SMTP server. Check the address/port.")
             except smtplib.SMTPAuthenticationError:
                 print("Error: SMTP Authentication failed. Check your credentials.")
+                logger.error(f"Error: SMTP Authentication failed. Check your credentials.")
             except Exception as e:
                 print(f"An unexpected error occurred while sending email: {e}")
+                logger.error(f"An unexpected error occurred while sending email: {e}")
 
-        # Send summary of all campus subaccount passwords here
+        # Send summary of all campus subaccount passwords
         msg = MIMEMultipart()
         msg['Subject'] = f"Sub Account Passwords for {df['campusname'][x].upper() {theweekof}"
         msg['From'] = 'donotreply@auhsdschools.org'
@@ -141,11 +154,15 @@ def main():
           with smtplib.SMTP(configs['SMTPServerAddress'], timeout=10) as s:
               s.send_message(msg)
               print(f"Email sent successfully {msg['Subject']}")
+              logger.info(f"Email sent successfully {msg['Subject']}")
         except smtplib.SMTPConnectError:
             print("Error: Could not connect to the SMTP server. Check the address/port.")
+            logger.error("Error: Could not connect to the SMTP server. Check the address/port.")
         except smtplib.SMTPAuthenticationError:
             print("Error: SMTP Authentication failed. Check your credentials.")
+            logger.error("Error: SMTP Authentication failed. Check your credentials.")
         except Exception as e:
             print(f"An unexpected error occurred while sending email: {e}")
+            logger.error(f"An unexpected error occurred while sending email: {e}")
 if __name__ == '__main__':
   main()

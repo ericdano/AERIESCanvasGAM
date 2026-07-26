@@ -24,7 +24,7 @@ etc.
 Script sends what it does to a logging server, and will also email what it
 did or did not do to a set of users as well
 
-2025 by Eric Dannewitz
+2026 by Eric Dannewitz
 
 """
 
@@ -32,11 +32,19 @@ start_of_timer = timer()
 confighome = Path.home() / ".Acalanes" / "Acalanes.json"
 with open(confighome) as f:
   configs = json.load(f)
+
 #Logging
-thelogger = logging.getLogger('MyLogger')
-thelogger.setLevel(logging.DEBUG)
-handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-thelogger.addHandler(handler)
+
+logger = logging.getLogger('Update Student Groups in Google')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+syslog_handler.setFormatter(formatter)
+logger.addHandler(syslog_handler)
+logger.addHandler(console_handler)
+
 #prep status (msg) email and stuff
 msg = EmailMessage()
 msg['From'] = configs['SMTPAddressFrom']
@@ -77,27 +85,28 @@ ORDER BY
     STU.SC
 """
 # Logging is a good thing
-thelogger.info(f"Student Google Group Updater->Gathering all students by Grade Level")
+logger.info(f"Gathering all students by Grade Level")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 with engine.begin() as connection:
-    thelogger.info('Student Google Group Updater->Connecting to AERIES to get emails')
+    logger.info('Connecting to AERIES to get emails')
     df = pd.read_sql_query(QueryStr,connection)
-    thelogger.info('Student Google Group Updater>Closed AERIES connection')
+    logger.info('Closed AERIES connection')
 print(df)
-#
-thelogger.info(f"Student Google Group Updater->Gathering all students by Site")
+
+logger.info(f"Gathering all students by Site")
 connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
 connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 engine = create_engine(connection_url)
 with engine.begin() as connection:
-    thelogger.info('Student Google Group Updater->Connecting to AERIES to get emails')
+    logger.info('Connecting to AERIES to get emails')
     df2 = pd.read_sql_query(QueryStr2,connection)
-    thelogger.info('Student Google Group Updater>Closed AERIES connection')
+    logger.info('Closed AERIES connection')
 print(df2)
-#
-msgbody += "Connected to AERIES and got all the student email addresses\n"
+
+
+msgbody += f"Connected to AERIES and got all the student email addresses\n"
 # Mapping of site numbers to abbrivations of school names
 sc_mapping = {
     1: 'llhs',
@@ -115,10 +124,12 @@ print("\nUpdated DataFrame with 'GR' values modified:")
 print(df.head())
 Grouped = df.groupby(['SC','GR'])
 print(Grouped)
+
 # We'll create an empty dataframe to hold the filenames for GAM to process.
 # Dump Students by Grade Level to CSV
+
 file_list = pd.DataFrame(columns=['filename','groupname'])
-print("Iterating through groups and creating CVS for Student by Grade")
+logger.info("Iterating through groups and creating CVS for Student by Grade")
 for name, group_df in Grouped:
     file_name = f"{''.join(name).replace(' ', '')}.csv"
     group_name = f"{''.join(name).replace(' ', '')}"
@@ -128,9 +139,9 @@ for name, group_df in Grouped:
 
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
-    print(f"Saved {name}")
+    logger.info(f"Saved {name}")
 # All CSV files created by Grade Level/Site
-thelogger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
+logger.info('Student Google Group Updater>Created temp CSV files for GAM to use')
 msgbody += "Created temp CSV files for GAM to use\n"
 #--------------------
 
@@ -139,7 +150,7 @@ grouped2 = df2.groupby('SC')
 print(grouped2)
 
 file_list2 = pd.DataFrame(columns=['filename','groupname'])
-print("Iterating through groups and creating CSVs for Student by Site")
+logger.info("Iterating through groups and creating CSVs for Student by Site")
 
 for name, group_df in grouped2:
     file_name = f"{name.replace(' ', '')}students.csv"
@@ -150,14 +161,14 @@ for name, group_df in grouped2:
     
     output_path = os.path.join(output_dir, file_name)
     group_df[['SEM']].to_csv(output_path, index=False)
-    print(f"Saved {name}")
+    logger.info(f"Saved {name}")
 # We created another dataframe containing the csv filenames and the google group name
 # and now we use that to call GAM to update the list from the CSV
 # we are going to loop through the file_list dataframe which contains the csv filename and the name of the group to update
 # Go through and do students by SITE and Grade first
 for row in file_list.itertuples(index=False):
     print(f"filename: {row.filename}, groupname: {row.groupname}")
-    thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
+    logger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
     # Call GAM from Python
     GAMliststring=f"{row.groupname}"
@@ -165,7 +176,7 @@ for row in file_list.itertuples(index=False):
     stat1 = gam.CallGAMCommand(['gam','update', 'group', GAMliststring, 'sync', 'members', 'file', filenamestring])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('Student Google Group Updater->GAM returned an error from last command')
+        logger.error('GAM returned an error from last command')
         msgbody += f"GAM returned an error from last command on {row.groupname} {row.filename}\n"
     if not DontDeleteFiles:
         # Delete CSV when done
@@ -173,7 +184,7 @@ for row in file_list.itertuples(index=False):
 # Go through and do students by SITE
 for row in file_list2.itertuples(index=False):
     print(f"filename: {row.filename}, groupname: {row.groupname}")
-    thelogger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
+    logger.info(f"Student Google Group Updater>Processing filename: {row.filename}, groupname: {row.groupname}")
     msgbody += f"Processing filename: {row.filename}, groupname: {row.groupname}\n"
     # Call GAM from Python
     GAMliststring=f"{row.groupname}"
@@ -181,13 +192,13 @@ for row in file_list2.itertuples(index=False):
     stat1 = gam.CallGAMCommand(['gam','update', 'group', GAMliststring, 'sync', 'members', 'file', filenamestring])
     if stat1 != 0:
         WasThereAnError = True
-        thelogger.info('Student Google Group Updater->GAM returned an error from last command')
+        logger.error('GAM returned an error from last command')
         msgbody += f"GAM returned an error from last command on {row.groupname} {row.filename}\n"
     if not DontDeleteFiles:
         # Delete CSV when done
         os.remove(f"{row.filename}")
 msgbody+=f"Done!\n"
-thelogger.info('Student Google Group Updater->Done Syncing to Google Groups')
+logger.info('Done Syncing to Google Groups')
 # Now email status report
 if WasThereAnError:
     msg['Subject'] = f"🔴 ERROR! {configs['SMTPStatusMessage']} Student Google Group Updater {datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")}"
@@ -198,6 +209,6 @@ msgbody += f"\n\n Elapsed Time={end_of_timer - start_of_timer}\n"
 msg.set_content(msgbody)
 s = smtplib.SMTP(configs['SMTPServerAddress'])
 s.send_message(msg)
-thelogger.info('Student Google Group Updater->Sent status message')
-thelogger.info(f'Student Google Group Updater->Done - Took {end_of_timer - start_of_timer}')
-print("\nProcess complete.")
+logger.info('Sent status message')
+logger.info(f'Done - Took {end_of_timer - start_of_timer}')
+logger.info("Script complete.")

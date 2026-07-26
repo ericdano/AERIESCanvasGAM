@@ -25,10 +25,17 @@ if __name__ == '__main__':
     keyspath = Path.home() / ".Acalanes" / "hostkeys.txt"
     with open(confighome) as f:
         configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
+
+    logger = logging.getLogger('CareSolace Demographics')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
+
     #prep status (msg) email
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
@@ -41,15 +48,16 @@ if __name__ == '__main__':
     passwd = configs['CareSolacePW']
     dest_filename_demo = "CARE_SOLACE_DEMOGRAPHICS.csv"
     dest_filename_staff = "CARE_SOLACE_STAFF.csv"
-    thelogger.info('Update Care/Solace->Starting Care/Solace Script')
+    logger.info('Starting Care/Solace Script')
     msgbody += 'Using Database->' + str(configs['AERIESDatabase']) + '\n'
 
     # Get AERIES Data
     os.chdir(configs['PythonTempDirectory'])
-    thelogger.info('Update Care/Solace->Connecting To AERIES to get ALL students Data')
+    logger.info('Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
+    
     """
     Old Query
 WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
@@ -129,6 +137,7 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
         AND (CO <> '' AND CO NOT LIKE '%SUB%' AND CO NOT LIKE '%ASSISTANT%')
     ORDER BY PSC
     """
+
     sql_query_demo = pd.read_sql_query(QueryDemo, engine)
     #print(sql_query_demo)
     sql_query_staff = pd.read_sql_query(QueryStaff,engine)
@@ -136,63 +145,65 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
  
     sql_query_demo.to_csv(dest_filename_demo, index = False)
     sql_query_staff.to_csv(dest_filename_staff, index = False)
-    thelogger.info('Care/Solace->Wrote temp CSV to disk')
+    logger.info('Wrote temp CSV to disk')
     msgbody += f"Got AERIES data, connecting to FTPS\n"
-    thelogger.info('Care/Solace->Connecting to Care/Solaces via FTPS')
+    logger.info('Connecting to Care/Solaces via FTPS')
     hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     hostFingerprint = hostkeys.lookup(server)['ssh-rsa']
     try:
         tp = paramiko.Transport(server,22)
         tp.connect(username = user, password = passwd, hostkey=hostFingerprint)
-        thelogger.info('Update Maia Learning->Connected to FTPS')
+        logger.info('Connected to FTPS')
         fileToUpload = {"CARE_SOLACE_DEMOGRAPHICS.csv":"CARE_SOLACE_DEMOGRAPHICS.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
-        thelogger.info('Update CareSolace Demographics->Uploading Students')
-        
+        logger.info('Uploading Students')
         for key, value in fileToUpload.items():
             try:  
                 sftpClient.put(key, value)
                 print("[" + key + "] successfully uploaded to [" + value + "]")
-                thelogger.info("[" + key + "] successfully uploaded to [" + value + "]")
+                logger.info("[" + key + "] successfully uploaded to [" + value + "]")
                 msgbody += "[" + key + "] successfully uploaded to [" + value + "]\n"
             except PermissionError as err:
                 print(f"SFTP Operation Failed on {key} due to a permissions error on the remote server [{err}]")
-                thelogger.info(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                logger.error(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
                 msgbody += f"SFTP Operation Failed on {key} due to a permissions error on the remote server [{err}\n"
                 WasThereAnError = True
             except Exception as err:
                 print(f"SFTP failed due to error [{err}")
-                thelogger.info(f"SFTP failed due to error [{err}]")
+                logger.error(f"SFTP failed due to error [{err}]")
                 msgbody += f"SFTP failed due to error [{err}]\n"
                 WasThereAnError = True
+
         # Staff Upload------------------------
+
         fileToUploadstaff = {"CARE_SOLACE_STAFF.csv":"CARE_SOLACE_STAFF.csv"}
         sftpClient = paramiko.SFTPClient.from_transport(tp)
-        thelogger.info('Update CareSolace Staff->Uploading Staff')
+        logger.info('Update CareSolace Staff->Uploading Staff')
         for key, value in fileToUploadstaff.items():
             try:  
                 sftpClient.put(key, value)
                 print(f"[{key}] successfully uploaded to [{value}]")
-                thelogger.info(f"[{key}] successfully uploaded to [{value}]")
+                logger.info(f"[{key}] successfully uploaded to [{value}]")
                 msgbody += f"[{key}] successfully uploaded to [{value}]\n"
             except PermissionError as err:
                 print(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
-                thelogger.info(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
+                logger.error(f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}]")
                 msgbody += f"SFTP Operation Failed on [{key}] due to a permissions error on the remote server [{err}\n"
                 WasThereAnError = True
             except Exception as err:
                 print("SFTP failed due to error [" + str(err) + "]")
-                thelogger.info(f"SFTP failed due to error [{err}]")
+                logger.error(f"SFTP failed due to error [{err}]")
                 msgbody += f"SFTP failed due to error {err}]\n"
                 WasThereAnError = True
+    # Catch errors and log and email them
     except paramiko.ssh_exception.AuthenticationException as err:
         print (f"Can't connect due to authentication error [{err}]")
-        thelogger.info(f"Can't connect due to authentication error [{err}]")
+        logger.error(f"Can't connect due to authentication error [{err}]")
         msgbody +=f"Can't connect due to authentication error [{err}]"
         WasThereAnError = True
     except Exception as err:
         print (f"Can't connect due to other error [{err}]")
-        thelogger.info(f"Can't connect due to other error [{err}]")
+        logger.error(f"Can't connect due to other error [{err}]")
         msgbody +=f"Can't connect due to other error [{err}]"
         WasThereAnError = True
     try:
@@ -203,23 +214,24 @@ WITH CTE1 AS (SELECT * FROM COD WHERE TC = 'STU' AND FC = 'HL'),
             print(file)
     except FileNotFoundError:
         print(f"Directory '{remote_dir}' not found.")
+        logger.error(f"Directory '{remote_dir}' not found.")
+        msgbody += f"Directory '{remote_dir}' not found.\n"
     sftpClient.close()
     tp.close()
-    thelogger.info('Update Care/Solace->Removing CSV files')
+    logger.info('Removing CSV files')
     DontDelete = False
     if not(DontDelete):
         os.remove(dest_filename_staff)
         os.remove(dest_filename_demo)
-    msgbody += str(len(sql_query_demo.index)) + ' student demographics in file uploaded.\n'
-    msgbody += str(len(sql_query_staff.index)) + ' staff demographics in file uploaded.\n'
-    thelogger.info('Update Care/Solace->Closed FTP and deleted temp CSV')
+    msgbody += f"""{len(sql_query_demo.index)} student demographics in file uploaded.\n{len(sql_query_staff.index)} staff demographics in file uploaded.\n"""
+    logger.info('Care/Solace->Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = "ERROR! " + str(configs['SMTPStatusMessage'] + " Care/Solace " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"""🔴 ERROR! {configs['SMTPStatusMessage']} Care/Solace {datetime.datetime.now():%I:%M%p on %B %d, %Y}"""
     else:
-        msg['Subject'] = str(configs['SMTPStatusMessage'] + " Care/Solace " + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+        msg['Subject'] = f"""🟢 {configs['SMTPStatusMessage']} Care/Solace {datetime.datetime.now():%I:%M%p on %B %d, %Y}"""
     end_of_timer = timer()
     msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    print('Done!')
+    logger.info('Done!')

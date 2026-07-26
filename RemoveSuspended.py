@@ -31,11 +31,19 @@ if __name__ == '__main__':
   confighome = Path.home() / ".Acalanes" / "Acalanes.json"
   with open(confighome) as f:
     configs = json.load(f)
-  thelogger = logging.getLogger('MyLogger')
-  thelogger.setLevel(logging.DEBUG)
-  handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-  thelogger.addHandler(handler)
-  thelogger.info('RemoveSuspendedUsers->Starting Remove Suspended Users From Groups')
+
+  logger = logging.getLogger('Remove Suspended Script')
+  logger.setLevel(logging.INFO)
+  console_handler = logging.StreamHandler()
+  syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+  formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+  console_handler.setFormatter(formatter)
+  syslog_handler.setFormatter(formatter)
+  logger.addHandler(syslog_handler)
+  logger.addHandler(console_handler)
+
+
+  logger.info('Starting Remove Suspended Users From Groups')
   msg = EmailMessage()
   msg['From'] = configs['SMTPAddressFrom']
   msg['To'] = configs['SendInfoEmailAddr']
@@ -49,22 +57,22 @@ if __name__ == '__main__':
     multiprocessing.set_start_method('spawn')
   initializeLogging()
   #
-  thelogger.info('RemoveSuspendedUsers->Getting addresses of Suspended Users')
+  logger.info('Getting addresses of Suspended Users')
   rc2 = CallGAMCommand(['gam','redirect','csv',filetempname,'print','users','query','isSuspended=True'])
 
   if rc2 != 0:
     WasThereAnError = True
-    thelogger.critical('RemoveSuspendedUsers->GAM Error Getting addresses of Suspended User')
+    logger.critical(f"GAM Error Getting addresses of Suspended User GAM Status->{rc2}\n")
     msgbody += f'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->{rc2}\n'  
-  thelogger.info('RemoveSuspendedUsers->Running GAM to remove suspended users from groups')
+  logger.error('Running GAM to remove suspended users from groups')
   stat1 = CallGAMCommand(['gam','csv', filetempname, 'gam','user','~primaryEmail', 'delete', 'groups'])
 
   if stat1 != 0:
     WasThereAnError = True
-    thelogger.critical('RemoveSuspendedUsers->GAM returned an error for the last command')
+    logger.critical('GAM returned an error for the last command')
     msgbody += f'ERROR! gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->{stat1}\n' 
   msgbody += f'RAN gam csv csvfilename.csv gam user ~primaryEmail delete groups. GAM Status->{stat1}\n' 
-  thelogger.info('RemoveSuspendedUsers->Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups.')
+  logger.info('Success! Ran gam csv csvfilename.csv gam user ~primaryEmail delete groups.')
 
   """
   This stuff is not needed as Archiving a user will remove licenses
@@ -76,20 +84,20 @@ if __name__ == '__main__':
   stat1 = gam.CallGAMCommand(['gam','query','isSuspended=True','del','license','1010310008'])
   if stat1 != 0:
     WasThereAnError = True
-    thelogger.critical('Remove Google Licenses 08->GAM returned an error for the last command')
+    logger.critical('Remove Google Licenses 08->GAM returned an error for the last command')
     msgbody += 'ERROR! gam query isSuspended=True del license 1010310008. GAM Status->' + str(stat1) + '\n' 
   msgbody += 'RAN gam query isSuspended=True del license 1010310008. GAM Status->' + str(stat1) + '\n' 
-  thelogger.info('Remove Google Licenses->Success! Ran gam query isSuspended=True del license 1010310008.')
-  thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
+  logger.info('Success! Ran gam query isSuspended=True del license 1010310008.')
+  logger.info('Removing Staff Licenses of Suspended Accounts')
   # Delete License 1010310009
-  thelogger.info('Remove Google License->Removing Staff Licenses of Suspended Accounts')
+  logger.info('Removing Staff Licenses of Suspended Accounts')
   stat1 = gam.CallGAMCommand(['gam','query','isSuspended=True','del','license','1010310009'])
   if stat1 != 0:
     WasThereAnError = True
-    thelogger.critical('Remove Google Licenses->GAM returned an error for the last command')
+    logger.critical('GAM returned an error for the last command')
     msgbody += 'ERROR! gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
   msgbody += 'RAN gam query isSuspended=True del license 1010310009. GAM Status->' + str(stat1) + '\n' 
-  thelogger.info('Remove Google Licenses->Success! Ran gam query isSuspended=True del license 1010310009.')
+  logger.info('Success! Ran gam query isSuspended=True del license 1010310009.')
 
 """
   msgbody += 'Done!'
@@ -103,6 +111,6 @@ if __name__ == '__main__':
   msg.set_content(msgbody)
   s = smtplib.SMTP(configs['SMTPServerAddress'])
   s.send_message(msg)
-  thelogger.info('RemoveSuspendedUsers->Sent Status message')
-  thelogger.info(f'RemoveSuspendedUsers->Done!! - Took {end_of_timer - start_of_timer}')
-  print('Done!!!')
+  logger.info('Sent Status message')
+  logger.info(f'Done!! - Took {end_of_timer - start_of_timer}')
+  logger.info('Done!!!')
