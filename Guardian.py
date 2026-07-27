@@ -28,10 +28,18 @@ if __name__ == '__main__':
     keyspath = Path.home() / ".Acalanes" / "hostkeys.txt"
     with open(confighome) as f:
         configs = json.load(f)
-    thelogger = logging.getLogger('MyLogger')
-    thelogger.setLevel(logging.DEBUG)
-    handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
-    thelogger.addHandler(handler)
+
+    logger = logging.getLogger('Guadrian Update Script')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    syslog_handler = logging.handlers.SysLogHandler(address = (configs['logserveraddress'],514))
+    formatter = logging.Formatter('%(name)s: %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    syslog_handler.setFormatter(formatter)
+    logger.addHandler(syslog_handler)
+    logger.addHandler(console_handler)
+
+
     msg = EmailMessage()
     msg['From'] = configs['SMTPAddressFrom']
     msg['To'] = configs['SendInfoEmailAddr']
@@ -43,12 +51,12 @@ if __name__ == '__main__':
     passwd = configs['GuardianPassword']
     dest_filename_students = f"students-{datetime.now().strftime('%Y')}-{datetime.now().strftime('%m')}-{datetime.now().strftime('%d')}.csv"
     dest_filename_employees = f"employees-{datetime.now().strftime('%Y')}-{datetime.now().strftime('%m')}-{datetime.now().strftime('%d')}.csv"
-    thelogger.info('Update-Guardian ->Starting Guardian Script')
+    logger.info(f'Starting Guardian Script. Using Database->{str(configs["AERIESDatabase"])}\n')
     msgbody += f'Using Database->{str(configs["AERIESDatabase"])}\n'
 
     # Get AERIES Data
     os.chdir(configs['PythonTempDirectory'])
-    thelogger.info('Update-Guardian ->Connecting To AERIES to get ALL students Data')
+    logger.info('Connecting To AERIES to get ALL students Data')
     connection_string = "DRIVER={SQL Server};SERVER=" + configs['AERIESSQLServer'] + ";DATABASE=" + configs['AERIESDatabase'] + ";UID=" + configs['AERIESUsername'] + ";PWD=" + configs['AERIESPassword'] + ";"
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
@@ -184,9 +192,9 @@ if __name__ == '__main__':
     sql_query_student.to_csv(dest_filename_students, index = False)
     sql_query_staff.to_csv(dest_filename_employees, index = False)
 
-    thelogger.info('Update-Guardian ->Wrote temp CSV to disk')
+    logger.info('Wrote temp CSV to disk')
     msgbody += "Got AERIES data, connecting to FTPS\n"
-    thelogger.info('Update-Guardian ->Connecting to Guardian s via FTPS')
+    logger.info('Connecting to Guardian s via FTPS')
     #print(server)
     #hostkeys = paramiko.hostkeys.HostKeys(filename=keyspath)
     #print(hostkeys)
@@ -196,29 +204,30 @@ if __name__ == '__main__':
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # AUTO add key
     ssh.connect(hostname=server,username=user, password=passwd)
     sftp = ssh.open_sftp()
-    thelogger.info('Update-Guardian ->Connected to FTPS')
+    logger.info('Connected to FTPS')
     sftp.put(dest_filename_students,'files/' + dest_filename_students)
     sftp.put(dest_filename_employees,'files/' + dest_filename_employees)
     # Staff Upload------------------------
     #     fileToUploadstaff = {dest_filename_employees:str("files/")+dest_filename_employees}
-    thelogger.info('Update-Guardian ->Uploading Staff')
-    thelogger.info('Update-Guardian ->Removing CSV files')
+    logger.info('Uploading Staff')
+    logger.info('Removing CSV files')
     sftp.close()
     ssh.close()
     DontDelete = False
     if not(DontDelete):
         os.remove(dest_filename_employees)
         os.remove(dest_filename_students)
-    msgbody += str(len(sql_query_student.index)) + ' students in file uploaded.\n'
-    msgbody += str(len(sql_query_staff.index)) + ' staff in file uploaded.\n'
-    thelogger.info('Update-Guardian ->Closed FTP and deleted temp CSV')
+    msgbody += f"{len(sql_query_student.index)} students in file uploaded.\n {len(sql_query_staff.index)} staff in file uploaded.\n"
+    logger.info('Closed FTP and deleted temp CSV')
     if WasThereAnError:
-        msg['Subject'] = f'🔴 ERROR! {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}'
+        msg['Subject'] = f"""🔴 ERROR! {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}"""
+        logger.error(f"""🔴 ERROR! {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}""")
     else:
-        msg['Subject'] = f'🟢 {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}'
+        msg['Subject'] = f"""🟢 {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}"""
+        logger.info(f"""🟢 {configs["SMTPStatusMessage"]} Guardian  {datetime.now().strftime("%I:%M%p on %B %d, %Y")}""")
     end_of_timer = timer()
-    msgbody += '\n\n Elapsed Time=' + str(end_of_timer - start_of_timer) + '\n'
+    msgbody += f"\n\n Elapsed Time= {end_of_timer - start_of_timer}\n"
     msg.set_content(msgbody)
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     s.send_message(msg)
-    print('Done!')
+    logger.info('Done!')

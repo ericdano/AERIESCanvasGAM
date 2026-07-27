@@ -137,8 +137,7 @@ ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM
     # Using BETA URL 
     #Canvas_API_URL = configs['CanvasBETAAPIURL']
     Canvas_API_URL = configs['CanvasBETAAPIURL']
-    Canvas_API_KEY = "16797~GGQGRMEZKL9RmmzxcnPvwekEXmCh3AraFCMwwnnLAuFRuRarzUYyZ49ZCx3vwnk4"
-    #Canvas_API_KEY = configs['CanvasAPIKey']
+    Canvas_API_KEY = configs['CanvasAPIKey']
     logger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
     account = canvas.get_account(1)
