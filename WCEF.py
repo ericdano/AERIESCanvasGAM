@@ -196,7 +196,7 @@ WHERE STU.DEL = 0
             <p>GAM Status:{stat1}</p>
             """
     else:
-        html_body += f"""<p>Orinda ONE Info ran successfully against {configs['AERIESDatabase']} Database.</p>
+        html_body += f"""<p>WCEF Info ran successfully against {configs['AERIESDatabase']} Database.</p>
                 {html_table_first10}
                 <p></p>
                 <p>{len(sql_query)} records uploaded to spreadsheet</p>
