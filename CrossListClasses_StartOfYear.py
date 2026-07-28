@@ -102,7 +102,7 @@ FROM MST
   INNER JOIN STF ON SSE.ID = STF.ID 
   INNER JOIN CRS ON MST.CN = CRS.CN 
 WHERE MST.DEL = 0 
-  AND MST.SM = 'S' AND MST.SC IN ('1','2','3','4','6')
+  AND MST.SM = 'S' AND MST.SC = '1'
   AND (MST.CN <> 'OS535E' 
   AND MST.CN <> 'PREPTO' 
   AND MST.CN <> 'O0535E' 
@@ -113,7 +113,9 @@ ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM
     #
     # CHANGE THIS TO 2028~ next year. VERY IMPORTANT!!!!
     #
-
+    # Also do the ABOVE SQL by site to prevent teachers with same lastname being crosslisted with teachers at another site
+    #
+    
     sql_query["SIS_ID"] = "2027~" + sql_query["School"].astype(str) + "_" + sql_query["SectionNum"].astype(str)
 
 

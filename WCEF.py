@@ -31,6 +31,7 @@ if __name__ == '__main__':
         configs = {"default_setting": True}
     # Set up some variables for emailing and error checking
     WasThereAnError = False
+
     logger = logging.getLogger('WCEF')
     logger.setLevel(logging.INFO)
     console_handler = logging.StreamHandler()
@@ -40,6 +41,7 @@ if __name__ == '__main__':
     syslog_handler.setFormatter(formatter)
     logger.addHandler(syslog_handler)
     logger.addHandler(console_handler)
+    
     s = smtplib.SMTP(configs['SMTPServerAddress'])
     msg = MIMEMultipart()
     msg['From'] = configs['SMTPAddressFrom']
