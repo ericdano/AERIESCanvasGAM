@@ -125,7 +125,7 @@ def main():
     execute_gam(group2_cmd, f"\n-> Adding {username} to {group2}...")
 
     group3_cmd = [
-            'gam', 'update', 'group', group2, 
+            'gam', 'update', 'group', group3, 
             'add', 'member', 'user', username
         ]
     execute_gam(group3_cmd, f"\n-> Adding {username} to {group3}...")

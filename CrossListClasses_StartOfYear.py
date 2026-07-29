@@ -102,7 +102,7 @@ FROM MST
   INNER JOIN STF ON SSE.ID = STF.ID 
   INNER JOIN CRS ON MST.CN = CRS.CN 
 WHERE MST.DEL = 0 
-  AND MST.SM = 'S' AND MST.SC = '1'
+  AND MST.SM = 'Y' AND MST.SC = '6'
   AND (MST.CN <> 'OS535E' 
   AND MST.CN <> 'PREPTO' 
   AND MST.CN <> 'O0535E' 
@@ -124,9 +124,9 @@ ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM
     # REMEMBER TO CHANGE THE FALL and SPRING and leave BLANK if YEAR
     # If you mess this up, it's real easy just to rename everything again.
     # ------------------------------------------------------------------------------------------------------------------
-    #sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
+    sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
     #sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Fall"
-    sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Spring"
+    #sql_query["NewCourseTitle"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"] + " - Spring"
 
 
     sql_query["NewCourseTitleSort"] = "26-27 " + sql_query["CourseTitle"].astype(str) + " - " + sql_query["LastName"]
@@ -138,7 +138,7 @@ ORDER BY SCHOOL, LASTNAME, COURSENAME, SECTIONNUM
 
     # Using BETA URL 
     #Canvas_API_URL = configs['CanvasBETAAPIURL']
-    Canvas_API_URL = configs['CanvasBETAAPIURL']
+    Canvas_API_URL = configs['CanvasAPIURL']
     Canvas_API_KEY = configs['CanvasAPIKey']
     logger.info('AERIES Canvas Course Renamer->Connecting to Canvas')
     canvas = Canvas(Canvas_API_URL,Canvas_API_KEY)
